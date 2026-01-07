@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(example-skills:frontend-design)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(dir \"D:\\NaijaCars\\naija-cars-app\" /b)",
+      "Bash(dir /s D:NaijaCarsnaija-cars-appsrc)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

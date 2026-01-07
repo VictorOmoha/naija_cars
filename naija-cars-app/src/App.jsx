@@ -1,0 +1,90 @@
+import { Routes, Route } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Toast from './components/Toast';
+import AuthModal from './components/modals/AuthModal';
+import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
+import QuickViewModal from './components/modals/QuickViewModal';
+
+// Pages
+import HomePage from './pages/HomePage';
+import CarsPage from './pages/CarsPage';
+import CarDetailsPage from './pages/CarDetailsPage';
+import MessagesPage from './pages/MessagesPage';
+import DashboardPage from './pages/DashboardPage';
+import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
+import FavoritesPage from './pages/FavoritesPage';
+import DealerPage from './pages/DealerPage';
+import ValuationPage from './pages/ValuationPage';
+import BookingPage from './pages/BookingPage';
+import NotificationsPage from './pages/NotificationsPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import HelpPage from './pages/HelpPage';
+import SellCarPage from './pages/SellCarPage';
+import RentCarsPage from './pages/RentCarsPage';
+
+function App() {
+  return (
+    <AppProvider>
+      <div className="min-h-screen bg-pearl-200">
+        {/* Premium grain texture overlay */}
+        <div className="texture-overlay" />
+
+        {/* Navigation */}
+        <Navbar />
+
+        {/* Main Content */}
+        <main>
+          <Routes>
+            {/* Core Pages */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/cars" element={<CarsPage />} />
+            <Route path="/car/:id" element={<CarDetailsPage />} />
+            <Route path="/sell" element={<SellCarPage />} />
+            <Route path="/rent" element={<RentCarsPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+
+            {/* User Pages */}
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+
+            {/* Dealer Pages */}
+            <Route path="/dealer/:id" element={<DealerPage />} />
+
+            {/* Transaction Pages */}
+            <Route path="/valuation" element={<ValuationPage />} />
+            <Route path="/booking/:id" element={<BookingPage />} />
+
+            {/* Static Pages */}
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/help" element={<HelpPage />} />
+          </Routes>
+        </main>
+
+        {/* Footer */}
+        <Footer />
+
+        {/* Modals */}
+        <AuthModal />
+        <EnhancedListCarModal />
+        <QuickViewModal />
+
+        {/* Toast Notifications */}
+        <Toast />
+      </div>
+    </AppProvider>
+  );
+}
+
+export default App;

@@ -3,14 +3,47 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, X, ChevronDown, Grid, List, SlidersHorizontal,
-  Car, MapPin, Calendar, Fuel, Settings, Heart, Eye, ArrowUpDown
+  Car, MapPin, Calendar, Fuel, Settings, Heart, Eye, ArrowUpDown, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { listingsAPI } from '../services/api';
+
+// Transform backend listing to component format
+const transformListing = (listing) => {
+  const conditionMap = {
+    'FOREIGN_USED': 'foreign',
+    'NIGERIAN_USED': 'nigerian',
+    'BRAND_NEW': 'new'
+  };
+
+  return {
+    id: listing.id,
+    title: `${listing.year} ${listing.make} ${listing.model}${listing.trim ? ' ' + listing.trim : ''}`,
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    price: listing.price,
+    condition: conditionMap[listing.condition] || 'foreign',
+    mileage: listing.mileage || 0,
+    transmission: listing.transmission,
+    fuelType: listing.fuelType,
+    bodyType: listing.bodyType || 'Sedan',
+    location: listing.locationState,
+    image: listing.media?.[0]?.url || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600',
+    images: listing.media?.length || 1,
+    featured: listing.isFeatured || false,
+    verified: listing.seller?.profile?.verificationBadge ? true : false,
+    dealer: listing.seller?.profile?.businessName || 'Private Seller',
+  };
+};
 
 const CarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addToFavorites, removeFromFavorites, favorites } = useApp();
 
+  const [allCars, setAllCars] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('newest');
@@ -32,8 +65,51 @@ const CarsPage = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sample car data
-  const allCars = [
+  // Fetch listings from API
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        setIsLoading(true);
+
+        // Build API params from filters
+        const params = {
+          type: 'SALE',
+          limit: 24,
+          page: pagination.page,
+          ...(filters.make && { make: filters.make }),
+          ...(filters.condition && {
+            condition: filters.condition === 'foreign' ? 'FOREIGN_USED' :
+                       filters.condition === 'nigerian' ? 'NIGERIAN_USED' : 'BRAND_NEW'
+          }),
+          ...(filters.location && { state: filters.location }),
+          ...(filters.transmission && { transmission: filters.transmission }),
+          ...(filters.fuelType && { fuelType: filters.fuelType }),
+          ...(filters.minPrice && { minPrice: filters.minPrice }),
+          ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
+          ...(filters.minYear && { minYear: filters.minYear }),
+          ...(filters.maxYear && { maxYear: filters.maxYear }),
+          ...(searchQuery && { search: searchQuery }),
+        };
+
+        const response = await listingsAPI.getAll(params);
+        const listings = response.data.data.listings;
+        const paginationData = response.data.data.pagination;
+
+        setAllCars(listings.map(transformListing));
+        setPagination(paginationData);
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        setAllCars([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [filters, searchQuery, pagination.page]);
+
+  // Fallback sample car data (used when API returns empty)
+  const fallbackCars = [
     {
       id: 1,
       title: '2022 Toyota Camry XLE',
@@ -271,28 +347,9 @@ const CarsPage = () => {
   const fuelTypes = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
 
   // Filter cars based on current filters
-  const filteredCars = allCars.filter(car => {
-    if (filters.condition && car.condition !== filters.condition) return false;
-    if (filters.make && car.make !== filters.make) return false;
-    if (filters.location && car.location.toLowerCase() !== filters.location.toLowerCase()) return false;
-    if (filters.bodyType && car.bodyType !== filters.bodyType) return false;
-    if (filters.transmission && car.transmission !== filters.transmission) return false;
-    if (filters.fuelType && car.fuelType !== filters.fuelType) return false;
-    if (filters.minPrice && car.price < parseInt(filters.minPrice)) return false;
-    if (filters.maxPrice && car.price > parseInt(filters.maxPrice)) return false;
-    if (filters.minYear && car.year < parseInt(filters.minYear)) return false;
-    if (filters.maxYear && car.year > parseInt(filters.maxYear)) return false;
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return car.title.toLowerCase().includes(query) ||
-             car.make.toLowerCase().includes(query) ||
-             car.model.toLowerCase().includes(query);
-    }
-    return true;
-  });
-
-  // Sort cars
-  const sortedCars = [...filteredCars].sort((a, b) => {
+  // Use API results directly (filtering is done server-side)
+  // Only apply client-side sorting
+  const sortedCars = [...allCars].sort((a, b) => {
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
       case 'price-high': return b.price - a.price;
@@ -673,8 +730,18 @@ const CarsPage = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-green-500 animate-spin mx-auto mb-4" />
+                <p className="text-gray-600">Loading cars...</p>
+              </div>
+            </div>
+          )}
+
           {/* Cars Grid/List */}
-          {sortedCars.length > 0 ? (
+          {!isLoading && sortedCars.length > 0 ? (
             <div className={viewMode === 'grid'
               ? 'grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
               : 'space-y-4'
@@ -793,7 +860,7 @@ const CarsPage = () => {
                 </motion.div>
               ))}
             </div>
-          ) : (
+          ) : !isLoading && (
             <div className="text-center py-20">
               <Car className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-800 mb-2">No cars found</h3>
@@ -809,11 +876,25 @@ const CarsPage = () => {
             </div>
           )}
 
-          {/* Load More */}
-          {sortedCars.length > 0 && sortedCars.length >= 12 && (
-            <div className="text-center mt-12">
-              <button className="px-8 py-3 border-2 border-green-600 text-green-600 rounded-xl font-medium hover:bg-green-50 transition-colors">
-                Load More Cars
+          {/* Pagination */}
+          {!isLoading && sortedCars.length > 0 && pagination.pages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-12">
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                disabled={pagination.page === 1}
+                className="px-4 py-2 border border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-gray-600">
+                Page {pagination.page} of {pagination.pages}
+              </span>
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: Math.min(p.pages, p.page + 1) }))}
+                disabled={pagination.page === pagination.pages}
+                className="px-4 py-2 border border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
               </button>
             </div>
           )}

@@ -1,11 +1,80 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Calendar, Shield, Clock, Headphones } from 'lucide-react';
+import { ArrowRight, Calendar, Shield, Clock, Headphones, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import CarCard from './CarCard';
-import { rentalCars } from '../data/cars';
+import { listingsAPI } from '../services/api';
+import { rentalCars as fallbackCars } from '../data/cars';
 import { useApp } from '../context/AppContext';
 
+// Transform backend listing to CarCard format
+const transformListing = (listing) => {
+  const conditionMap = {
+    'FOREIGN_USED': 'Foreign Used',
+    'NIGERIAN_USED': 'Nigerian Used',
+    'BRAND_NEW': 'Brand New'
+  };
+
+  return {
+    id: listing.id,
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    trim: listing.trim || '',
+    price: listing.price,
+    pricePerDay: listing.price,
+    mileage: listing.mileage || 0,
+    transmission: listing.transmission,
+    fuelType: listing.fuelType,
+    condition: conditionMap[listing.condition] || listing.condition,
+    location: {
+      state: listing.locationState,
+      city: listing.locationCity
+    },
+    type: 'rent',
+    images: listing.media?.length > 0
+      ? listing.media.map(m => m.url)
+      : ['https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800'],
+    verified: listing.seller?.profile?.verificationBadge ? true : false,
+    featured: listing.isFeatured || false,
+    dealer: {
+      name: listing.seller?.profile?.businessName || 'Private Seller',
+      verified: listing.seller?.profile?.verificationBadge ? true : false,
+      rating: 4.5
+    }
+  };
+};
+
 const RentalsSection = () => {
-  const { addToast, setIsListCarOpen } = useApp();
+  const { setIsListCarOpen } = useApp();
+  const [cars, setCars] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRentals = async () => {
+      try {
+        setIsLoading(true);
+        const response = await listingsAPI.getAll({
+          type: 'RENT',
+          limit: 4
+        });
+
+        const listings = response.data.data.listings;
+        if (listings && listings.length > 0) {
+          setCars(listings.map(transformListing));
+        } else {
+          setCars(fallbackCars.slice(0, 4));
+        }
+      } catch (err) {
+        console.error('Error fetching rentals:', err);
+        setCars(fallbackCars.slice(0, 4));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRentals();
+  }, []);
   const benefits = [
     {
       icon: Shield,
@@ -28,10 +97,6 @@ const RentalsSection = () => {
       description: 'Book online in minutes, pick up same day'
     }
   ];
-
-  const handleBrowseRentals = () => {
-    addToast('Loading all rental cars...', 'info');
-  };
 
   const handleListForRent = () => {
     setIsListCarOpen(true);
@@ -117,12 +182,28 @@ const RentalsSection = () => {
           ))}
         </motion.div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-naija-400 animate-spin" />
+          </div>
+        )}
+
         {/* Rental Cars Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {rentalCars.map((car, index) => (
-            <CarCard key={car.id} car={car} index={index} variant="rent" />
-          ))}
-        </div>
+        {!isLoading && cars.length > 0 && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {cars.map((car, index) => (
+              <CarCard key={car.id} car={car} index={index} variant="rent" />
+            ))}
+          </div>
+        )}
+
+        {/* No Results */}
+        {!isLoading && cars.length === 0 && (
+          <div className="text-center py-20 text-charcoal-400">
+            <p>No rental cars available at the moment.</p>
+          </div>
+        )}
 
         {/* CTA Section */}
         <motion.div
@@ -132,17 +213,18 @@ const RentalsSection = () => {
           className="mt-16 text-center"
         >
           <div className="inline-flex flex-col sm:flex-row gap-4">
-            <motion.button
-              whileHover={{ scale: 1.02, boxShadow: '0 12px 40px rgba(196, 92, 62, 0.3)' }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleBrowseRentals}
-              className="group flex items-center justify-center gap-3 px-8 py-4 bg-naija-500
-                       text-white font-semibold rounded-2xl shadow-button transition-all duration-300
-                       hover:bg-naija-600"
-            >
-              Browse All Rentals
-              <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </motion.button>
+            <Link to="/rent">
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: '0 12px 40px rgba(196, 92, 62, 0.3)' }}
+                whileTap={{ scale: 0.98 }}
+                className="group flex items-center justify-center gap-3 px-8 py-4 bg-naija-500
+                         text-white font-semibold rounded-2xl shadow-button transition-all duration-300
+                         hover:bg-naija-600"
+              >
+                Browse All Rentals
+                <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </motion.button>
+            </Link>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

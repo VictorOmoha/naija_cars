@@ -5,13 +5,14 @@ import { useForm } from 'react-hook-form';
 import {
   Car, Calendar, MapPin, Clock, CreditCard, Shield, CheckCircle, ArrowRight,
   ChevronLeft, User, Phone, Mail, Building2, AlertCircle, Lock, Sparkles,
-  Truck, FileText, BadgeCheck, Gift, Tag, Minus, Plus, Info
+  Truck, FileText, BadgeCheck, Gift, Tag, Minus, Plus, Info, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
+import { listingsAPI } from '../services/api';
 
-// Mock car data
-const mockCar = {
+// Fallback car data
+const fallbackCar = {
   id: 1,
   make: 'Toyota',
   model: 'Land Cruiser',
@@ -25,6 +26,31 @@ const mockCar = {
   verified: true,
 };
 
+// Transform backend listing to expected format
+const transformListing = (listing) => {
+  return {
+    id: listing.id,
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    trim: listing.trim || '',
+    price: listing.price,
+    pricePerDay: listing.listingType === 'RENT' ? listing.price : Math.round(listing.price / 30),
+    images: listing.media?.length > 0
+      ? listing.media.map(m => m.url)
+      : ['https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800'],
+    location: {
+      city: listing.locationCity,
+      state: listing.locationState
+    },
+    dealer: {
+      name: listing.seller?.profile?.businessName || 'Private Seller',
+      phone: listing.seller?.phoneNumber || '+234 800 000 0000'
+    },
+    verified: listing.seller?.profile?.verificationBadge ? true : false,
+  };
+};
+
 export default function BookingPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -34,6 +60,8 @@ export default function BookingPage() {
 
   const bookingType = searchParams.get('type') || 'purchase'; // 'purchase' or 'rental'
 
+  const [car, setCar] = useState(null);
+  const [isLoadingCar, setIsLoadingCar] = useState(true);
   const [step, setStep] = useState(1);
   const [rentalDays, setRentalDays] = useState(3);
   const [selectedPayment, setSelectedPayment] = useState('paystack');
@@ -55,7 +83,54 @@ export default function BookingPage() {
     }
   });
 
-  const car = mockCar;
+  // Fetch car data
+  useEffect(() => {
+    const fetchCar = async () => {
+      if (!id) {
+        setCar(fallbackCar);
+        setIsLoadingCar(false);
+        return;
+      }
+
+      try {
+        setIsLoadingCar(true);
+        const response = await listingsAPI.getById(id);
+        const listing = response.data.data.listing;
+        setCar(transformListing(listing));
+      } catch (error) {
+        console.error('Error fetching car:', error);
+        addToast('Failed to load car details', 'error');
+        setCar(fallbackCar);
+      } finally {
+        setIsLoadingCar(false);
+      }
+    };
+
+    fetchCar();
+  }, [id, addToast]);
+
+  // Show loading state
+  if (isLoadingCar) {
+    return (
+      <div className="min-h-screen bg-pearl-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-naija-500 animate-spin mx-auto mb-4" />
+          <p className="text-charcoal-600">Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!car) {
+    return (
+      <div className="min-h-screen bg-pearl-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-charcoal-600">Car not found</p>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate prices
   const basePrice = bookingType === 'rental' ? car.pricePerDay * rentalDays : car.price;

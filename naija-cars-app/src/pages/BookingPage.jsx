@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
-import { listingsAPI } from '../services/api';
+import { listingsAPI, bookingsAPI } from '../services/api';
 
 // Fallback car data
 const fallbackCar = {
@@ -157,17 +157,59 @@ export default function BookingPage() {
     }
   };
 
+  const [bookingId, setBookingId] = useState(null);
+
   const onSubmit = async (data) => {
     if (step < 3) {
       setStep(step + 1);
       return;
     }
 
+    if (!isAuthenticated) {
+      addToast('Please log in to complete your booking', 'error');
+      return;
+    }
+
     setIsProcessing(true);
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    setIsProcessing(false);
-    setStep(4);
+    try {
+      // Create the booking
+      const bookingData = {
+        listingId: id,
+        bookingType: bookingType === 'rental' ? 'RENTAL' : 'PURCHASE',
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        basePrice,
+        totalPrice,
+        serviceFee,
+        insuranceFee,
+        deliveryFee,
+        promoDiscount,
+        ...(bookingType === 'rental' && {
+          rentalDays,
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + rentalDays * 24 * 60 * 60 * 1000).toISOString()
+        }),
+        paymentMethod: selectedPayment,
+        deliveryAddress: data.address || null,
+        pickupLocation: car.location.city,
+        hasInsurance: addons.insurance,
+        hasDelivery: addons.delivery,
+        hasInspection: addons.inspection,
+        notes: null
+      };
+
+      const response = await bookingsAPI.create(bookingData);
+      setBookingId(response.data.data.booking.id);
+      addToast('Booking created successfully!', 'success');
+      setStep(4);
+    } catch (error) {
+      console.error('Booking error:', error);
+      addToast(error.response?.data?.error?.message || 'Failed to create booking', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const paymentMethods = [
@@ -610,19 +652,13 @@ export default function BookingPage() {
                       Back
                     </button>
                     <button
-                      onClick={() => {
-                        setIsProcessing(true);
-                        setTimeout(() => {
-                          setIsProcessing(false);
-                          setStep(4);
-                        }, 3000);
-                      }}
+                      onClick={handleSubmit(onSubmit)}
                       disabled={isProcessing}
                       className="flex-1 btn-primary py-4 rounded-xl flex items-center justify-center gap-2"
                     >
                       {isProcessing ? (
                         <>
-                          <Lock className="w-5 h-5 animate-pulse" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                           Processing...
                         </>
                       ) : (
@@ -685,8 +721,8 @@ export default function BookingPage() {
                       </div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-charcoal-500">Order ID</span>
-                          <span className="font-medium text-charcoal-800">#NC{Date.now().toString().slice(-8)}</span>
+                          <span className="text-charcoal-500">Booking ID</span>
+                          <span className="font-medium text-charcoal-800">#{bookingId ? bookingId.slice(0, 8).toUpperCase() : 'NC' + Date.now().toString().slice(-8)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-charcoal-500">Total Paid</span>

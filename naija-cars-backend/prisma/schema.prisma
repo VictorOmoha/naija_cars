@@ -45,6 +45,27 @@ enum VerificationType {
   DOCUMENT
 }
 
+enum BookingType {
+  PURCHASE
+  RENTAL
+  TEST_DRIVE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -63,6 +84,7 @@ model User {
   subscriptions    Subscription[]
   favorites        Favorite[]
   verifications    Verification[]
+  bookings         Booking[]
 
   @@index([email])
   @@index([phoneNumber])
@@ -120,6 +142,7 @@ model CarListing {
   media     Media[]
   messages  Message[]
   favorites Favorite[]
+  bookings  Booking[]
 
   @@index([make, model])
   @@index([locationState])
@@ -212,4 +235,59 @@ model Verification {
   @@index([userId])
   @@index([code])
   @@map("verifications")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  listingId       String        @map("listing_id")
+  bookingType     BookingType   @map("booking_type")
+  status          BookingStatus @default(PENDING)
+
+  // Rental specific
+  startDate       DateTime?     @map("start_date")
+  endDate         DateTime?     @map("end_date")
+  rentalDays      Int?          @map("rental_days")
+
+  // Pricing
+  basePrice       Float         @map("base_price")
+  serviceFee      Float         @default(0) @map("service_fee")
+  insuranceFee    Float         @default(0) @map("insurance_fee")
+  deliveryFee     Float         @default(0) @map("delivery_fee")
+  promoDiscount   Float         @default(0) @map("promo_discount")
+  totalPrice      Float         @map("total_price")
+
+  // Payment
+  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
+  paymentMethod   String?       @map("payment_method")
+  paymentRef      String?       @map("payment_ref")
+  paidAt          DateTime?     @map("paid_at")
+
+  // Contact info
+  firstName       String        @map("first_name")
+  lastName        String        @map("last_name")
+  email           String
+  phone           String
+
+  // Delivery/Pickup
+  deliveryAddress String?       @map("delivery_address")
+  pickupLocation  String?       @map("pickup_location")
+
+  // Addons
+  hasInsurance    Boolean       @default(false) @map("has_insurance")
+  hasDelivery     Boolean       @default(false) @map("has_delivery")
+  hasInspection   Boolean       @default(false) @map("has_inspection")
+
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  user    User       @relation(fields: [userId], references: [id])
+  listing CarListing @relation(fields: [listingId], references: [id])
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bookings")
 }

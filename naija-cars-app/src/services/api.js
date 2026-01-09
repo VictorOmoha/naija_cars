@@ -79,6 +79,7 @@ export const listingsAPI = {
   getById: (id) => api.get(`/listings/${id}`),
   create: (data) => api.post('/listings', data),
   update: (id, data) => api.put(`/listings/${id}`, data),
+  updateStatus: (id, status) => api.put(`/listings/${id}/status`, { status }),
   delete: (id) => api.delete(`/listings/${id}`),
   toggleFavorite: (id) => api.post(`/listings/${id}/favorite`)
 };
@@ -108,4 +109,29 @@ export const mediaAPI = {
   delete: (id) => api.delete(`/media/${id}`),
   reorder: (listingId, mediaOrders) => api.put('/media/reorder', { listingId, mediaOrders }),
   getByListing: (listingId) => api.get(`/media/listing/${listingId}`)
+};
+
+// Bookings endpoints
+export const bookingsAPI = {
+  create: (data) => api.post('/bookings', data),
+  getAll: (params) => api.get('/bookings', { params }),
+  getById: (id) => api.get(`/bookings/${id}`),
+  updateStatus: (id, status) => api.put(`/bookings/${id}/status`, { status }),
+  updatePayment: (id, paymentData) => api.put(`/bookings/${id}/payment`, paymentData)
+};
+
+// Admin endpoints
+export const adminAPI = {
+  // Users management
+  getUsers: (params) => api.get('/admin/users', { params }),
+  verifyUser: (id, isVerified) => api.put(`/admin/users/${id}/verify`, { isVerified }),
+  updateUserStatus: (id, isActive) => api.put(`/admin/users/${id}/status`, { isActive }),
+  updateUserBadge: (id, verificationBadge) => api.put(`/admin/users/${id}/badge`, { verificationBadge }),
+  // Listings management
+  getListings: (params) => api.get('/admin/listings', { params }),
+  updateListingStatus: (id, status) => api.put(`/admin/listings/${id}/status`, { status }),
+  featureListing: (id, isFeatured) => api.put(`/admin/listings/${id}/feature`, { isFeatured }),
+  deleteListing: (id) => api.delete(`/admin/listings/${id}`),
+  // Dashboard stats
+  getStats: () => api.get('/admin/stats')
 };

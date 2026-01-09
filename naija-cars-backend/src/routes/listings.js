@@ -293,6 +293,67 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 });
 
 /**
+ * @route   PUT /api/listings/:id/status
+ * @desc    Update listing status (mark as sold, rented, inactive, etc.)
+ * @access  Private (Owner only)
+ */
+router.put('/:id/status',
+  authenticate,
+  [
+    body('status').isIn(['PENDING', 'ACTIVE', 'SOLD', 'RENTED', 'INACTIVE'])
+      .withMessage('Invalid status')
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: errors.array() }
+        });
+      }
+
+      const listing = await prisma.carListing.findUnique({
+        where: { id: req.params.id }
+      });
+
+      if (!listing) {
+        return res.status(404).json({
+          success: false,
+          error: { message: 'Listing not found' }
+        });
+      }
+
+      if (listing.sellerId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'You do not have permission to update this listing' }
+        });
+      }
+
+      const updatedListing = await prisma.carListing.update({
+        where: { id: req.params.id },
+        data: { status: req.body.status },
+        include: {
+          media: true,
+          seller: {
+            include: { profile: true }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: `Listing marked as ${req.body.status.toLowerCase()}`,
+        data: { listing: updatedListing }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * @route   POST /api/listings/:id/favorite
  * @desc    Toggle favorite status
  * @access  Private

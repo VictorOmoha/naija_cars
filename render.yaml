@@ -43,7 +43,6 @@ services:
   - type: web
     name: naija-cars-web
     runtime: static
-    plan: free
     rootDir: naija-cars-app
     buildCommand: npm install && npm run build
     staticPublishPath: dist

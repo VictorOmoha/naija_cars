@@ -323,7 +323,8 @@ const Navbar = () => {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors"
+            className="lg:hidden flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
+            aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </motion.button>

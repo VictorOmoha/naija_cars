@@ -90,3 +90,22 @@ export const usersAPI = {
   getListings: (id, params) => api.get(`/users/${id}/listings`, { params }),
   getFavorites: () => api.get('/users/me/favorites')
 };
+
+// Media endpoints
+export const mediaAPI = {
+  upload: (listingId, files) => {
+    const formData = new FormData();
+    formData.append('listingId', listingId);
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+    return api.post('/media/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  delete: (id) => api.delete(`/media/${id}`),
+  reorder: (listingId, mediaOrders) => api.put('/media/reorder', { listingId, mediaOrders }),
+  getByListing: (listingId) => api.get(`/media/listing/${listingId}`)
+};

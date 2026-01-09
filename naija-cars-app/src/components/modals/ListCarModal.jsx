@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Car, Upload, MapPin, DollarSign, Camera, Check } from 'lucide-react';
+import { X, Car, Upload, MapPin, DollarSign, Camera, Check, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { carMakes, nigerianStates } from '../../data/cars';
+import { listingsAPI, mediaAPI } from '../../services/api';
+import useAuthStore from '../../stores/authStore';
 
 const ListCarModal = () => {
   const { isListCarOpen, setIsListCarOpen, addToast } = useApp();
+  const { isAuthenticated, user } = useAuthStore();
+  const fileInputRef = useRef(null);
   const [step, setStep] = useState(1);
   const [listingType, setListingType] = useState('sale');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState([]);
   const [formData, setFormData] = useState({
     make: '',
     model: '',
@@ -28,16 +34,104 @@ const ListCarModal = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    const newImages = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file)
+    }));
+    setUploadedImages(prev => [...prev, ...newImages].slice(0, 20));
+  };
+
+  const removeImage = (index) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Map frontend condition values to backend enum format
+  const mapCondition = (condition) => {
+    const conditionMap = {
+      'Brand New': 'BRAND_NEW',
+      'Foreign Used': 'FOREIGN_USED',
+      'Nigerian Used': 'NIGERIAN_USED'
+    };
+    return conditionMap[condition] || 'NIGERIAN_USED';
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addToast('Your car listing has been submitted for review!', 'success');
-    setIsListCarOpen(false);
-    setStep(1);
-    setFormData({
-      make: '', model: '', year: '', trim: '', mileage: '',
-      transmission: 'Automatic', fuelType: 'Petrol', condition: 'Foreign Used',
-      price: '', state: '', city: '', description: '', images: [],
-    });
+
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      addToast('Please sign in to list your car.', 'error');
+      setIsListCarOpen(false);
+      return;
+    }
+
+    // Check if user is verified
+    if (!user?.isVerified) {
+      addToast('Please verify your account before listing a car.', 'error');
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.make || !formData.model || !formData.year || !formData.price || !formData.state || !formData.city) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare listing data for backend
+      const listingData = {
+        listingType: listingType.toUpperCase(),
+        make: formData.make,
+        model: formData.model,
+        year: parseInt(formData.year),
+        trim: formData.trim || undefined,
+        mileage: formData.mileage ? parseInt(formData.mileage.replace(/,/g, '')) : undefined,
+        transmission: formData.transmission,
+        fuelType: formData.fuelType,
+        condition: mapCondition(formData.condition),
+        price: parseFloat(formData.price.replace(/,/g, '')),
+        locationState: formData.state,
+        locationCity: formData.city,
+        description: formData.description || undefined
+      };
+
+      // Create the listing
+      const response = await listingsAPI.create(listingData);
+      const listingId = response.data.data.listing.id;
+
+      // Upload images if any
+      if (uploadedImages.length > 0) {
+        const imageFiles = uploadedImages.map(img => img.file);
+        try {
+          await mediaAPI.upload(listingId, imageFiles);
+        } catch (uploadError) {
+          console.error('Error uploading images:', uploadError);
+          // Continue even if image upload fails
+        }
+      }
+
+      addToast('Your car listing has been submitted for review!', 'success');
+      setIsListCarOpen(false);
+      setStep(1);
+      setUploadedImages([]);
+      setFormData({
+        make: '', model: '', year: '', trim: '', mileage: '',
+        transmission: 'Automatic', fuelType: 'Petrol', condition: 'Foreign Used',
+        price: '', state: '', city: '', description: '', images: [],
+      });
+    } catch (error) {
+      console.error('Error creating listing:', error);
+      const errorMessage = error.response?.data?.error?.message ||
+                          error.response?.data?.error?.details?.[0]?.msg ||
+                          'Failed to create listing. Please try again.';
+      addToast(errorMessage, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => setStep(prev => Math.min(prev + 1, 3));
@@ -272,26 +366,63 @@ const ListCarModal = () => {
               <p className="text-sm text-charcoal-600">Add photos of your vehicle (up to 20)</p>
             </div>
 
+            {/* Uploaded Images Preview */}
+            {uploadedImages.length > 0 && (
+              <div className="grid grid-cols-4 gap-2">
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
+                    <img
+                      src={image.preview}
+                      alt={`Upload ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full
+                               opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    {index === 0 && (
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-naija-500 text-white text-xs rounded">
+                        Main
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Upload Area */}
-            <div className="border-2 border-dashed border-pearl-300 rounded-2xl p-8
-                         hover:border-naija-400 transition-colors cursor-pointer">
+            <label className="border-2 border-dashed border-pearl-300 rounded-2xl p-8
+                         hover:border-naija-400 transition-colors cursor-pointer block">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-naija-50
                              rounded-2xl mb-4">
                   <Camera className="w-8 h-8 text-naija-500" />
                 </div>
-                <p className="text-charcoal-700 font-medium mb-2">Drag & drop your photos here</p>
-                <p className="text-sm text-charcoal-600 mb-4">or click to browse</p>
-                <button
-                  type="button"
-                  className="px-6 py-2.5 bg-naija-50 text-naija-700 font-medium rounded-xl
-                           hover:bg-naija-100 transition-colors"
-                >
-                  <Upload className="w-4 h-4 inline-block mr-2" />
+                <p className="text-charcoal-700 font-medium mb-2">Click to upload photos</p>
+                <p className="text-sm text-charcoal-600 mb-4">
+                  {uploadedImages.length > 0
+                    ? `${uploadedImages.length} photo${uploadedImages.length > 1 ? 's' : ''} selected`
+                    : 'JPG, PNG up to 10MB each'}
+                </p>
+                <span className="px-6 py-2.5 bg-naija-50 text-naija-700 font-medium rounded-xl
+                           hover:bg-naija-100 transition-colors inline-flex items-center">
+                  <Upload className="w-4 h-4 mr-2" />
                   Choose Files
-                </button>
+                </span>
               </div>
-            </div>
+            </label>
 
             {/* Photo Tips */}
             <div className="bg-pearl-100 rounded-xl p-4 border border-pearl-200">
@@ -318,6 +449,8 @@ const ListCarModal = () => {
                 </span>
                 <span className="text-charcoal-600">Location:</span>
                 <span className="text-charcoal-700">{formData.city}, {formData.state}</span>
+                <span className="text-charcoal-600">Photos:</span>
+                <span className="text-charcoal-700">{uploadedImages.length} uploaded</span>
               </div>
             </div>
           </div>
@@ -412,13 +545,24 @@ const ListCarModal = () => {
                 ) : (
                   <motion.button
                     type="submit"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    disabled={isSubmitting}
+                    whileHover={!isSubmitting ? { scale: 1.02 } : {}}
+                    whileTap={!isSubmitting ? { scale: 0.98 } : {}}
                     className="flex-1 py-3 bg-naija-500 text-white font-semibold rounded-xl
-                             shadow-button hover:bg-naija-600 flex items-center justify-center gap-2"
+                             shadow-button hover:bg-naija-600 flex items-center justify-center gap-2
+                             disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Check className="w-5 h-5" />
-                    Submit Listing
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Submit Listing
+                      </>
+                    )}
                   </motion.button>
                 )}
               </div>

@@ -1,14 +1,20 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Car, Camera, DollarSign, FileText, Shield, CheckCircle,
-  ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus
+  ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus, Loader2
 } from 'lucide-react';
+import { listingsAPI, mediaAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
 
 const SellCarPage = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [images, setImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const [formData, setFormData] = useState({
     // Basic Info
     make: '',
@@ -101,11 +107,100 @@ const SellCarPage = () => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  // Map frontend condition values to backend enum format
+  const mapCondition = (condition) => {
+    const conditionMap = {
+      'brand-new': 'BRAND_NEW',
+      'foreign-used': 'FOREIGN_USED',
+      'nigerian-used': 'NIGERIAN_USED'
+    };
+    return conditionMap[condition] || 'NIGERIAN_USED';
+  };
+
+  // Map frontend transmission to backend format
+  const mapTransmission = (transmission) => {
+    return transmission.charAt(0).toUpperCase() + transmission.slice(1);
+  };
+
+  // Map frontend fuelType to backend format
+  const mapFuelType = (fuelType) => {
+    return fuelType.charAt(0).toUpperCase() + fuelType.slice(1);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', { formData, images });
-    alert('Your listing has been submitted for review!');
+    setSubmitError(null);
+
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      setSubmitError('Please sign in to list your car.');
+      return;
+    }
+
+    // Check if user is verified
+    if (!user?.isVerified) {
+      setSubmitError('Please verify your account before listing a car.');
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.make || !formData.model || !formData.year || !formData.price || !formData.state) {
+      setSubmitError('Please fill in all required fields.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare listing data for backend
+      const listingData = {
+        listingType: 'SALE',
+        make: formData.make,
+        model: formData.model,
+        year: parseInt(formData.year),
+        trim: formData.title || undefined,
+        mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
+        transmission: mapTransmission(formData.transmission),
+        fuelType: mapFuelType(formData.fuelType),
+        condition: mapCondition(formData.condition),
+        price: parseFloat(formData.price),
+        locationState: formData.state,
+        locationCity: formData.location,
+        description: formData.description || undefined,
+        features: formData.features.length > 0 ? formData.features : undefined,
+        color: formData.color || undefined,
+        engineSize: formData.engineSize || undefined,
+        isNegotiable: formData.negotiable
+      };
+
+      // Create the listing
+      const response = await listingsAPI.create(listingData);
+      const listingId = response.data.data.listing.id;
+
+      // Upload images if any
+      if (images.length > 0) {
+        const imageFiles = images.map(img => img.file);
+        try {
+          await mediaAPI.upload(listingId, imageFiles);
+        } catch (uploadError) {
+          console.error('Error uploading images:', uploadError);
+          // Continue even if image upload fails - listing is already created
+        }
+      }
+
+      // Success - redirect to dashboard or listing page
+      navigate('/dashboard', {
+        state: { message: 'Your listing has been submitted for review!' }
+      });
+    } catch (error) {
+      console.error('Error creating listing:', error);
+      const errorMessage = error.response?.data?.error?.message ||
+                          error.response?.data?.error?.details?.[0]?.msg ||
+                          'Failed to create listing. Please try again.';
+      setSubmitError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -570,6 +665,18 @@ const SellCarPage = () => {
               )}
             </div>
 
+            {submitError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <X className="w-5 h-5 text-red-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-red-800">Error</h4>
+                    <p className="text-sm text-red-700">{submitError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
@@ -708,10 +815,20 @@ const SellCarPage = () => {
                   ) : (
                     <button
                       type="submit"
-                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2"
+                      disabled={isSubmitting}
+                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Submit Listing
-                      <ArrowRight className="w-5 h-5" />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit Listing
+                          <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
                     </button>
                   )}
                 </div>

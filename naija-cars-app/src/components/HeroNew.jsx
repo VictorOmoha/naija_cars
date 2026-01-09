@@ -58,10 +58,10 @@ const HeroNew = () => {
       </div>
 
       {/* Main Content Container - Asymmetric Grid */}
-      <div className="relative section-container pt-32 pb-24">
+      <div className="relative section-container pt-20 md:pt-32 pb-12 md:pb-24">
         <div className="min-h-[calc(100vh-12rem)]">
           {/* Top Section - Headline & Badge */}
-          <div className="grid lg:grid-cols-12 gap-12 items-start mb-16">
+          <div className="grid lg:grid-cols-12 gap-6 md:gap-12 items-start mb-8 md:mb-16">
             {/* Left Column - Takes 7 columns */}
             <motion.div
               initial={{ opacity: 0, x: -100 }}
@@ -136,7 +136,7 @@ const HeroNew = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 1.2 }}
-                className="flex flex-wrap gap-12 pt-8 border-t-2 border-gold-500/30"
+                className="flex flex-wrap gap-6 md:gap-12 pt-4 md:pt-8 border-t-2 border-gold-500/30"
               >
                 {[
                   { value: stats.totalListings, label: 'Premium Vehicles', icon: Car },
@@ -186,7 +186,7 @@ const HeroNew = () => {
                     <img
                       src="https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=800"
                       alt="Luxury Vehicle"
-                      className="w-full h-[600px] object-cover"
+                      className="w-full h-64 sm:h-80 md:h-96 lg:h-[500px] object-cover"
                     />
                     {/* Dramatic Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-br from-obsidian-900/40 via-transparent to-emerald-900/40" />
@@ -196,7 +196,7 @@ const HeroNew = () => {
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 1.5, duration: 0.6, type: "spring" }}
-                      className="absolute top-8 right-8 bg-gradient-luxury px-8 py-4 clip-path-diagonal"
+                      className="absolute top-4 right-4 md:top-8 md:right-8 bg-gradient-luxury px-4 py-2 md:px-8 md:py-4 clip-path-diagonal"
                     >
                       <div className="text-center">
                         <div className="text-xs text-charcoal-700 font-black uppercase tracking-widest">From</div>
@@ -209,7 +209,7 @@ const HeroNew = () => {
                       initial={{ opacity: 0, x: 50 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 1.8, duration: 0.6 }}
-                      className="absolute bottom-8 right-8"
+                      className="absolute bottom-4 right-4 md:bottom-8 md:right-8"
                     >
                       <div className="verified-badge">
                         <Sparkles className="w-4 h-4" />

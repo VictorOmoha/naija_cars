@@ -200,7 +200,7 @@ export default function EnhancedListCarModal() {
             </button>
 
             {/* Header with Progress */}
-            <div className="p-8 pb-6 border-b border-pearl-200">
+            <div className="p-4 md:p-8 pb-4 md:pb-6 border-b border-pearl-200">
               <h2 className="font-display text-2xl font-semibold text-charcoal-800 mb-6">
                 {step === 1 && 'Basic Information'}
                 {step === 2 && 'Car Details'}
@@ -229,13 +229,13 @@ export default function EnhancedListCarModal() {
             <form onSubmit={handleSubmit(onSubmit)}>
               {/* Step 1: Basic Information */}
               {step === 1 && (
-                <div className="p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                <div className="p-4 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
                   {/* Listing Type */}
                   <div>
                     <label className="block text-sm font-medium text-charcoal-700 mb-2">
                       Listing Type *
                     </label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <label className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         listingType === 'SALE' ? 'border-naija-500 bg-naija-50' : 'border-pearl-200 hover:border-naija-300'
                       }`}>
@@ -265,7 +265,7 @@ export default function EnhancedListCarModal() {
                   </div>
 
                   {/* Make & Model */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-2">
                         Make *
@@ -303,7 +303,7 @@ export default function EnhancedListCarModal() {
                   </div>
 
                   {/* Year & Price */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-2">
                         Year *
@@ -345,7 +345,7 @@ export default function EnhancedListCarModal() {
                   </div>
 
                   {/* Location */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-2">
                         State *
@@ -386,13 +386,13 @@ export default function EnhancedListCarModal() {
 
               {/* Step 2: Car Details */}
               {step === 2 && (
-                <div className="p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                <div className="p-4 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
                   {/* Condition */}
                   <div>
                     <label className="block text-sm font-medium text-charcoal-700 mb-2">
                       Condition *
                     </label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW'].map((cond) => (
                         <label key={cond} className={`border-2 rounded-xl p-3 cursor-pointer text-center transition-all ${
                           watch('condition') === cond ? 'border-naija-500 bg-naija-50' : 'border-pearl-200'
@@ -412,7 +412,7 @@ export default function EnhancedListCarModal() {
                   </div>
 
                   {/* Transmission & Fuel Type */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-2">
                         Transmission *
@@ -445,7 +445,7 @@ export default function EnhancedListCarModal() {
                   </div>
 
                   {/* Mileage & Trim */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-2">
                         Mileage (km)
@@ -506,7 +506,7 @@ export default function EnhancedListCarModal() {
 
               {/* Step 3: Media Upload */}
               {step === 3 && createdListingId && (
-                <div className="p-8 max-h-[60vh] overflow-y-auto">
+                <div className="p-4 md:p-8 max-h-[60vh] overflow-y-auto">
                   <MediaUploader
                     listingId={createdListingId}
                     initialMedia={uploadedMedia}

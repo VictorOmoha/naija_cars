@@ -274,7 +274,38 @@ const NavbarNew = () => {
                   </motion.button>
                 ))}
 
-                <div className="pt-4 space-y-3 px-4">
+                {/* Mobile Quick Actions */}
+                <div className="pt-4 px-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      scrollToSection('featured-cars');
+                    }}
+                    className="flex-1 py-3 flex items-center justify-center gap-2 text-pearl-200 border-2 border-gold-500/30
+                             hover:border-gold-500 hover:bg-charcoal-600 transition-all"
+                  >
+                    <Search className="w-5 h-5" />
+                    <span className="text-sm font-bold">Search</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      window.location.href = '/favorites';
+                    }}
+                    className="flex-1 py-3 flex items-center justify-center gap-2 text-pearl-200 border-2 border-gold-500/30
+                             hover:border-gold-500 hover:bg-charcoal-600 transition-all relative"
+                  >
+                    <Heart className="w-5 h-5" />
+                    <span className="text-sm font-bold">Favorites</span>
+                    {favorites.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {favorites.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="pt-3 space-y-3 px-4">
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);

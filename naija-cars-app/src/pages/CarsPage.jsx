@@ -433,7 +433,7 @@ const CarsPage = () => {
                 )}
               </div>
 
-              <div className="grid md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {/* Condition */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
@@ -530,7 +530,7 @@ const CarsPage = () => {
               </div>
 
               {/* Additional Filters Row */}
-              <div className="grid md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4">
                 {/* Transmission */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Transmission</label>

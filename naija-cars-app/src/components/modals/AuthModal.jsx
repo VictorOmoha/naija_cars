@@ -354,7 +354,7 @@ const AuthModal = () => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
                         First Name

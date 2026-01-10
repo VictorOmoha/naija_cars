@@ -62,8 +62,13 @@ export default function AdminPage() {
   }, [isAuthenticated]);
 
   // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
   if (!isAuthenticated) {
-    navigate('/');
     return null;
   }
 

@@ -20,6 +20,16 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState(null);
+  const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+
+  // Handle screen resize for responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch dashboard stats
   useEffect(() => {
@@ -82,7 +92,7 @@ export default function AdminPage() {
       <div className="flex">
         {/* Sidebar */}
         <AnimatePresence>
-          {(sidebarOpen || window.innerWidth >= 1024) && (
+          {(sidebarOpen || isLargeScreen) && (
             <motion.aside
               initial={{ x: -280 }}
               animate={{ x: 0 }}
@@ -108,7 +118,7 @@ export default function AdminPage() {
                         key={item.id}
                         onClick={() => {
                           setActiveSection(item.id);
-                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                          if (!isLargeScreen) setSidebarOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                           activeSection === item.id

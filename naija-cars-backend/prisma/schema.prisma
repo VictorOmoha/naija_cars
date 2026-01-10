@@ -13,6 +13,7 @@ enum UserType {
   DEALER
   RENTAL_COMPANY
   BUYER
+  ADMIN
 }
 
 enum ListingType {

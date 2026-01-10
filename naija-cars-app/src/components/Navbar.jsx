@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, ChevronDown, Car, Key, Search, User, Heart, Bell,
-  LayoutDashboard, LogOut, MessageCircle, HelpCircle
+  LayoutDashboard, LogOut, MessageCircle, HelpCircle, Shield
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
@@ -101,11 +101,10 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-lg py-3'
-          : 'bg-white/80 backdrop-blur-sm py-5'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled
+        ? 'bg-white/95 backdrop-blur-md shadow-lg py-3'
+        : 'bg-white/80 backdrop-blur-sm py-5'
+        }`}
     >
       <div className="section-container">
         <div className="flex items-center justify-between">
@@ -281,6 +280,12 @@ const Navbar = () => {
                             <HelpCircle className="w-4 h-4" />
                             Help Center
                           </Link>
+                          {user?.userType === 'ADMIN' && (
+                            <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
+                              <Shield className="w-4 h-4" />
+                              Admin Panel
+                            </Link>
+                          )}
                         </div>
                         <div className="border-t border-pearl-200 py-2">
                           <button

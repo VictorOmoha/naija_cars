@@ -27,7 +27,7 @@ class AuthService {
     }
 
     // Validate user type
-    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER'];
+    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER', 'ADMIN'];
     if (!validTypes.includes(userType)) {
       throw new Error('Invalid user type');
     }

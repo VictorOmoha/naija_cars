@@ -18,7 +18,14 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(tree:*)",
-      "Bash(npm pkg:*)"
+      "Bash(npm pkg:*)",
+      "Skill(example-skills:webapp-testing)",
+      "Bash(python test_mobile_nav.py:*)",
+      "Bash(where:*)",
+      "Bash(python3:*)",
+      "Bash(py:*)",
+      "Bash(del \"D:\\\\NaijaCars\\\\test_mobile_nav.py\" \"D:\\\\NaijaCars\\\\test_mobile_menu_click.py\" \"D:\\\\NaijaCars\\\\test_live_site.py\" \"D:\\\\NaijaCars\\\\test_live_detailed.py\" \"D:\\\\NaijaCars\\\\mobile_view.png\" \"D:\\\\NaijaCars\\\\mobile_before_click.png\" \"D:\\\\NaijaCars\\\\mobile_after_click.png\" \"D:\\\\NaijaCars\\\\live_mobile_view.png\" \"D:\\\\NaijaCars\\\\live_mobile_scrolled_top.png\" \"D:\\\\NaijaCars\\\\live_mobile_menu_open.png\")",
+      "Bash(cmd /c \"del /q D:\\\\NaijaCars\\\\test_*.py D:\\\\NaijaCars\\\\*mobile*.png D:\\\\NaijaCars\\\\*live*.png\")"
     ],
     "deny": [],
     "ask": []

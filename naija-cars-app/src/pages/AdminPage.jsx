@@ -84,11 +84,11 @@ export default function AdminPage() {
     return null;
   }
 
-  // For demo purposes - in production, check if user has admin role
-  // if (user?.userType !== 'ADMIN') {
-  //   navigate('/');
-  //   return null;
-  // }
+  // For production, check if user has admin role
+  if (user?.userType !== 'ADMIN') {
+    navigate('/');
+    return null;
+  }
 
   // Fetch all listings for moderation
   const { data: listingsData, refetch: refetchListings } = useQuery({
@@ -154,11 +154,10 @@ export default function AdminPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors relative ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors relative ${activeTab === tab.id
                     ? 'border-naija-500 text-naija-600'
                     : 'border-transparent text-charcoal-500 hover:text-charcoal-700'
-                }`}
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 {tab.label}

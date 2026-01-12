@@ -754,7 +754,7 @@ const RentCarsPage = () => {
                   <select
                     value={filters.category}
                     onChange={(e) => handleFilterChange('category', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-800"
                   >
                     <option value="">All Types</option>
                     {categories.map(cat => (
@@ -769,7 +769,7 @@ const RentCarsPage = () => {
                   <select
                     value={filters.location}
                     onChange={(e) => handleFilterChange('location', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-800"
                   >
                     <option value="">All Locations</option>
                     {locations.map(loc => (
@@ -784,7 +784,7 @@ const RentCarsPage = () => {
                   <select
                     value={filters.priceRange}
                     onChange={(e) => handleFilterChange('priceRange', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-800"
                   >
                     <option value="">All Prices</option>
                     <option value="budget">Budget</option>
@@ -799,7 +799,7 @@ const RentCarsPage = () => {
                   <select
                     value={filters.service}
                     onChange={(e) => handleFilterChange('service', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-800"
                   >
                     <option value="">All Services</option>
                     <option value="chauffeur">Chauffeur Available</option>
@@ -850,7 +850,7 @@ const RentCarsPage = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 bg-white text-gray-800"
               >
                 <option value="featured">Featured</option>
                 <option value="price-low">Price: Low to High</option>

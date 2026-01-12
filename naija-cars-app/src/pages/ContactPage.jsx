@@ -243,7 +243,7 @@ export default function ContactPage() {
                     </label>
                     <select
                       {...register('subject', { required: 'Required' })}
-                      className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                      className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                     >
                       <option value="">Select a subject</option>
                       <option value="general">General Inquiry</option>

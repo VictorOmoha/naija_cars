@@ -411,7 +411,7 @@ function UsersSection({ addToast }) {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="appearance-none px-4 py-3 pr-10 border border-pearl-300 rounded-xl bg-white"
+              className="appearance-none px-4 py-3 pr-10 border border-pearl-300 rounded-xl bg-white text-charcoal-800"
             >
               <option value="all">All Types</option>
               <option value="INDIVIDUAL">Individual</option>
@@ -423,7 +423,7 @@ function UsersSection({ addToast }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none px-4 py-3 pr-10 border border-pearl-300 rounded-xl bg-white"
+              className="appearance-none px-4 py-3 pr-10 border border-pearl-300 rounded-xl bg-white text-charcoal-800"
             >
               <option value="all">All Status</option>
               <option value="verified">Verified</option>
@@ -736,7 +736,7 @@ function ListingsSection({ addToast }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none px-4 py-2 pr-10 border border-pearl-300 rounded-xl bg-white"
+              className="appearance-none px-4 py-2 pr-10 border border-pearl-300 rounded-xl bg-white text-charcoal-800"
             >
               <option value="all">All Status</option>
               <option value="PENDING">Pending</option>
@@ -927,7 +927,7 @@ function BookingsSection({ addToast }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none px-4 py-2 pr-10 border border-pearl-300 rounded-xl bg-white"
+              className="appearance-none px-4 py-2 pr-10 border border-pearl-300 rounded-xl bg-white text-charcoal-800"
             >
               <option value="all">All Status</option>
               <option value="PENDING">Pending</option>

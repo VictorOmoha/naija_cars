@@ -196,7 +196,7 @@ export default function ValuationPage() {
                       <select
                         {...register('make', { required: 'Make is required' })}
                         onChange={(e) => setSelectedMake(e.target.value)}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       >
                         <option value="">Select Make</option>
                         {carMakes.map(make => (
@@ -215,7 +215,7 @@ export default function ValuationPage() {
                       <select
                         {...register('model', { required: 'Model is required' })}
                         disabled={!selectedMake}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100 bg-white text-charcoal-800"
                       >
                         <option value="">Select Model</option>
                         {(carModels[selectedMake] || []).map(model => (
@@ -230,7 +230,7 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('year', { required: 'Year is required' })}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       >
                         <option value="">Select Year</option>
                         {Array.from({ length: 15 }, (_, i) => 2024 - i).map(year => (
@@ -246,7 +246,7 @@ export default function ValuationPage() {
                       <input
                         {...register('trim')}
                         placeholder="e.g., XLE, Sport, Limited"
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       />
                     </div>
                   </div>
@@ -323,7 +323,7 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('transmission')}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       >
                         <option value="Automatic">Automatic</option>
                         <option value="Manual">Manual</option>
@@ -336,7 +336,7 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('fuelType')}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       >
                         <option value="Petrol">Petrol</option>
                         <option value="Diesel">Diesel</option>
@@ -351,7 +351,7 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('location')}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800"
                       >
                         <option value="Lagos">Lagos</option>
                         <option value="Abuja">Abuja</option>

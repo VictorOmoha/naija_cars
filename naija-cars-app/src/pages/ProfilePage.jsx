@@ -403,7 +403,7 @@ export default function ProfilePage() {
                           disabled={!isEditing}
                           className={`w-full px-4 py-3.5 border rounded-xl transition-all ${
                             isEditing
-                              ? 'border-pearl-300 focus:border-naija-500 focus:ring-2 focus:ring-naija-100'
+                              ? 'border-pearl-300 focus:border-naija-500 focus:ring-2 focus:ring-naija-100 bg-white text-charcoal-800'
                               : 'border-transparent bg-pearl-100 text-charcoal-700'
                           }`}
                         >

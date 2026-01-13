@@ -655,14 +655,14 @@ const RentCarsPage = () => {
       </section>
 
       {/* Rental Period Tabs */}
-      <section className="py-4 bg-white border-b border-gray-200 sticky top-16 z-40">
+      <section className="py-4 bg-white border-b border-gray-200 sticky top-[72px] md:top-[68px] z-40">
         <div className="section-container">
           <div className="flex flex-wrap items-center gap-2">
             {rentalPeriods.map((period) => (
               <button
                 key={period.id}
                 onClick={() => handleFilterChange('period', period.id)}
-                className={`px-4 py-2 rounded-full font-medium transition-all ${
+                className={`px-3 md:px-4 py-2 rounded-full font-medium transition-all text-sm md:text-base ${
                   filters.period === period.id
                     ? 'bg-green-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -670,23 +670,24 @@ const RentCarsPage = () => {
               >
                 {period.name}
                 {period.id === 'weekly' && filters.period !== 'weekly' && (
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded-full">
+                  <span className="ml-1 md:ml-2 px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs rounded-full">
                     Save 15%
                   </span>
                 )}
               </button>
             ))}
-            <div className="border-l border-gray-300 h-8 mx-2" />
+            <div className="hidden md:block border-l border-gray-300 h-8 mx-2" />
             <button
               onClick={() => handleFilterChange('service', filters.service === 'chauffeur' ? '' : 'chauffeur')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-full font-medium transition-all text-sm md:text-base ${
                 filters.service === 'chauffeur'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               <Users className="w-4 h-4" />
-              Chauffeur Service
+              <span className="hidden sm:inline">Chauffeur</span>
+              <span className="sm:hidden">Driver</span>
             </button>
           </div>
         </div>

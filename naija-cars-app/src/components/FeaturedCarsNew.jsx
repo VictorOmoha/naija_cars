@@ -5,7 +5,7 @@ import { featuredCars } from '../data/cars';
 import { useApp } from '../context/AppContext';
 
 const FeaturedCarsNew = () => {
-  const { addToast, addToFavorites, setQuickViewCar } = useApp();
+  const { addToast, toggleFavorite, openQuickView } = useApp();
   const [activeFilter, setActiveFilter] = useState('all');
 
   const filters = [
@@ -25,13 +25,12 @@ const FeaturedCarsNew = () => {
   };
 
   const handleQuickView = (car) => {
-    setQuickViewCar(car);
+    openQuickView(car);
   };
 
   const handleAddToFavorites = (e, car) => {
     e.stopPropagation();
-    addToFavorites(car);
-    addToast(`Added ${car.make} ${car.model} to favorites`, 'success');
+    toggleFavorite(car.id);
   };
 
   return (
@@ -124,7 +123,7 @@ const FeaturedCarsNew = () => {
                 {/* Image Container */}
                 <div className="relative h-72 overflow-hidden">
                   <motion.img
-                    src={car.image}
+                    src={car.images?.[0] || car.image}
                     alt={`${car.make} ${car.model}`}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />

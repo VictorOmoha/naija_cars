@@ -9,7 +9,7 @@ import { useApp } from '../context/AppContext';
 
 const CarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { addToFavorites, removeFromFavorites, favorites } = useApp();
+  const { favorites, toggleFavorite, addToast } = useApp();
 
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
@@ -334,14 +334,10 @@ const CarsPage = () => {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const isFavorite = (carId) => favorites.some(f => f.id === carId);
+  const isFavorite = (carId) => favorites.includes(carId);
 
-  const toggleFavorite = (car) => {
-    if (isFavorite(car.id)) {
-      removeFromFavorites(car.id);
-    } else {
-      addToFavorites(car);
-    }
+  const handleToggleFavorite = (car) => {
+    toggleFavorite(car.id);
   };
 
   const getConditionLabel = (condition) => {
@@ -715,7 +711,7 @@ const CarsPage = () => {
 
                     {/* Favorite Button */}
                     <button
-                      onClick={() => toggleFavorite(car)}
+                      onClick={() => handleToggleFavorite(car)}
                       className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                     >
                       <Heart className={`w-5 h-5 ${isFavorite(car.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />

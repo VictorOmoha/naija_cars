@@ -11,7 +11,7 @@ import { useApp } from '../context/AppContext';
 
 const RentCarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { addToFavorites, removeFromFavorites, favorites } = useApp();
+  const { favorites, toggleFavorite, addToast } = useApp();
 
   // Get filter values from URL params
   const [filters, setFilters] = useState({
@@ -130,7 +130,7 @@ const RentCarsPage = () => {
       id: 104,
       name: 'Honda CR-V 2022',
       category: 'suv',
-      image: 'https://images.unsplash.com/photo-1568844293986-8c2a55c6e119?w=600',
+      image: 'https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=600',
       dailyRate: 45000,
       weeklyRate: 280000,
       monthlyRate: 950000,
@@ -502,14 +502,10 @@ const RentCarsPage = () => {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const isFavorite = (carId) => favorites.some(f => f.id === carId);
+  const isFavorite = (carId) => favorites.includes(carId);
 
-  const toggleFavorite = (car) => {
-    if (isFavorite(car.id)) {
-      removeFromFavorites(car.id);
-    } else {
-      addToFavorites(car);
-    }
+  const handleToggleFavorite = (car) => {
+    toggleFavorite(car.id);
   };
 
   const formatPrice = (price) => {
@@ -617,7 +613,7 @@ const RentCarsPage = () => {
                     <select
                       value={filters.location}
                       onChange={(e) => handleFilterChange('location', e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-green-500"
+                      className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-green-500 [&>option]:text-gray-900 [&>option]:bg-white"
                     >
                       <option value="">All Locations</option>
                       {locations.map(loc => (
@@ -992,7 +988,7 @@ const RentCarsPage = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <button
-                        onClick={() => toggleFavorite(car)}
+                        onClick={() => handleToggleFavorite(car)}
                         className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                       >
                         <Heart

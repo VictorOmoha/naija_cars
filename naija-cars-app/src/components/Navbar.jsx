@@ -123,7 +123,7 @@ const Navbar = () => {
           </motion.button>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden xl:flex items-center gap-1">
             {navLinks.map((link) => (
               <div
                 key={link.name}
@@ -187,7 +187,7 @@ const Navbar = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-3">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -328,7 +328,7 @@ const Navbar = () => {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
+            className="xl:hidden flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -343,7 +343,7 @@ const Navbar = () => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
-              className="lg:hidden mt-4 pb-4 border-t border-pearl-300"
+              className="xl:hidden mt-4 pb-4 border-t border-pearl-300"
             >
               <div className="pt-4 space-y-1">
                 {navLinks.map((link) => (

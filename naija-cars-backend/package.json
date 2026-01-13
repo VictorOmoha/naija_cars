@@ -11,7 +11,13 @@
     "migrate:reset": "npx prisma migrate reset",
     "generate": "npx prisma generate",
     "studio": "npx prisma studio",
+    "seed": "node prisma/seed.js",
+    "db:push": "npx prisma db push",
+    "db:setup": "npx prisma db push && node prisma/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",

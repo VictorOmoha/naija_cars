@@ -67,6 +67,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/listings', require('./routes/listings'));
 app.use('/api/media', require('./routes/media'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/admin', require('./routes/admin'));
 // app.use('/api/search', require('./routes/search'));
 
 // 404 handler

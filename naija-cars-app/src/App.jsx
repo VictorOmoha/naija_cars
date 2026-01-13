@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -6,6 +6,7 @@ import Toast from './components/Toast';
 import AuthModal from './components/modals/AuthModal';
 import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
 import QuickViewModal from './components/modals/QuickViewModal';
+import useAuthStore from './stores/authStore';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -13,7 +14,6 @@ import CarsPage from './pages/CarsPage';
 import CarDetailsPage from './pages/CarDetailsPage';
 import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
-import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
 import FavoritesPage from './pages/FavoritesPage';
 import DealerPage from './pages/DealerPage';
@@ -27,6 +27,25 @@ import PrivacyPage from './pages/PrivacyPage';
 import HelpPage from './pages/HelpPage';
 import SellCarPage from './pages/SellCarPage';
 import RentCarsPage from './pages/RentCarsPage';
+
+// Admin Pages
+import AdminLayout from './components/admin/AdminLayout';
+import { AdminDashboard, AdminUsers, AdminListings } from './pages/admin';
+
+// Protected Route for Admin
+function AdminRoute({ children }) {
+  const { user, isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (user?.userType !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
@@ -49,7 +68,22 @@ function App() {
             <Route path="/rent" element={<RentCarsPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/admin" element={<AdminPage />} />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="listings" element={<AdminListings />} />
+              <Route path="listings/pending" element={<AdminListings />} />
+              <Route path="listings/featured" element={<AdminListings />} />
+            </Route>
 
             {/* User Pages */}
             <Route path="/profile" element={<ProfilePage />} />

@@ -36,13 +36,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting - 100 requests per 15 minutes per IP
+// Rate limiting - more permissive for production use
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.',
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Increased from 100 to 500 requests per window
+  message: {
+    success: false,
+    error: {
+      message: 'Too many requests from this IP, please try again later.'
+    }
+  },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/api/health' || req.path === '/health',
+  // Ensure CORS headers are sent even on rate-limited responses
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  }
 });
 app.use('/api/', limiter);
 

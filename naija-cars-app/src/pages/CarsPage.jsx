@@ -5,7 +5,9 @@ import {
   Search, Filter, X, ChevronDown, Grid, List, SlidersHorizontal,
   Car, MapPin, Calendar, Fuel, Settings, Heart, Eye, ArrowUpDown
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useApp } from '../context/AppContext';
+import { listingsAPI } from '../services/api';
 
 const CarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,237 +34,72 @@ const CarsPage = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sample car data
-  const allCars = [
-    {
-      id: 1,
-      title: '2022 Toyota Camry XLE',
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2022,
-      price: 18500000,
-      condition: 'foreign',
-      mileage: 25000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'Sedan',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=600',
-      images: 8,
-      featured: true,
-      verified: true,
-      dealer: 'AutoKing Motors',
-    },
-    {
-      id: 2,
-      title: '2021 Honda Accord Sport',
-      make: 'Honda',
-      model: 'Accord',
-      year: 2021,
-      price: 16000000,
-      condition: 'foreign',
-      mileage: 32000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'Sedan',
-      location: 'Abuja',
-      image: 'https://images.unsplash.com/photo-1619682817481-e994891cd1f5?w=600',
-      images: 12,
-      featured: false,
-      verified: true,
-      dealer: 'Prime Auto Hub',
-    },
-    {
-      id: 3,
-      title: '2020 Mercedes-Benz E350',
-      make: 'Mercedes-Benz',
-      model: 'E350',
-      year: 2020,
-      price: 32000000,
-      condition: 'foreign',
-      mileage: 28000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'Sedan',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=600',
-      images: 15,
-      featured: true,
-      verified: true,
-      dealer: 'Luxury Wheels NG',
-    },
-    {
-      id: 4,
-      title: '2019 Toyota Highlander',
-      make: 'Toyota',
-      model: 'Highlander',
-      year: 2019,
-      price: 22000000,
-      condition: 'foreign',
-      mileage: 45000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Port Harcourt',
-      image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600',
-      images: 10,
-      featured: false,
-      verified: true,
-      dealer: 'Rivers Auto',
-    },
-    {
-      id: 5,
-      title: '2018 Lexus RX 350',
-      make: 'Lexus',
-      model: 'RX 350',
-      year: 2018,
-      price: 19500000,
-      condition: 'nigerian',
-      mileage: 65000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=600',
-      images: 9,
-      featured: false,
-      verified: true,
-      dealer: 'AutoMart Lagos',
-    },
-    {
-      id: 6,
-      title: '2017 BMW X5 xDrive35i',
-      make: 'BMW',
-      model: 'X5',
-      year: 2017,
-      price: 17000000,
-      condition: 'nigerian',
-      mileage: 78000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Abuja',
-      image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600',
-      images: 11,
-      featured: false,
-      verified: false,
-      dealer: 'Capital Motors',
-    },
-    {
-      id: 7,
-      title: '2024 Toyota Corolla Cross',
-      make: 'Toyota',
-      model: 'Corolla Cross',
-      year: 2024,
-      price: 35000000,
-      condition: 'new',
-      mileage: 0,
-      transmission: 'Automatic',
-      fuelType: 'Hybrid',
-      bodyType: 'SUV',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1623869675781-80aa31012a5a?w=600',
-      images: 20,
-      featured: true,
-      verified: true,
-      dealer: 'Toyota Nigeria',
-    },
-    {
-      id: 8,
-      title: '2024 Honda HR-V',
-      make: 'Honda',
-      model: 'HR-V',
-      year: 2024,
-      price: 28000000,
-      condition: 'new',
-      mileage: 0,
-      transmission: 'CVT',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=600',
-      images: 18,
-      featured: true,
-      verified: true,
-      dealer: 'Honda Place Nigeria',
-    },
-    {
-      id: 9,
-      title: '2016 Ford Explorer',
-      make: 'Ford',
-      model: 'Explorer',
-      year: 2016,
-      price: 12500000,
-      condition: 'nigerian',
-      mileage: 95000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Kano',
-      image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600',
-      images: 7,
-      featured: false,
-      verified: false,
-      dealer: 'Kano Auto Market',
-    },
-    {
-      id: 10,
-      title: '2020 Hyundai Tucson',
-      make: 'Hyundai',
-      model: 'Tucson',
-      year: 2020,
-      price: 14000000,
-      condition: 'foreign',
-      mileage: 38000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=600',
-      images: 10,
-      featured: false,
-      verified: true,
-      dealer: 'Hyundai Lagos',
-    },
-    {
-      id: 11,
-      title: '2019 Kia Sportage',
-      make: 'Kia',
-      model: 'Sportage',
-      year: 2019,
-      price: 11500000,
-      condition: 'foreign',
-      mileage: 42000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Oyo',
-      image: 'https://images.unsplash.com/photo-1619405399517-d7fce0f13302?w=600',
-      images: 8,
-      featured: false,
-      verified: true,
-      dealer: 'Ibadan Motors',
-    },
-    {
-      id: 12,
-      title: '2021 Mazda CX-5',
-      make: 'Mazda',
-      model: 'CX-5',
-      year: 2021,
-      price: 15500000,
-      condition: 'foreign',
-      mileage: 29000,
-      transmission: 'Automatic',
-      fuelType: 'Petrol',
-      bodyType: 'SUV',
-      location: 'Lagos',
-      image: 'https://images.unsplash.com/photo-1612544448445-b8232cff3b4c?w=600',
-      images: 12,
-      featured: false,
-      verified: true,
-      dealer: 'Mazda Nigeria',
-    },
-  ];
+  // Build API query params from filters
+  const buildApiParams = () => {
+    const params = {
+      page: 1,
+      limit: 50,
+      type: 'SALE',
+    };
+
+    if (filters.condition) {
+      const conditionMap = {
+        'foreign': 'FOREIGN_USED',
+        'nigerian': 'NIGERIAN_USED',
+        'new': 'BRAND_NEW'
+      };
+      params.condition = conditionMap[filters.condition] || filters.condition;
+    }
+    if (filters.make) params.make = filters.make;
+    if (filters.location) params.state = filters.location;
+    if (filters.transmission) params.transmission = filters.transmission;
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.minPrice) params.minPrice = filters.minPrice;
+    if (filters.maxPrice) params.maxPrice = filters.maxPrice;
+    if (filters.minYear) params.minYear = filters.minYear;
+    if (filters.maxYear) params.maxYear = filters.maxYear;
+    if (searchQuery) params.search = searchQuery;
+
+    return params;
+  };
+
+  // Fetch listings from API
+  const { data: listingsData, isLoading, error } = useQuery({
+    queryKey: ['listings', filters, searchQuery],
+    queryFn: () => listingsAPI.getAll(buildApiParams()),
+  });
+
+  // Transform API data to match component format
+  const transformListing = (listing) => {
+    const conditionMap = {
+      'FOREIGN_USED': 'foreign',
+      'NIGERIAN_USED': 'nigerian',
+      'BRAND_NEW': 'new'
+    };
+
+    return {
+      id: listing.id,
+      title: `${listing.year} ${listing.make} ${listing.model}${listing.trim ? ' ' + listing.trim : ''}`,
+      make: listing.make,
+      model: listing.model,
+      year: listing.year,
+      price: parseFloat(listing.price),
+      condition: conditionMap[listing.condition] || listing.condition?.toLowerCase(),
+      mileage: listing.mileage || 0,
+      transmission: listing.transmission,
+      fuelType: listing.fuelType,
+      bodyType: listing.bodyType || 'Sedan',
+      location: listing.locationState,
+      image: listing.media?.[0]?.url || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600',
+      images: listing.media?.length || 1,
+      featured: listing.isFeatured,
+      verified: listing.seller?.profile?.verificationBadge || false,
+      dealer: listing.seller?.profile?.businessName || 'Private Seller',
+    };
+  };
+
+  // Get cars from API data
+  const allCars = listingsData?.data?.data?.listings?.map(transformListing) || [];
 
   const carMakes = ['Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Nissan', 'Volkswagen'];
   const bodyTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Pickup', 'Van', 'Wagon'];
@@ -669,8 +506,27 @@ const CarsPage = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-20">
+              <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading cars...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="text-center py-20">
+              <Car className="w-16 h-16 text-red-300 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Error loading cars</h3>
+              <p className="text-gray-600 mb-6">
+                {error.message || 'Something went wrong. Please try again.'}
+              </p>
+            </div>
+          )}
+
           {/* Cars Grid/List */}
-          {sortedCars.length > 0 ? (
+          {!isLoading && !error && sortedCars.length > 0 ? (
             <div className={viewMode === 'grid'
               ? 'grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
               : 'space-y-4'
@@ -789,7 +645,7 @@ const CarsPage = () => {
                 </motion.div>
               ))}
             </div>
-          ) : (
+          ) : !isLoading && !error ? (
             <div className="text-center py-20">
               <Car className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-800 mb-2">No cars found</h3>
@@ -803,7 +659,7 @@ const CarsPage = () => {
                 Clear All Filters
               </button>
             </div>
-          )}
+          ) : null}
 
           {/* Load More */}
           {sortedCars.length > 0 && sortedCars.length >= 12 && (

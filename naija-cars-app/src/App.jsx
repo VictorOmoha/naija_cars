@@ -34,7 +34,16 @@ import { AdminDashboard, AdminUsers, AdminListings, AdminAnalytics, AdminSetting
 
 // Protected Route for Admin
 function AdminRoute({ children }) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
+
+  // Show loading while hydrating persisted state
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-pearl-50">
+        <div className="w-8 h-8 border-4 border-naija-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;

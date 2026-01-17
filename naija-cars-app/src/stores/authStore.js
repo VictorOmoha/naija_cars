@@ -10,6 +10,12 @@ const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      _hasHydrated: false,
+
+      // Set hydration state
+      setHasHydrated: (state) => {
+        set({ _hasHydrated: state });
+      },
 
       // Register new user
       register: async (userData) => {
@@ -147,7 +153,10 @@ const useAuthStore = create(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      }
     }
   )
 );

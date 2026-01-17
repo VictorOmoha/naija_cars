@@ -33,26 +33,47 @@ import RentCarsPage from './pages/RentCarsPage';
 import AdminLayout from './components/admin/AdminLayout';
 import { AdminDashboard, AdminUsers, AdminListings, AdminAnalytics, AdminSettings } from './pages/admin';
 
-// Protected Route for Admin
+// Protected Route for Admin - reads directly from localStorage synchronously
 function AdminRoute({ children }) {
-  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
-  const [isReady, setIsReady] = useState(false);
+  // Read synchronously from localStorage on initial render (not in useEffect)
+  const getInitialAuthState = () => {
+    try {
+      const stored = localStorage.getItem('auth-storage');
+      console.log('[AdminRoute] Raw localStorage:', stored);
 
-  useEffect(() => {
-    // Wait for hydration or set a timeout fallback
-    if (_hasHydrated) {
-      setIsReady(true);
-    } else {
-      // Fallback timeout in case hydration callback doesn't fire
-      const timeout = setTimeout(() => {
-        setIsReady(true);
-      }, 100);
-      return () => clearTimeout(timeout);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('[AdminRoute] Parsed data:', parsed);
+
+        // Zustand persist stores data in { state: {...}, version: 0 } format
+        const state = parsed.state || parsed;
+        console.log('[AdminRoute] State object:', state);
+        console.log('[AdminRoute] User:', state.user);
+        console.log('[AdminRoute] User type:', state.user?.userType);
+
+        const isAuthenticated = state.isAuthenticated === true;
+        const isAdmin = state.user?.userType === 'ADMIN';
+
+        console.log('[AdminRoute] isAuthenticated:', isAuthenticated, 'isAdmin:', isAdmin);
+
+        return { isReady: true, isAuthenticated, isAdmin };
+      } else {
+        console.log('[AdminRoute] No auth-storage found in localStorage');
+        return { isReady: true, isAuthenticated: false, isAdmin: false };
+      }
+    } catch (error) {
+      console.error('[AdminRoute] Error reading auth from localStorage:', error);
+      return { isReady: true, isAuthenticated: false, isAdmin: false };
     }
-  }, [_hasHydrated]);
+  };
 
-  // Show loading while hydrating persisted state
-  if (!isReady) {
+  // Use lazy initialization to read synchronously on first render
+  const [authState] = useState(getInitialAuthState);
+
+  console.log('[AdminRoute] Rendering with authState:', authState);
+
+  // Show loading while checking auth (shouldn't happen with sync read)
+  if (!authState.isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-pearl-50">
         <div className="w-8 h-8 border-4 border-naija-500 border-t-transparent rounded-full animate-spin" />
@@ -60,14 +81,17 @@ function AdminRoute({ children }) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authState.isAuthenticated) {
+    console.log('[AdminRoute] Not authenticated, redirecting to /');
     return <Navigate to="/" replace />;
   }
 
-  if (user?.userType !== 'ADMIN') {
+  if (!authState.isAdmin) {
+    console.log('[AdminRoute] Not admin, redirecting to /');
     return <Navigate to="/" replace />;
   }
 
+  console.log('[AdminRoute] Auth passed, rendering children');
   return children;
 }
 

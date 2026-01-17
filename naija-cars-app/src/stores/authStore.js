@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { authAPI } from '../services/api';
 
 const useAuthStore = create(
@@ -150,15 +150,25 @@ const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('Auth store hydration error:', error);
+        }
+        // Always set hydrated to true, even on error
+        useAuthStore.setState({ _hasHydrated: true });
       }
     }
   )
 );
+
+// Expose a method to check hydration status from outside React
+useAuthStore.persist.onFinishHydration(() => {
+  useAuthStore.setState({ _hasHydrated: true });
+});
 
 export default useAuthStore;

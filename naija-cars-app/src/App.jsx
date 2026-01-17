@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Navbar from './components/Navbar';
@@ -35,9 +36,23 @@ import { AdminDashboard, AdminUsers, AdminListings, AdminAnalytics, AdminSetting
 // Protected Route for Admin
 function AdminRoute({ children }) {
   const { user, isAuthenticated, _hasHydrated } = useAuthStore();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Wait for hydration or set a timeout fallback
+    if (_hasHydrated) {
+      setIsReady(true);
+    } else {
+      // Fallback timeout in case hydration callback doesn't fire
+      const timeout = setTimeout(() => {
+        setIsReady(true);
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [_hasHydrated]);
 
   // Show loading while hydrating persisted state
-  if (!_hasHydrated) {
+  if (!isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-pearl-50">
         <div className="w-8 h-8 border-4 border-naija-500 border-t-transparent rounded-full animate-spin" />

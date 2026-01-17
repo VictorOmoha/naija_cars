@@ -4,9 +4,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, MoreVertical, CheckCircle, XCircle, Trash2,
   ChevronLeft, ChevronRight, Eye, Star, StarOff, Car,
-  MapPin, Calendar, X, ExternalLink
+  MapPin, Calendar, X, ExternalLink, Plus, Edit3, Save
 } from 'lucide-react';
 import api from '../../services/api';
+
+const nigerianStates = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT', 'Gombe',
+  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+  'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau',
+  'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara'
+];
+
+const carMakes = [
+  'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai', 'Kia',
+  'Nissan', 'Volkswagen', 'Audi', 'Mazda', 'Chevrolet', 'Jeep', 'Land Rover',
+  'Porsche', 'Peugeot', 'Mitsubishi', 'Subaru', 'Volvo', 'Infiniti', 'Acura'
+];
 
 const statusOptions = [
   { value: '', label: 'All Status' },
@@ -44,11 +58,154 @@ export default function AdminListings() {
   const [showListingModal, setShowListingModal] = useState(false);
   const [actionDropdown, setActionDropdown] = useState(null);
 
+  // Create/Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingListing, setEditingListing] = useState(null);
+  const [sellers, setSellers] = useState([]);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    sellerId: '',
+    listingType: 'SALE',
+    make: '',
+    model: '',
+    year: new Date().getFullYear(),
+    trim: '',
+    mileage: '',
+    transmission: 'Automatic',
+    fuelType: 'Petrol',
+    condition: 'FOREIGN_USED',
+    price: '',
+    locationState: 'Lagos',
+    locationCity: '',
+    description: '',
+    status: 'ACTIVE',
+    isFeatured: false,
+    images: ['']
+  });
+
   const listingsPerPage = 10;
 
   useEffect(() => {
     fetchListings();
   }, [currentPage, searchQuery, statusFilter, typeFilter, conditionFilter]);
+
+  useEffect(() => {
+    fetchSellers();
+  }, []);
+
+  const fetchSellers = async () => {
+    try {
+      const response = await api.get('/admin/sellers');
+      setSellers(response.data);
+    } catch (error) {
+      console.error('Error fetching sellers:', error);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      sellerId: '',
+      listingType: 'SALE',
+      make: '',
+      model: '',
+      year: new Date().getFullYear(),
+      trim: '',
+      mileage: '',
+      transmission: 'Automatic',
+      fuelType: 'Petrol',
+      condition: 'FOREIGN_USED',
+      price: '',
+      locationState: 'Lagos',
+      locationCity: '',
+      description: '',
+      status: 'ACTIVE',
+      isFeatured: false,
+      images: ['']
+    });
+    setEditingListing(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setShowEditModal(true);
+  };
+
+  const openEditModal = (listing) => {
+    setEditingListing(listing);
+    setFormData({
+      sellerId: listing.sellerId || '',
+      listingType: listing.listingType || 'SALE',
+      make: listing.make || '',
+      model: listing.model || '',
+      year: listing.year || new Date().getFullYear(),
+      trim: listing.trim || '',
+      mileage: listing.mileage || '',
+      transmission: listing.transmission || 'Automatic',
+      fuelType: listing.fuelType || 'Petrol',
+      condition: listing.condition || 'FOREIGN_USED',
+      price: listing.price || '',
+      locationState: listing.locationState || 'Lagos',
+      locationCity: listing.locationCity || '',
+      description: listing.description || '',
+      status: listing.status || 'ACTIVE',
+      isFeatured: listing.isFeatured || false,
+      images: listing.media?.map(m => m.url) || ['']
+    });
+    setShowEditModal(true);
+    setActionDropdown(null);
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleImageChange = (index, value) => {
+    const newImages = [...formData.images];
+    newImages[index] = value;
+    setFormData(prev => ({ ...prev, images: newImages }));
+  };
+
+  const addImageField = () => {
+    setFormData(prev => ({ ...prev, images: [...prev.images, ''] }));
+  };
+
+  const removeImageField = (index) => {
+    if (formData.images.length > 1) {
+      const newImages = formData.images.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, images: newImages }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormLoading(true);
+
+    try {
+      const payload = {
+        ...formData,
+        images: formData.images.filter(img => img.trim() !== '')
+      };
+
+      if (editingListing) {
+        await api.put(`/admin/listings/${editingListing.id}`, payload);
+      } else {
+        await api.post('/admin/listings', payload);
+      }
+
+      setShowEditModal(false);
+      resetForm();
+      fetchListings();
+    } catch (error) {
+      console.error('Error saving listing:', error);
+      alert(error.response?.data?.error?.message || 'Failed to save listing');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const fetchListings = async () => {
     setLoading(true);
@@ -168,7 +325,22 @@ export default function AdminListings() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Search and Filters */}
+      {/* Header with Title and Add Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-charcoal-800">Listings Management</h1>
+          <p className="text-charcoal-500">Manage all car listings on the platform</p>
+        </div>
+        <button
+          onClick={openCreateModal}
+          className="flex items-center gap-2 px-4 py-2.5 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors font-medium"
+        >
+          <Plus className="w-5 h-5" />
+          Add New Listing
+        </button>
+      </div>
+
+      {/* Search and Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-soft">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
@@ -325,13 +497,20 @@ export default function AdminListings() {
                                 View Details
                               </button>
                               <Link
-                                to={`/cars/${listing.id}`}
+                                to={`/car/${listing.id}`}
                                 target="_blank"
                                 className="w-full px-4 py-2 text-left text-sm text-charcoal-700 hover:bg-pearl-50 flex items-center gap-2"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 View on Site
                               </Link>
+                              <button
+                                onClick={() => openEditModal(listing)}
+                                className="w-full px-4 py-2 text-left text-sm text-charcoal-700 hover:bg-pearl-50 flex items-center gap-2"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                                Edit Listing
+                              </button>
                               {listing.status === 'PENDING' && (
                                 <>
                                   <button
@@ -550,6 +729,369 @@ export default function AdminListings() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create/Edit Listing Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="px-6 py-4 border-b border-pearl-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h2 className="font-display font-semibold text-charcoal-800 text-xl">
+                  {editingListing ? 'Edit Listing' : 'Create New Listing'}
+                </h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Seller Selection (only for new listings) */}
+                {!editingListing && (
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Seller / Dealer
+                    </label>
+                    <select
+                      name="sellerId"
+                      value={formData.sellerId}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="">-- Select Seller (or leave empty for Admin) --</option>
+                      {sellers.map(seller => (
+                        <option key={seller.id} value={seller.id}>
+                          {seller.name} ({seller.userType})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Listing Type & Status */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Listing Type *
+                    </label>
+                    <select
+                      name="listingType"
+                      value={formData.listingType}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="SALE">For Sale</option>
+                      <option value="RENT">For Rent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Status *
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="SOLD">Sold</option>
+                      <option value="RENTED">Rented</option>
+                      <option value="INACTIVE">Inactive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Condition *
+                    </label>
+                    <select
+                      name="condition"
+                      value={formData.condition}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="BRAND_NEW">Brand New</option>
+                      <option value="FOREIGN_USED">Foreign Used</option>
+                      <option value="NIGERIAN_USED">Nigerian Used</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Vehicle Details */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Make *
+                    </label>
+                    <select
+                      name="make"
+                      value={formData.make}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="">Select Make</option>
+                      {carMakes.map(make => (
+                        <option key={make} value={make}>{make}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Model *
+                    </label>
+                    <input
+                      type="text"
+                      name="model"
+                      value={formData.model}
+                      onChange={handleFormChange}
+                      required
+                      placeholder="e.g. Camry, Accord, X5"
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Year *
+                    </label>
+                    <input
+                      type="number"
+                      name="year"
+                      value={formData.year}
+                      onChange={handleFormChange}
+                      required
+                      min="1990"
+                      max={new Date().getFullYear() + 1}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Trim
+                    </label>
+                    <input
+                      type="text"
+                      name="trim"
+                      value={formData.trim}
+                      onChange={handleFormChange}
+                      placeholder="e.g. XLE, Sport, Limited"
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Vehicle Specs */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Price (NGN) *
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleFormChange}
+                      required
+                      min="0"
+                      placeholder={formData.listingType === 'RENT' ? 'Daily rate' : 'Total price'}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Mileage (km)
+                    </label>
+                    <input
+                      type="number"
+                      name="mileage"
+                      value={formData.mileage}
+                      onChange={handleFormChange}
+                      min="0"
+                      placeholder="e.g. 50000"
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Transmission
+                    </label>
+                    <select
+                      name="transmission"
+                      value={formData.transmission}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="Automatic">Automatic</option>
+                      <option value="Manual">Manual</option>
+                      <option value="CVT">CVT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      Fuel Type
+                    </label>
+                    <select
+                      name="fuelType"
+                      value={formData.fuelType}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      <option value="Petrol">Petrol</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Electric">Electric</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      State
+                    </label>
+                    <select
+                      name="locationState"
+                      value={formData.locationState}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    >
+                      {nigerianStates.map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      name="locationCity"
+                      value={formData.locationCity}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Victoria Island, Lekki"
+                      className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleFormChange}
+                    rows={4}
+                    placeholder="Describe the vehicle, its features, and condition..."
+                    className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500 resize-none"
+                  />
+                </div>
+
+                {/* Images */}
+                <div>
+                  <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                    Image URLs
+                  </label>
+                  <div className="space-y-2">
+                    {formData.images.map((image, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="url"
+                          value={image}
+                          onChange={(e) => handleImageChange(index, e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          className="flex-1 px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                        />
+                        {formData.images.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeImageField(index)}
+                            className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addImageField}
+                      className="text-sm text-naija-600 hover:text-naija-700 font-medium"
+                    >
+                      + Add another image
+                    </button>
+                  </div>
+                </div>
+
+                {/* Featured Toggle */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    name="isFeatured"
+                    id="isFeatured"
+                    checked={formData.isFeatured}
+                    onChange={handleFormChange}
+                    className="w-5 h-5 text-naija-500 border-pearl-300 rounded focus:ring-naija-500"
+                  />
+                  <label htmlFor="isFeatured" className="text-charcoal-700 font-medium">
+                    Mark as Featured Listing
+                  </label>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-pearl-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 py-3 px-4 bg-pearl-100 text-charcoal-700 rounded-xl hover:bg-pearl-200 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formLoading}
+                    className="flex-1 py-3 px-4 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {formLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5" />
+                        {editingListing ? 'Update Listing' : 'Create Listing'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

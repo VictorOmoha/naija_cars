@@ -489,6 +489,40 @@ router.patch('/listings/:id/featured', async (req, res) => {
   }
 });
 
+// Get single listing by ID (for editing) - MUST be before DELETE to avoid route conflicts
+router.get('/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const listing = await prisma.carListing.findUnique({
+      where: { id },
+      include: {
+        seller: {
+          include: { profile: true }
+        },
+        media: {
+          orderBy: { displayOrder: 'asc' }
+        }
+      }
+    });
+
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Listing not found' }
+      });
+    }
+
+    res.json(listing);
+  } catch (error) {
+    console.error('Error fetching listing:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to fetch listing' }
+    });
+  }
+});
+
 // Delete listing
 router.delete('/listings/:id', async (req, res) => {
   try {
@@ -505,6 +539,372 @@ router.delete('/listings/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: { message: 'Failed to delete listing' }
+    });
+  }
+});
+
+// Create new listing (admin can create on behalf of any seller or as system listing)
+router.post('/listings', async (req, res) => {
+  try {
+    const {
+      sellerId,
+      listingType,
+      make,
+      model,
+      year,
+      trim,
+      mileage,
+      transmission,
+      fuelType,
+      condition,
+      price,
+      locationState,
+      locationCity,
+      description,
+      status = 'ACTIVE',
+      isFeatured = false,
+      images = []
+    } = req.body;
+
+    // Validate required fields
+    if (!make || !model || !year || !price || !listingType || !condition) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Missing required fields: make, model, year, price, listingType, condition' }
+      });
+    }
+
+    // Use admin's ID if no sellerId provided
+    const actualSellerId = sellerId || req.user.id;
+
+    // Verify seller exists
+    const seller = await prisma.user.findUnique({ where: { id: actualSellerId } });
+    if (!seller) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Seller not found' }
+      });
+    }
+
+    // Create listing with media
+    const listing = await prisma.carListing.create({
+      data: {
+        sellerId: actualSellerId,
+        listingType,
+        make,
+        model,
+        year: parseInt(year),
+        trim,
+        mileage: mileage ? parseInt(mileage) : null,
+        transmission,
+        fuelType,
+        condition,
+        price: parseFloat(price),
+        locationState,
+        locationCity,
+        description,
+        status,
+        isFeatured,
+        media: {
+          create: images.map((url, index) => ({
+            mediaType: 'PHOTO',
+            url,
+            displayOrder: index
+          }))
+        }
+      },
+      include: {
+        seller: { include: { profile: true } },
+        media: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Listing created successfully',
+      listing
+    });
+  } catch (error) {
+    console.error('Error creating listing:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to create listing' }
+    });
+  }
+});
+
+// Update listing
+router.put('/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      listingType,
+      make,
+      model,
+      year,
+      trim,
+      mileage,
+      transmission,
+      fuelType,
+      condition,
+      price,
+      locationState,
+      locationCity,
+      description,
+      status,
+      isFeatured,
+      images
+    } = req.body;
+
+    // Check listing exists
+    const existingListing = await prisma.carListing.findUnique({
+      where: { id },
+      include: { media: true }
+    });
+
+    if (!existingListing) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Listing not found' }
+      });
+    }
+
+    // Build update data
+    const updateData = {};
+    if (listingType !== undefined) updateData.listingType = listingType;
+    if (make !== undefined) updateData.make = make;
+    if (model !== undefined) updateData.model = model;
+    if (year !== undefined) updateData.year = parseInt(year);
+    if (trim !== undefined) updateData.trim = trim;
+    if (mileage !== undefined) updateData.mileage = mileage ? parseInt(mileage) : null;
+    if (transmission !== undefined) updateData.transmission = transmission;
+    if (fuelType !== undefined) updateData.fuelType = fuelType;
+    if (condition !== undefined) updateData.condition = condition;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (locationState !== undefined) updateData.locationState = locationState;
+    if (locationCity !== undefined) updateData.locationCity = locationCity;
+    if (description !== undefined) updateData.description = description;
+    if (status !== undefined) updateData.status = status;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+
+    // Update listing
+    const listing = await prisma.carListing.update({
+      where: { id },
+      data: updateData,
+      include: {
+        seller: { include: { profile: true } },
+        media: true
+      }
+    });
+
+    // Handle images if provided (replace all)
+    if (images !== undefined && Array.isArray(images)) {
+      // Delete existing media
+      await prisma.media.deleteMany({ where: { listingId: id } });
+
+      // Create new media
+      if (images.length > 0) {
+        await prisma.media.createMany({
+          data: images.map((url, index) => ({
+            listingId: id,
+            mediaType: 'PHOTO',
+            url,
+            displayOrder: index
+          }))
+        });
+      }
+
+      // Fetch updated listing with new media
+      const updatedListing = await prisma.carListing.findUnique({
+        where: { id },
+        include: {
+          seller: { include: { profile: true } },
+          media: { orderBy: { displayOrder: 'asc' } }
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Listing updated successfully',
+        listing: updatedListing
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Listing updated successfully',
+      listing
+    });
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to update listing' }
+    });
+  }
+});
+
+// ===== Analytics Endpoints =====
+router.get('/analytics/overview', async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Get daily user registrations for last 30 days
+    const usersByDay = await prisma.$queryRaw`
+      SELECT DATE("createdAt") as date, COUNT(*)::int as count
+      FROM "User"
+      WHERE "createdAt" >= ${thirtyDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `;
+
+    // Get daily listings for last 30 days
+    const listingsByDay = await prisma.$queryRaw`
+      SELECT DATE("createdAt") as date, COUNT(*)::int as count
+      FROM "CarListing"
+      WHERE "createdAt" >= ${thirtyDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `;
+
+    // Get listings by status
+    const listingsByStatus = await prisma.carListing.groupBy({
+      by: ['status'],
+      _count: { status: true }
+    });
+
+    // Get listings by type (SALE vs RENT)
+    const listingsByType = await prisma.carListing.groupBy({
+      by: ['listingType'],
+      _count: { listingType: true }
+    });
+
+    // Get users by type
+    const usersByType = await prisma.user.groupBy({
+      by: ['userType'],
+      _count: { userType: true }
+    });
+
+    // Get top locations
+    const topLocations = await prisma.carListing.groupBy({
+      by: ['locationState'],
+      _count: { locationState: true },
+      orderBy: { _count: { locationState: 'desc' } },
+      take: 10
+    });
+
+    // Get top car makes
+    const topMakes = await prisma.carListing.groupBy({
+      by: ['make'],
+      _count: { make: true },
+      orderBy: { _count: { make: 'desc' } },
+      take: 10
+    });
+
+    // Get most viewed listings
+    const mostViewedListings = await prisma.carListing.findMany({
+      take: 5,
+      orderBy: { viewsCount: 'desc' },
+      include: {
+        seller: { include: { profile: true } },
+        media: { take: 1 }
+      }
+    });
+
+    res.json({
+      usersByDay,
+      listingsByDay,
+      listingsByStatus: listingsByStatus.map(s => ({ status: s.status, count: s._count.status })),
+      listingsByType: listingsByType.map(t => ({ type: t.listingType, count: t._count.listingType })),
+      usersByType: usersByType.map(u => ({ type: u.userType, count: u._count.userType })),
+      topLocations: topLocations.map(l => ({ state: l.locationState, count: l._count.locationState })),
+      topMakes: topMakes.map(m => ({ make: m.make, count: m._count.make })),
+      mostViewedListings
+    });
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to fetch analytics' }
+    });
+  }
+});
+
+// ===== User Role Management =====
+router.patch('/users/:id/role', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userType } = req.body;
+
+    // Validate user type
+    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER', 'ADMIN'];
+    if (!validTypes.includes(userType)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid user type' }
+      });
+    }
+
+    // Prevent changing own role
+    if (id === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Cannot change your own role' }
+      });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { userType },
+      include: { profile: true }
+    });
+
+    res.json({
+      success: true,
+      message: `User role updated to ${userType}`,
+      user: {
+        id: user.id,
+        email: user.email,
+        userType: user.userType
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to update user role' }
+    });
+  }
+});
+
+// ===== Get All Sellers (for listing creation dropdown) =====
+router.get('/sellers', async (req, res) => {
+  try {
+    const sellers = await prisma.user.findMany({
+      where: {
+        userType: { in: ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'ADMIN'] },
+        isActive: true
+      },
+      include: { profile: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const sanitizedSellers = sellers.map(seller => ({
+      id: seller.id,
+      email: seller.email,
+      userType: seller.userType,
+      name: seller.profile?.businessName ||
+            `${seller.profile?.firstName || ''} ${seller.profile?.lastName || ''}`.trim() ||
+            seller.email
+    }));
+
+    res.json(sanitizedSellers);
+  } catch (error) {
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to fetch sellers' }
     });
   }
 });

@@ -30,7 +30,7 @@ import RentCarsPage from './pages/RentCarsPage';
 
 // Admin Pages
 import AdminLayout from './components/admin/AdminLayout';
-import { AdminDashboard, AdminUsers, AdminListings } from './pages/admin';
+import { AdminDashboard, AdminUsers, AdminListings, AdminAnalytics, AdminSettings } from './pages/admin';
 
 // Protected Route for Admin
 function AdminRoute({ children }) {
@@ -83,6 +83,8 @@ function App() {
               <Route path="listings" element={<AdminListings />} />
               <Route path="listings/pending" element={<AdminListings />} />
               <Route path="listings/featured" element={<AdminListings />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
 
             {/* User Pages */}

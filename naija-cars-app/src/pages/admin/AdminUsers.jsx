@@ -3,9 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, MoreVertical, UserCheck, UserX, Trash2,
   ChevronLeft, ChevronRight, Eye, Mail, Phone, Shield,
-  BadgeCheck, X, AlertTriangle
+  BadgeCheck, X, AlertTriangle, UserCog
 } from 'lucide-react';
 import api from '../../services/api';
+
+const roleOptions = [
+  { value: 'BUYER', label: 'Buyer' },
+  { value: 'INDIVIDUAL_SELLER', label: 'Individual Seller' },
+  { value: 'DEALER', label: 'Dealer' },
+  { value: 'RENTAL_COMPANY', label: 'Rental Company' },
+  { value: 'ADMIN', label: 'Admin' },
+];
 
 const userTypeOptions = [
   { value: '', label: 'All Types' },
@@ -35,6 +43,9 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [actionDropdown, setActionDropdown] = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleChangeUser, setRoleChangeUser] = useState(null);
+  const [newRole, setNewRole] = useState('');
 
   const usersPerPage = 10;
 
@@ -103,6 +114,30 @@ export default function AdminUsers() {
       console.error('Error deleting user:', error);
     }
     setActionDropdown(null);
+  };
+
+  const openRoleModal = (user) => {
+    setRoleChangeUser(user);
+    setNewRole(user.userType);
+    setShowRoleModal(true);
+    setActionDropdown(null);
+  };
+
+  const handleRoleChange = async () => {
+    if (!roleChangeUser || !newRole || newRole === roleChangeUser.userType) {
+      setShowRoleModal(false);
+      return;
+    }
+
+    try {
+      await api.patch(`/admin/users/${roleChangeUser.id}/role`, { userType: newRole });
+      setUsers(users.map(u => u.id === roleChangeUser.id ? { ...u, userType: newRole } : u));
+      setShowRoleModal(false);
+      setRoleChangeUser(null);
+    } catch (error) {
+      console.error('Error changing user role:', error);
+      alert(error.response?.data?.error?.message || 'Failed to change user role');
+    }
   };
 
   const getUserTypeBadge = (type) => {
@@ -277,6 +312,15 @@ export default function AdminUsers() {
                                 >
                                   <UserCheck className="w-4 h-4" />
                                   Verify User
+                                </button>
+                              )}
+                              {user.userType !== 'ADMIN' && (
+                                <button
+                                  onClick={() => openRoleModal(user)}
+                                  className="w-full px-4 py-2 text-left text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2"
+                                >
+                                  <UserCog className="w-4 h-4" />
+                                  Change Role
                                 </button>
                               )}
                               <button
@@ -461,6 +505,108 @@ export default function AdminUsers() {
                     }`}
                   >
                     {selectedUser.isActive ? 'Suspend' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Role Change Modal */}
+      <AnimatePresence>
+        {showRoleModal && roleChangeUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowRoleModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl max-w-md w-full"
+            >
+              <div className="px-6 py-4 border-b border-pearl-200 flex items-center justify-between">
+                <h2 className="font-display font-semibold text-charcoal-800">Change User Role</h2>
+                <button
+                  onClick={() => setShowRoleModal(false)}
+                  className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* User Info */}
+                <div className="flex items-center gap-3 p-4 bg-pearl-50 rounded-xl">
+                  <div className="w-12 h-12 bg-naija-100 rounded-xl flex items-center justify-center">
+                    <span className="text-naija-600 font-bold text-lg">
+                      {roleChangeUser.profile?.firstName?.[0] || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium text-charcoal-800">
+                      {roleChangeUser.profile?.firstName} {roleChangeUser.profile?.lastName}
+                    </div>
+                    <div className="text-sm text-charcoal-500">{roleChangeUser.email}</div>
+                  </div>
+                </div>
+
+                {/* Current Role */}
+                <div>
+                  <label className="block text-sm font-medium text-charcoal-500 mb-1">
+                    Current Role
+                  </label>
+                  <div className={`inline-flex px-3 py-1.5 rounded-full text-sm font-medium ${getUserTypeBadge(roleChangeUser.userType)}`}>
+                    {roleChangeUser.userType.replace('_', ' ')}
+                  </div>
+                </div>
+
+                {/* New Role Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                    New Role
+                  </label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                  >
+                    {roleOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Warning for Admin */}
+                {newRole === 'ADMIN' && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl text-amber-800">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <strong>Warning:</strong> Granting admin privileges will give this user full access to manage the platform, including other users and all listings.
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowRoleModal(false)}
+                    className="flex-1 py-2.5 bg-pearl-100 text-charcoal-700 rounded-xl hover:bg-pearl-200 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRoleChange}
+                    disabled={newRole === roleChangeUser.userType}
+                    className="flex-1 py-2.5 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Update Role
                   </button>
                 </div>
               </div>

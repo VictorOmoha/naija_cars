@@ -214,3 +214,32 @@ model Verification {
   @@index([code])
   @@map("verifications")
 }
+
+model CarValuation {
+  id                String    @id @default(uuid())
+  userId            String?   @map("user_id")
+  make              String
+  model             String
+  year              Int
+  trim              String?
+  mileage           Int
+  transmission      String
+  fuelType          String    @map("fuel_type")
+  condition         Condition
+  location          String
+  estimatedValue    Float     @map("estimated_value")
+  lowEstimate       Float     @map("low_estimate")
+  highEstimate      Float     @map("high_estimate")
+  marketTrend       String    @map("market_trend")
+  trendPercentage   Float     @map("trend_percentage")
+  demandLevel       String    @map("demand_level")
+  avgDaysToSell     Int       @map("avg_days_to_sell")
+  similarListings   Int       @map("similar_listings")
+  confidenceScore   Float     @map("confidence_score")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([make, model])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("car_valuations")
+}

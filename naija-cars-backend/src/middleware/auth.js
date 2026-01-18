@@ -158,6 +158,7 @@ const optionalAuth = async (req, res, next) => {
 
 module.exports = {
   authenticate,
+  requireAuth: authenticate, // Alias for convenience
   requireVerified,
   requireUserType,
   optionalAuth

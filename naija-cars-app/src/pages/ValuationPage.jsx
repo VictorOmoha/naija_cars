@@ -1,91 +1,152 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import {
-  Car, Calculator, TrendingUp, TrendingDown, ArrowRight, ChevronRight,
-  CheckCircle, Info, Calendar, Gauge, Settings2, Fuel, MapPin,
-  BarChart3, DollarSign, Clock, Shield, AlertCircle, Sparkles, RefreshCw
+  Car, Calculator, TrendingUp, TrendingDown, ArrowRight,
+  CheckCircle, Gauge, Clock, Shield, Sparkles, RefreshCw,
+  History, Save, BarChart3
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-
-const carMakes = [
-  'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai',
-  'Kia', 'Nissan', 'Volkswagen', 'Audi', 'Peugeot', 'Land Rover', 'Range Rover'
-];
-
-const carModels = {
-  'Toyota': ['Camry', 'Corolla', 'RAV4', 'Highlander', 'Land Cruiser', 'Prado', 'Sienna', 'Venza', 'Avalon'],
-  'Honda': ['Accord', 'Civic', 'CR-V', 'Pilot', 'HR-V', 'Odyssey'],
-  'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLE', 'GLC', 'A-Class', 'CLA'],
-  'BMW': ['3 Series', '5 Series', '7 Series', 'X3', 'X5', 'X7'],
-  'Lexus': ['RX', 'ES', 'IS', 'GX', 'LX', 'NX'],
-};
-
-const conditions = ['Brand New', 'Foreign Used (Tokunbo)', 'Nigerian Used (Locally Used)'];
+import { valuationAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
 
 export default function ValuationPage() {
   const { addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [valuationResult, setValuationResult] = useState(null);
   const [selectedMake, setSelectedMake] = useState('');
+  const [makes, setMakes] = useState([]);
+  const [models, setModels] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [valuationHistory, setValuationHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingMakes, setLoadingMakes] = useState(true);
 
-  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch, reset, setValue } = useForm({
+    defaultValues: {
+      transmission: 'Automatic',
+      fuelType: 'Petrol',
+      location: 'Lagos'
+    }
+  });
 
-  const watchMake = watch('make');
+  // Fetch makes and locations on mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [makesRes, locationsRes] = await Promise.all([
+          valuationAPI.getMakes(),
+          valuationAPI.getLocations()
+        ]);
+        setMakes(makesRes.data.data || []);
+        setLocations(locationsRes.data.data || []);
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        // Fallback data
+        setMakes([
+          { value: 'Toyota', label: 'Toyota' },
+          { value: 'Honda', label: 'Honda' },
+          { value: 'Mercedes-Benz', label: 'Mercedes-Benz' },
+          { value: 'BMW', label: 'BMW' },
+          { value: 'Lexus', label: 'Lexus' },
+          { value: 'Ford', label: 'Ford' },
+          { value: 'Hyundai', label: 'Hyundai' },
+          { value: 'Kia', label: 'Kia' }
+        ]);
+        setLocations([
+          { value: 'Lagos', label: 'Lagos' },
+          { value: 'Abuja', label: 'Abuja' },
+          { value: 'Port Harcourt', label: 'Port Harcourt' },
+          { value: 'Ibadan', label: 'Ibadan' },
+          { value: 'Kano', label: 'Kano' }
+        ]);
+      } finally {
+        setLoadingMakes(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  // Fetch models when make changes
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!selectedMake) {
+        setModels([]);
+        return;
+      }
+      try {
+        const response = await valuationAPI.getModels(selectedMake);
+        setModels(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching models:', error);
+        setModels([]);
+      }
+    };
+    fetchModels();
+  }, [selectedMake]);
+
+  // Fetch valuation history for authenticated users
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const response = await valuationAPI.getHistory(5);
+        setValuationHistory(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching history:', error);
+      }
+    };
+    fetchHistory();
+  }, [isAuthenticated]);
 
   const onSubmit = async (data) => {
     setIsCalculating(true);
 
-    // Simulate API call for valuation
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    try {
+      const response = await valuationAPI.calculate({
+        make: data.make,
+        model: data.model,
+        year: data.year,
+        trim: data.trim,
+        mileage: data.mileage,
+        transmission: data.transmission,
+        fuelType: data.fuelType,
+        condition: data.condition,
+        location: data.location
+      });
 
-    // Generate mock valuation result
-    const basePrice = {
-      'Toyota': 8000000,
-      'Honda': 7500000,
-      'Mercedes-Benz': 25000000,
-      'BMW': 22000000,
-      'Lexus': 18000000,
-    }[data.make] || 10000000;
+      if (response.data.success) {
+        setValuationResult(response.data.data);
+        setStep(3);
 
-    const yearFactor = (parseInt(data.year) - 2015) * 0.08;
-    const mileageFactor = (200000 - parseInt(data.mileage)) / 200000 * 0.3;
-    const conditionFactor = data.condition === 'Brand New' ? 1.4 : data.condition === 'Foreign Used (Tokunbo)' ? 1 : 0.7;
-
-    const estimatedValue = Math.round(basePrice * (1 + yearFactor) * mileageFactor * conditionFactor);
-    const lowEstimate = Math.round(estimatedValue * 0.85);
-    const highEstimate = Math.round(estimatedValue * 1.15);
-
-    setValuationResult({
-      ...data,
-      estimatedValue,
-      lowEstimate,
-      highEstimate,
-      marketTrend: Math.random() > 0.5 ? 'up' : 'down',
-      trendPercentage: Math.floor(Math.random() * 10) + 1,
-      demandLevel: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
-      averageDaysToSell: Math.floor(Math.random() * 30) + 15,
-      similarListings: Math.floor(Math.random() * 50) + 10,
-      priceHistory: [
-        { month: 'Aug 2023', price: estimatedValue * 0.92 },
-        { month: 'Sep 2023', price: estimatedValue * 0.95 },
-        { month: 'Oct 2023', price: estimatedValue * 0.97 },
-        { month: 'Nov 2023', price: estimatedValue * 0.99 },
-        { month: 'Dec 2023', price: estimatedValue * 1.02 },
-        { month: 'Jan 2024', price: estimatedValue },
-      ],
-    });
-
-    setIsCalculating(false);
-    setStep(3);
+        // Refresh history after new valuation
+        if (isAuthenticated) {
+          const historyRes = await valuationAPI.getHistory(5);
+          setValuationHistory(historyRes.data.data || []);
+        }
+      } else {
+        throw new Error(response.data.error?.message || 'Valuation failed');
+      }
+    } catch (error) {
+      console.error('Valuation error:', error);
+      addToast('Failed to calculate valuation. Please try again.', 'error');
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
       return `₦${(price / 1000000).toFixed(1)}M`;
     }
-    return `₦${price.toLocaleString()}`;
+    return `₦${price?.toLocaleString() || 0}`;
+  };
+
+  const formatFullPrice = (price) => {
+    return `₦${price?.toLocaleString() || 0}`;
   };
 
   const handleStartOver = () => {
@@ -94,6 +155,32 @@ export default function ValuationPage() {
     setStep(1);
     setSelectedMake('');
   };
+
+  const loadHistoryItem = (item) => {
+    setValue('make', item.make);
+    setSelectedMake(item.make);
+    setTimeout(() => {
+      setValue('model', item.model);
+      setValue('year', item.year);
+      setValue('trim', item.trim || '');
+      setValue('mileage', item.mileage);
+      setValue('transmission', item.transmission);
+      setValue('fuelType', item.fuelType);
+      setValue('condition', item.condition);
+      setValue('location', item.location);
+    }, 100);
+    setShowHistory(false);
+    addToast('Loaded valuation data from history', 'success');
+  };
+
+  const conditions = [
+    { value: 'BRAND_NEW', label: 'Brand New' },
+    { value: 'FOREIGN_USED', label: 'Foreign Used (Tokunbo)' },
+    { value: 'NIGERIAN_USED', label: 'Nigerian Used (Locally Used)' }
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
 
   return (
     <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
@@ -169,6 +256,45 @@ export default function ValuationPage() {
           </div>
         </motion.div>
 
+        {/* History Button (for authenticated users) */}
+        {isAuthenticated && valuationHistory.length > 0 && step !== 3 && (
+          <div className="max-w-2xl mx-auto mb-4">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-2 text-naija-600 hover:text-naija-700 font-medium"
+            >
+              <History className="w-4 h-4" />
+              {showHistory ? 'Hide History' : 'Load from History'}
+            </button>
+
+            <AnimatePresence>
+              {showHistory && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 bg-white rounded-xl shadow-card p-4 space-y-3"
+                >
+                  {valuationHistory.map((item, index) => (
+                    <button
+                      key={item.id || index}
+                      onClick={() => loadHistoryItem(item)}
+                      className="w-full text-left p-3 border border-pearl-200 rounded-lg hover:border-naija-300 hover:bg-naija-50 transition-colors"
+                    >
+                      <div className="font-medium text-charcoal-800">
+                        {item.year} {item.make} {item.model}
+                      </div>
+                      <div className="text-sm text-charcoal-500">
+                        {formatPrice(item.estimatedValue)} • {new Date(item.createdAt).toLocaleDateString()}
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {/* Step 1: Car Details */}
           {step === 1 && (
@@ -195,12 +321,16 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('make', { required: 'Make is required' })}
-                        onChange={(e) => setSelectedMake(e.target.value)}
-                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
+                        onChange={(e) => {
+                          setSelectedMake(e.target.value);
+                          setValue('model', '');
+                        }}
+                        disabled={loadingMakes}
+                        className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100"
                       >
                         <option value="">Select Make</option>
-                        {carMakes.map(make => (
-                          <option key={make} value={make}>{make}</option>
+                        {makes.map(make => (
+                          <option key={make.value} value={make.value}>{make.label}</option>
                         ))}
                       </select>
                       {errors.make && (
@@ -214,14 +344,17 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('model', { required: 'Model is required' })}
-                        disabled={!selectedMake}
+                        disabled={!selectedMake || models.length === 0}
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100"
                       >
                         <option value="">Select Model</option>
-                        {(carModels[selectedMake] || []).map(model => (
-                          <option key={model} value={model}>{model}</option>
+                        {models.map(model => (
+                          <option key={model.value} value={model.value}>{model.label}</option>
                         ))}
                       </select>
+                      {errors.model && (
+                        <p className="mt-1 text-sm text-red-500">{errors.model.message}</p>
+                      )}
                     </div>
 
                     <div>
@@ -233,10 +366,13 @@ export default function ValuationPage() {
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                       >
                         <option value="">Select Year</option>
-                        {Array.from({ length: 15 }, (_, i) => 2024 - i).map(year => (
+                        {years.map(year => (
                           <option key={year} value={year}>{year}</option>
                         ))}
                       </select>
+                      {errors.year && (
+                        <p className="mt-1 text-sm text-red-500">{errors.year.message}</p>
+                      )}
                     </div>
 
                     <div>
@@ -254,7 +390,8 @@ export default function ValuationPage() {
                   <button
                     type="button"
                     onClick={() => setStep(2)}
-                    className="w-full btn-primary py-4 rounded-xl flex items-center justify-center gap-2"
+                    disabled={!watch('make') || !watch('model') || !watch('year')}
+                    className="w-full btn-primary py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue
                     <ArrowRight className="w-5 h-5" />
@@ -288,14 +425,14 @@ export default function ValuationPage() {
                     </label>
                     <div className="space-y-3">
                       {conditions.map((condition) => (
-                        <label key={condition} className="flex items-center gap-4 p-4 border border-pearl-300 rounded-xl cursor-pointer hover:border-naija-300 transition-colors">
+                        <label key={condition.value} className="flex items-center gap-4 p-4 border border-pearl-300 rounded-xl cursor-pointer hover:border-naija-300 transition-colors">
                           <input
                             type="radio"
                             {...register('condition', { required: true })}
-                            value={condition}
+                            value={condition.value}
                             className="w-5 h-5 text-naija-500 focus:ring-naija-500"
                           />
-                          <span className="font-medium text-charcoal-700">{condition}</span>
+                          <span className="font-medium text-charcoal-700">{condition.label}</span>
                         </label>
                       ))}
                     </div>
@@ -315,6 +452,9 @@ export default function ValuationPage() {
                           className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                         />
                       </div>
+                      {errors.mileage && (
+                        <p className="mt-1 text-sm text-red-500">{errors.mileage.message}</p>
+                      )}
                     </div>
 
                     <div>
@@ -327,6 +467,7 @@ export default function ValuationPage() {
                       >
                         <option value="Automatic">Automatic</option>
                         <option value="Manual">Manual</option>
+                        <option value="CVT">CVT</option>
                       </select>
                     </div>
 
@@ -353,11 +494,9 @@ export default function ValuationPage() {
                         {...register('location')}
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                       >
-                        <option value="Lagos">Lagos</option>
-                        <option value="Abuja">Abuja</option>
-                        <option value="Port Harcourt">Port Harcourt</option>
-                        <option value="Kano">Kano</option>
-                        <option value="Ibadan">Ibadan</option>
+                        {locations.map(loc => (
+                          <option key={loc.value} value={loc.value}>{loc.label}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -372,8 +511,8 @@ export default function ValuationPage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={isCalculating}
-                      className="flex-1 btn-primary py-4 rounded-xl flex items-center justify-center gap-2"
+                      disabled={isCalculating || !watch('condition') || !watch('mileage')}
+                      className="flex-1 btn-primary py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isCalculating ? (
                         <>
@@ -408,17 +547,27 @@ export default function ValuationPage() {
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-6">
                     <CheckCircle className="w-4 h-4" />
                     Valuation Complete
+                    {valuationResult.confidenceScore && (
+                      <span className="ml-2 opacity-80">
+                        • {Math.round(valuationResult.confidenceScore * 100)}% Confidence
+                      </span>
+                    )}
                   </div>
 
                   <h2 className="text-xl md:text-2xl font-medium mb-2 opacity-90">
                     {valuationResult.year} {valuationResult.make} {valuationResult.model}
                   </h2>
-                  <p className="opacity-70 mb-8">{valuationResult.trim} • {valuationResult.condition}</p>
+                  <p className="opacity-70 mb-8">
+                    {valuationResult.trim} • {valuationResult.condition?.replace(/_/g, ' ')}
+                  </p>
 
                   <div className="text-5xl md:text-6xl font-display font-bold mb-2">
                     {formatPrice(valuationResult.estimatedValue)}
                   </div>
-                  <p className="text-white/80 mb-8">Estimated Market Value</p>
+                  <p className="text-white/80 text-lg mb-2">Estimated Market Value</p>
+                  <p className="text-white/60 text-sm mb-8">
+                    {formatFullPrice(valuationResult.estimatedValue)}
+                  </p>
 
                   <div className="flex justify-center gap-8">
                     <div>
@@ -478,7 +627,7 @@ export default function ValuationPage() {
                   </div>
                   <h3 className="text-lg font-bold text-charcoal-800 mb-1">Avg. Time to Sell</h3>
                   <p className="text-2xl font-bold text-charcoal-800">
-                    {valuationResult.averageDaysToSell} days
+                    {valuationResult.avgDaysToSell} days
                   </p>
                   <p className="text-charcoal-500 text-sm mt-1">For similar vehicles</p>
                 </motion.div>
@@ -501,43 +650,47 @@ export default function ValuationPage() {
               </div>
 
               {/* Price History Chart */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white rounded-2xl shadow-card p-6 mb-8"
-              >
-                <h3 className="text-xl font-display font-bold text-charcoal-800 mb-6">
-                  Price Trend (6 Months)
-                </h3>
-                <div className="h-48 flex items-end justify-between gap-4">
-                  {valuationResult.priceHistory.map((point, index) => {
-                    const maxPrice = Math.max(...valuationResult.priceHistory.map(p => p.price));
-                    const height = (point.price / maxPrice) * 100;
-                    return (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div className="w-full mb-2 flex flex-col items-center">
-                          <span className="text-xs text-charcoal-500 mb-2">
-                            {formatPrice(point.price)}
+              {valuationResult.priceHistory && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-white rounded-2xl shadow-card p-6 mb-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-charcoal-800 mb-6">
+                    Price Trend (6 Months)
+                  </h3>
+                  <div className="h-48 flex items-end justify-between gap-4">
+                    {valuationResult.priceHistory.map((point, index) => {
+                      const maxPrice = Math.max(...valuationResult.priceHistory.map(p => p.price));
+                      const height = (point.price / maxPrice) * 100;
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div className="w-full mb-2 flex flex-col items-center">
+                            <span className="text-xs text-charcoal-500 mb-2">
+                              {formatPrice(point.price)}
+                            </span>
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${height}%` }}
+                              transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
+                              className={`w-full rounded-t-lg ${
+                                index === valuationResult.priceHistory.length - 1
+                                  ? 'bg-naija-500'
+                                  : 'bg-naija-200'
+                              }`}
+                              style={{ minHeight: '20px' }}
+                            />
+                          </div>
+                          <span className="text-xs text-charcoal-500 mt-2">
+                            {point.month.split(' ')[0]}
                           </span>
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: `${height}%` }}
-                            transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
-                            className={`w-full rounded-t-lg ${
-                              index === valuationResult.priceHistory.length - 1
-                                ? 'bg-naija-500'
-                                : 'bg-naija-200'
-                            }`}
-                            style={{ minHeight: '20px' }}
-                          />
                         </div>
-                        <span className="text-xs text-charcoal-500 mt-2">{point.month.split(' ')[0]}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Actions */}
               <motion.div
@@ -549,17 +702,33 @@ export default function ValuationPage() {
                 <div className="bg-gradient-to-br from-gold-400 to-gold-500 rounded-2xl p-6 text-charcoal-800">
                   <h3 className="text-xl font-display font-bold mb-2">Ready to Sell?</h3>
                   <p className="mb-4 opacity-80">List your car now and reach thousands of buyers</p>
-                  <button className="w-full py-3 bg-charcoal-800 text-white rounded-xl font-medium hover:bg-charcoal-900 transition-colors">
+                  <Link
+                    to="/sell"
+                    className="block w-full py-3 bg-charcoal-800 text-white rounded-xl font-medium hover:bg-charcoal-900 transition-colors text-center"
+                  >
                     List Your Car
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-card p-6">
-                  <h3 className="text-xl font-display font-bold text-charcoal-800 mb-2">Not Selling Yet?</h3>
-                  <p className="text-charcoal-500 mb-4">Save this valuation and get price alerts</p>
-                  <button className="w-full py-3 border-2 border-naija-500 text-naija-600 rounded-xl font-medium hover:bg-naija-50 transition-colors">
-                    Save Valuation
-                  </button>
+                  <h3 className="text-xl font-display font-bold text-charcoal-800 mb-2">
+                    {isAuthenticated ? 'Valuation Saved!' : 'Not Selling Yet?'}
+                  </h3>
+                  <p className="text-charcoal-500 mb-4">
+                    {isAuthenticated
+                      ? 'This valuation has been saved to your history'
+                      : 'Sign in to save valuations and get price alerts'}
+                  </p>
+                  {isAuthenticated ? (
+                    <button className="w-full py-3 border-2 border-naija-500 text-naija-600 rounded-xl font-medium hover:bg-naija-50 transition-colors flex items-center justify-center gap-2">
+                      <Save className="w-4 h-4" />
+                      View History
+                    </button>
+                  ) : (
+                    <button className="w-full py-3 border-2 border-naija-500 text-naija-600 rounded-xl font-medium hover:bg-naija-50 transition-colors">
+                      Sign In to Save
+                    </button>
+                  )}
                 </div>
               </motion.div>
 

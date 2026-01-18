@@ -90,3 +90,12 @@ export const usersAPI = {
   getListings: (id, params) => api.get(`/users/${id}/listings`, { params }),
   getFavorites: () => api.get('/users/me/favorites')
 };
+
+// Valuation endpoints
+export const valuationAPI = {
+  calculate: (data) => api.post('/valuation/calculate', data),
+  getHistory: (limit = 10) => api.get('/valuation/history', { params: { limit } }),
+  getMakes: () => api.get('/valuation/makes'),
+  getModels: (make) => api.get(`/valuation/models/${make}`),
+  getLocations: () => api.get('/valuation/locations')
+};

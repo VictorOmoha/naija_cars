@@ -403,7 +403,7 @@ const CarsPage = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="">Any</option>
-                    {Array.from({ length: 15 }, (_, i) => 2024 - i).map(year => (
+                    {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(year => (
                       <option key={year} value={year}>{year}</option>
                     ))}
                   </select>
@@ -418,7 +418,7 @@ const CarsPage = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="">Any</option>
-                    {Array.from({ length: 15 }, (_, i) => 2024 - i).map(year => (
+                    {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map(year => (
                       <option key={year} value={year}>{year}</option>
                     ))}
                   </select>
@@ -661,12 +661,12 @@ const CarsPage = () => {
             </div>
           ) : null}
 
-          {/* Load More */}
-          {sortedCars.length > 0 && sortedCars.length >= 12 && (
-            <div className="text-center mt-12">
-              <button className="px-8 py-3 border-2 border-green-600 text-green-600 rounded-xl font-medium hover:bg-green-50 transition-colors">
-                Load More Cars
-              </button>
+          {/* Results Summary */}
+          {sortedCars.length > 0 && (
+            <div className="text-center mt-12 p-4 bg-white rounded-lg border border-gray-200">
+              <p className="text-gray-600">
+                Showing <span className="font-bold text-gray-900">{sortedCars.length}</span> results from our database
+              </p>
             </div>
           )}
         </div>

@@ -24,6 +24,20 @@ router.get('/conversations', authenticate, async (req, res, next) => {
 });
 
 /**
+ * @route   GET /api/messages/templates/quick-replies
+ * @desc    Get quick reply templates
+ * @access  Public
+ */
+router.get('/templates/quick-replies', (req, res) => {
+  const templates = messageService.getQuickReplyTemplates();
+
+  res.json({
+    success: true,
+    data: { templates }
+  });
+});
+
+/**
  * @route   GET /api/messages/:conversationId
  * @desc    Get messages for a conversation
  * @access  Private
@@ -35,8 +49,8 @@ router.get('/:conversationId', authenticate, async (req, res, next) => {
     const result = await messageService.getConversationMessages(
       req.params.conversationId,
       req.user.id,
-      parseInt(page),
-      parseInt(limit)
+      parseInt(page, 10),
+      parseInt(limit, 10)
     );
 
     res.json({
@@ -123,20 +137,6 @@ router.put('/:conversationId/read', authenticate, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-
-/**
- * @route   GET /api/messages/templates/quick-replies
- * @desc    Get quick reply templates
- * @access  Public
- */
-router.get('/templates/quick-replies', (req, res) => {
-  const templates = messageService.getQuickReplyTemplates();
-
-  res.json({
-    success: true,
-    data: { templates }
-  });
 });
 
 module.exports = router;

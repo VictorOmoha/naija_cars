@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -35,10 +35,13 @@ export default function DashboardPage() {
     enabled: isAuthenticated,
   });
 
-  if (!isAuthenticated) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!isAuthenticated) return null;
 
   const listings = listingsData?.data?.listings || [];
   const favoritesCount = favoritesData?.data?.favorites?.length || 0;

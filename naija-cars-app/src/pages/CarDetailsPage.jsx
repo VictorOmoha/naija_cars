@@ -1,9 +1,17 @@
-import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { listingsAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
+import { useApp } from '../context/AppContext';
 
 export default function CarDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+  const { setIsSignInOpen } = useApp();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['listing', id],
@@ -40,13 +48,42 @@ export default function CarDetailsPage() {
       <div className="container-custom">
         <div className="bg-white rounded-2xl shadow-card overflow-hidden">
           {/* Image Gallery */}
-          <div className="aspect-video bg-charcoal-200">
+          <div className="relative aspect-video bg-charcoal-200">
             {car.media && car.media.length > 0 ? (
-              <img
-                src={car.media[0].url}
-                alt={`${car.make} ${car.model}`}
-                className="w-full h-full object-cover"
-              />
+              <>
+                <img
+                  src={car.media[currentImageIndex]?.url}
+                  alt={`${car.make} ${car.model} - Photo ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {car.media.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setCurrentImageIndex(i => i === 0 ? car.media.length - 1 : i - 1)}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentImageIndex(i => i === car.media.length - 1 ? 0 : i + 1)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                      {car.media.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                            idx === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-charcoal-400">
                 No image available
@@ -142,7 +179,16 @@ export default function CarDetailsPage() {
                     )}
                   </div>
                 </div>
-                <button className="mt-6 w-full md:w-auto px-8 py-3 bg-naija-500 text-white rounded-lg hover:bg-naija-600 transition-colors">
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setIsSignInOpen(true);
+                      return;
+                    }
+                    navigate(`/messages?sellerId=${car.seller.id}&listingId=${car.id}`);
+                  }}
+                  className="mt-6 w-full md:w-auto px-8 py-3 bg-naija-500 text-white rounded-lg hover:bg-naija-600 transition-colors"
+                >
                   Contact Seller
                 </button>
               </div>

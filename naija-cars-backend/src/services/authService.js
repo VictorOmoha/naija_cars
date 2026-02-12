@@ -1,10 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient({
-  log: ['error', 'warn'],
-});
+const prisma = require('../lib/prisma');
 
 class AuthService {
   /**
@@ -27,7 +23,7 @@ class AuthService {
     }
 
     // Validate user type
-    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER', 'ADMIN'];
+    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER'];
     if (!validTypes.includes(userType)) {
       throw new Error('Invalid user type');
     }

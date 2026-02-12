@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -11,7 +11,7 @@ import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout, updateProfile } = useAuthStore();
+  const { user, isAuthenticated, logout, updateUser } = useAuthStore();
   const { addToast } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
@@ -32,10 +32,13 @@ export default function ProfilePage() {
     }
   });
 
-  if (!isAuthenticated) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!isAuthenticated) return null;
 
   const tabs = [
     { id: 'profile', label: 'My Profile', icon: User },
@@ -67,7 +70,7 @@ export default function ProfilePage() {
 
   const onSubmit = async (data) => {
     try {
-      await updateProfile(data);
+      await updateUser(data);
       addToast('Profile updated successfully!', 'success');
       setIsEditing(false);
     } catch (error) {

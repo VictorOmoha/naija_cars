@@ -1,11 +1,10 @@
 const express = require('express');
 const { authenticate, requireVerified } = require('../middleware/auth');
-const { uploadMultiple, uploadSingle } = require('../middleware/upload');
+const { uploadMultiple } = require('../middleware/upload');
 const mediaService = require('../services/mediaService');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 /**
  * @route   POST /api/media/upload
@@ -54,38 +53,32 @@ router.post('/upload',
         });
       }
 
-      // Check existing media count
-      const existingMediaCount = await prisma.media.count({
-        where: { listingId }
-      });
+      // Check existing media count by type
+      const [existingPhotoCount, existingVideoCount] = await Promise.all([
+        prisma.media.count({ where: { listingId, mediaType: 'PHOTO' } }),
+        prisma.media.count({ where: { listingId, mediaType: 'VIDEO' } })
+      ]);
 
-      const photoCount = files.filter(f => f.mimetype.startsWith('image/')).length;
-      const videoCount = files.filter(f => f.mimetype.startsWith('video/')).length;
+      const newPhotoCount = files.filter(f => f.mimetype.startsWith('image/')).length;
+      const newVideoCount = files.filter(f => f.mimetype.startsWith('video/')).length;
 
-      if (existingMediaCount + files.length > 23) {
+      if (existingPhotoCount + newPhotoCount > 20) {
         return res.status(400).json({
           success: false,
-          error: { message: 'Maximum 20 photos and 3 videos allowed per listing' }
+          error: { message: `Maximum 20 photos allowed. You have ${existingPhotoCount} and are uploading ${newPhotoCount}.` }
         });
       }
 
-      if (existingMediaCount + photoCount > 20) {
+      if (existingVideoCount + newVideoCount > 3) {
         return res.status(400).json({
           success: false,
-          error: { message: 'Maximum 20 photos allowed per listing' }
-        });
-      }
-
-      if (existingMediaCount + videoCount > 3) {
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Maximum 3 videos allowed per listing' }
+          error: { message: `Maximum 3 videos allowed. You have ${existingVideoCount} and are uploading ${newVideoCount}.` }
         });
       }
 
       // Upload files
       const uploadedMedia = [];
-      let displayOrder = existingMediaCount;
+      let displayOrder = existingPhotoCount + existingVideoCount;
 
       for (const file of files) {
         try {

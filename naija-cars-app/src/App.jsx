@@ -105,6 +105,19 @@ function App() {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/help" element={<HelpPage />} />
+
+            {/* 404 Catch-all */}
+            <Route path="*" element={
+              <div className="min-h-screen flex items-center justify-center pt-24">
+                <div className="text-center">
+                  <h1 className="text-6xl font-display font-bold text-charcoal-300 mb-4">404</h1>
+                  <p className="text-xl text-charcoal-500 mb-8">Page not found</p>
+                  <a href="/" className="px-6 py-3 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors">
+                    Go Home
+                  </a>
+                </div>
+              </div>
+            } />
           </Routes>
         </main>
 

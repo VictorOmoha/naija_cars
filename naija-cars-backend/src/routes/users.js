@@ -1,47 +1,42 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireVerified } = require('../middleware/auth');
+const prisma = require('../lib/prisma');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 /**
- * @route   GET /api/users/:id
- * @desc    Get user profile by ID
- * @access  Public
+ * @route   GET /api/users/me/favorites
+ * @desc    Get user's favorite listings
+ * @access  Private
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/me/favorites', authenticate, async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
+    const favorites = await prisma.favorite.findMany({
+      where: { userId: req.user.id },
       include: {
-        profile: true,
-        _count: {
-          select: {
-            listings: {
-              where: { status: 'ACTIVE' }
+        listing: {
+          include: {
+            media: {
+              orderBy: { displayOrder: 'asc' },
+              take: 1
+            },
+            seller: {
+              include: {
+                profile: true
+              }
             }
           }
         }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          message: 'User not found'
-        }
-      });
-    }
-
-    // Remove sensitive data
-    delete user.passwordHash;
 
     res.json({
       success: true,
-      data: { user }
+      data: {
+        favorites: favorites.map(f => f.listing)
+      }
     });
   } catch (error) {
     next(error);
@@ -112,6 +107,48 @@ router.put('/profile',
 );
 
 /**
+ * @route   GET /api/users/:id
+ * @desc    Get user profile by ID
+ * @access  Public
+ */
+router.get('/:id', async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: {
+        profile: true,
+        _count: {
+          select: {
+            listings: {
+              where: { status: 'ACTIVE' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'User not found'
+        }
+      });
+    }
+
+    // Remove sensitive data
+    delete user.passwordHash;
+
+    res.json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/users/:id/listings
  * @desc    Get user's active listings
  * @access  Public
@@ -119,7 +156,7 @@ router.put('/profile',
 router.get('/:id/listings', async (req, res, next) => {
   try {
     const { page = 1, limit = 12, type } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
     const where = {
       sellerId: req.params.id,
@@ -142,7 +179,7 @@ router.get('/:id/listings', async (req, res, next) => {
           }
         },
         skip,
-        take: parseInt(limit),
+        take: parseInt(limit, 10),
         orderBy: { createdAt: 'desc' }
       }),
       prisma.carListing.count({ where })
@@ -154,48 +191,10 @@ router.get('/:id/listings', async (req, res, next) => {
         listings,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit))
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          pages: Math.ceil(total / parseInt(limit, 10))
         }
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @route   GET /api/users/me/favorites
- * @desc    Get user's favorite listings
- * @access  Private
- */
-router.get('/me/favorites', authenticate, async (req, res, next) => {
-  try {
-    const favorites = await prisma.favorite.findMany({
-      where: { userId: req.user.id },
-      include: {
-        listing: {
-          include: {
-            media: {
-              orderBy: { displayOrder: 'asc' },
-              take: 1
-            },
-            seller: {
-              include: {
-                profile: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        favorites: favorites.map(f => f.listing)
       }
     });
   } catch (error) {

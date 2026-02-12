@@ -1,17 +1,16 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireVerified, optionalAuth } = require('../middleware/auth');
+const prisma = require('../lib/prisma');
+const { authenticate, requireVerified } = require('../middleware/auth');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
  * @access  Public
  */
-router.get('/', optionalAuth, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -41,11 +40,19 @@ router.get('/', optionalAuth, async (req, res, next) => {
       ...(state && { locationState: state }),
       ...(condition && { condition: condition.toUpperCase() }),
       ...(transmission && { transmission }),
-      ...(fuelType && { fuelType: fuelType }),
-      ...(minPrice && { price: { gte: parseFloat(minPrice) } }),
-      ...(maxPrice && { price: { lte: parseFloat(maxPrice) } }),
-      ...(minYear && { year: { gte: parseInt(minYear) } }),
-      ...(maxYear && { year: { lte: parseInt(maxYear) } }),
+      ...(fuelType && { fuelType }),
+      ...((minPrice || maxPrice) && {
+        price: {
+          ...(minPrice && { gte: parseFloat(minPrice) }),
+          ...(maxPrice && { lte: parseFloat(maxPrice) })
+        }
+      }),
+      ...((minYear || maxYear) && {
+        year: {
+          ...(minYear && { gte: parseInt(minYear, 10) }),
+          ...(maxYear && { lte: parseInt(maxYear, 10) })
+        }
+      }),
       ...(search && {
         OR: [
           { make: { contains: search, mode: 'insensitive' } },
@@ -108,7 +115,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
  * @desc    Get single listing by ID
  * @access  Public
  */
-router.get('/:id', optionalAuth, async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const listing = await prisma.carListing.findUnique({
       where: { id: req.params.id },
@@ -182,9 +189,21 @@ router.post('/',
         });
       }
 
+      const {
+        listingType, make, model, year, trim, mileage, transmission,
+        fuelType, condition, price, locationState, locationCity,
+        vinNumber, description
+      } = req.body;
+
       const listing = await prisma.carListing.create({
         data: {
-          ...req.body,
+          listingType, make, model,
+          year: parseInt(year, 10),
+          trim, mileage: mileage ? parseInt(mileage, 10) : null,
+          transmission, fuelType, condition,
+          price: parseFloat(price),
+          locationState, locationCity,
+          vinNumber, description,
           sellerId: req.user.id
         },
         include: {
@@ -233,9 +252,24 @@ router.put('/:id', authenticate, async (req, res, next) => {
       });
     }
 
+    const allowedFields = [
+      'listingType', 'make', 'model', 'year', 'trim', 'mileage',
+      'transmission', 'fuelType', 'condition', 'price',
+      'locationState', 'locationCity', 'vinNumber', 'description'
+    ];
+    const updateData = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+    if (updateData.year) updateData.year = parseInt(updateData.year, 10);
+    if (updateData.mileage) updateData.mileage = parseInt(updateData.mileage, 10);
+    if (updateData.price) updateData.price = parseFloat(updateData.price);
+
     const listing = await prisma.carListing.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: updateData,
       include: {
         media: true,
         seller: {

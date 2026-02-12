@@ -3,11 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const app = require('./app');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-});
+const prisma = require('./lib/prisma');
 
 const PORT = process.env.PORT || 5000;
 
@@ -20,10 +16,18 @@ async function startServer() {
     // Create HTTP server
     const server = http.createServer(app);
 
-    // Initialize Socket.IO
+    // Initialize Socket.IO with same CORS origins as HTTP
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      process.env.CLIENT_URL,
+      'https://www.naijacars.online',
+      'https://naijacars.online'
+    ].filter(Boolean);
+
     const io = new Server(server, {
       cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        origin: allowedOrigins,
         credentials: true
       }
     });
@@ -52,10 +56,11 @@ async function startServer() {
       // Join user to their personal room
       socket.join(socket.userId);
 
-      // Join conversation room
+      // Join conversation room (verify user is a participant)
       socket.on('join-conversation', (conversationId) => {
-        socket.join(conversationId);
-        console.log(`User ${socket.userId} joined conversation ${conversationId}`);
+        if (typeof conversationId === 'string' && conversationId.includes(socket.userId)) {
+          socket.join(conversationId);
+        }
       });
 
       // Leave conversation room

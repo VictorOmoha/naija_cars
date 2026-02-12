@@ -1,8 +1,6 @@
 const sharp = require('sharp');
 const cloudinary = require('../config/cloudinary');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 class MediaService {
   /**

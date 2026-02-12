@@ -24,6 +24,21 @@ api.interceptors.request.use(
   }
 );
 
+// Token refresh mutex to prevent race conditions
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Response interceptor - Handle token refresh
 api.interceptors.response.use(
   (response) => response,
@@ -32,7 +47,18 @@ api.interceptors.response.use(
 
     // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         // Try to refresh the access token
@@ -42,17 +68,24 @@ api.interceptors.response.use(
           { withCredentials: true }
         );
 
+        const newToken = data.data.accessToken;
+
         // Store new access token
-        localStorage.setItem('accessToken', data.data.accessToken);
+        localStorage.setItem('accessToken', newToken);
+
+        // Process queued requests
+        processQueue(null, newToken);
 
         // Retry original request with new token
-        originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
+        // Refresh failed, clear tokens
+        processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
-        window.location.href = '/';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -89,4 +122,20 @@ export const usersAPI = {
   updateProfile: (data) => api.put('/users/profile', data),
   getListings: (id, params) => api.get(`/users/${id}/listings`, { params }),
   getFavorites: () => api.get('/users/me/favorites')
+};
+
+// Admin endpoints
+export const adminAPI = {
+  getStats: () => api.get('/admin/stats'),
+  getRecentListings: () => api.get('/admin/listings/recent'),
+  getRecentUsers: () => api.get('/admin/users/recent'),
+  getUsers: (params) => api.get('/admin/users', { params }),
+  getListings: (params) => api.get('/admin/listings', { params }),
+  verifyUser: (id) => api.patch(`/admin/users/${id}/verify`),
+  toggleUserStatus: (id, isActive) => api.patch(`/admin/users/${id}/status`, { isActive }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  approveListing: (id) => api.patch(`/admin/listings/${id}/approve`),
+  rejectListing: (id) => api.patch(`/admin/listings/${id}/reject`),
+  toggleFeatured: (id, isFeatured) => api.patch(`/admin/listings/${id}/featured`, { isFeatured }),
+  deleteListing: (id) => api.delete(`/admin/listings/${id}`)
 };

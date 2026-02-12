@@ -84,8 +84,9 @@ export default function EnhancedListCarModal() {
 
       // Complete
       addToast('Listing published successfully!', 'success');
+      const listingId = createdListingId;
       handleClose();
-      window.location.href = `/car/${createdListingId}`;
+      navigate(`/car/${listingId}`);
     }
   };
 

@@ -79,7 +79,7 @@ const AuthModal = () => {
       addToast('Welcome back to Naija Cars!', 'success');
       handleClose();
     } catch (err) {
-      addToast(error || 'Login failed', 'error');
+      addToast(err?.message || 'Login failed', 'error');
     }
   };
 
@@ -115,7 +115,7 @@ const AuthModal = () => {
         addToast('Verification code sent to your phone and email', 'info');
       }, 1000);
     } catch (err) {
-      addToast(error || 'Registration failed', 'error');
+      addToast(err?.message || 'Registration failed', 'error');
     }
   };
 
@@ -131,7 +131,7 @@ const AuthModal = () => {
       addToast('Account verified successfully!', 'success');
       handleClose();
     } catch (err) {
-      addToast(error || 'Invalid verification code', 'error');
+      addToast(err?.message || 'Invalid verification code', 'error');
     }
   };
 

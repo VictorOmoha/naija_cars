@@ -1,90 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart, Trash2, Grid, List, SlidersHorizontal, ArrowUpDown,
-  Car, MapPin, Gauge, Fuel, Settings2, BadgeCheck, Eye, Bell,
-  GitCompare, X, ChevronDown, Share2, ExternalLink
+  Heart, Trash2, Grid, List, MapPin, Gauge, Fuel, Settings2,
+  BadgeCheck, Bell, GitCompare, X, ChevronDown, Share2,
+  ExternalLink, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
-
-// Mock favorites data - in real app would come from API
-const mockFavoritesData = [
-  {
-    id: 1,
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2022,
-    trim: 'XLE V6',
-    price: 18500000,
-    previousPrice: 19500000,
-    mileage: 25000,
-    fuelType: 'Petrol',
-    transmission: 'Automatic',
-    condition: 'Foreign Used',
-    location: { city: 'Lagos', state: 'Lagos' },
-    images: ['https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800'],
-    verified: true,
-    dealer: { name: 'Premium Motors', rating: 4.8 },
-    addedAt: '2024-01-15',
-  },
-  {
-    id: 2,
-    make: 'Mercedes-Benz',
-    model: 'C300',
-    year: 2021,
-    trim: '4MATIC',
-    price: 35000000,
-    mileage: 18000,
-    fuelType: 'Petrol',
-    transmission: 'Automatic',
-    condition: 'Foreign Used',
-    location: { city: 'Abuja', state: 'FCT' },
-    images: ['https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800'],
-    verified: true,
-    dealer: { name: 'Elite Auto', rating: 4.9 },
-    addedAt: '2024-01-14',
-  },
-  {
-    id: 3,
-    make: 'Honda',
-    model: 'Accord',
-    year: 2023,
-    trim: 'Sport',
-    price: 22000000,
-    mileage: 5000,
-    fuelType: 'Petrol',
-    transmission: 'Automatic',
-    condition: 'Brand New',
-    location: { city: 'Port Harcourt', state: 'Rivers' },
-    images: ['https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=800'],
-    verified: true,
-    dealer: { name: 'Honda Nigeria', rating: 5.0 },
-    addedAt: '2024-01-10',
-  },
-  {
-    id: 4,
-    make: 'BMW',
-    model: 'X5',
-    year: 2020,
-    trim: 'xDrive40i',
-    price: 42000000,
-    previousPrice: 45000000,
-    mileage: 35000,
-    fuelType: 'Petrol',
-    transmission: 'Automatic',
-    condition: 'Foreign Used',
-    location: { city: 'Lagos', state: 'Lagos' },
-    images: ['https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800'],
-    verified: false,
-    dealer: { name: 'Luxury Wheels', rating: 4.7 },
-    addedAt: '2024-01-08',
-  },
-];
+import { usersAPI, listingsAPI } from '../services/api';
 
 export default function FavoritesPage() {
-  const { favorites, toggleFavorite, openQuickView, addToast } = useApp();
+  const { addToast } = useApp();
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
@@ -95,8 +23,31 @@ export default function FavoritesPage() {
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [priceAlerts, setPriceAlerts] = useState({});
 
-  // In real app, fetch favorites from API based on favorites array
-  const favoritesData = mockFavoritesData.filter(car => favorites.includes(car.id));
+  // Fetch favorites from API
+  const { data: favoritesResponse, isLoading, refetch } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => usersAPI.getFavorites(),
+    enabled: isAuthenticated,
+  });
+
+  const favoritesData = (favoritesResponse?.data?.data?.favorites || []).map(listing => ({
+    id: listing.id,
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    trim: listing.trim || '',
+    price: parseFloat(listing.price),
+    mileage: listing.mileage || 0,
+    fuelType: listing.fuelType,
+    transmission: listing.transmission,
+    condition: listing.condition,
+    locationCity: listing.locationCity,
+    locationState: listing.locationState,
+    image: listing.media?.[0]?.url || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600',
+    verified: listing.seller?.profile?.verificationBadge || false,
+    dealerName: listing.seller?.profile?.businessName || listing.seller?.profile?.firstName || 'Private Seller',
+    createdAt: listing.createdAt,
+  }));
 
   const sortedFavorites = useMemo(() => {
     let sorted = [...favoritesData];
@@ -108,7 +59,7 @@ export default function FavoritesPage() {
         sorted.sort((a, b) => b.price - a.price);
         break;
       case 'recent':
-        sorted.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+        sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       case 'year':
         sorted.sort((a, b) => b.year - a.year);
@@ -126,10 +77,15 @@ export default function FavoritesPage() {
     return `₦${price.toLocaleString()}`;
   };
 
-  const handleRemove = (carId, e) => {
+  const handleRemove = async (carId, e) => {
     e.stopPropagation();
-    toggleFavorite(carId);
-    addToast('Removed from favorites', 'success');
+    try {
+      await listingsAPI.toggleFavorite(carId);
+      addToast('Removed from favorites', 'success');
+      refetch();
+    } catch (error) {
+      addToast('Failed to remove favorite', 'error');
+    }
   };
 
   const handleCompareToggle = (car, e) => {
@@ -168,6 +124,35 @@ export default function FavoritesPage() {
       addToast('Link copied to clipboard', 'success');
     }
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
+        <div className="bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 py-12 relative overflow-hidden">
+          <div className="absolute inset-0 kente-overlay opacity-10" />
+          <div className="section-container relative">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl">
+                <Heart className="w-8 h-8 text-white fill-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold text-white">
+                  My Favorites
+                </h1>
+                <p className="text-white/80 mt-1">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="section-container py-8">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-naija-500 animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
@@ -327,18 +312,11 @@ export default function FavoritesPage() {
                       {/* Image */}
                       <div className="relative h-52 overflow-hidden">
                         <img
-                          src={car.images[0]}
+                          src={car.image}
                           alt={`${car.make} ${car.model}`}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-
-                        {/* Price Drop Badge */}
-                        {car.previousPrice && (
-                          <div className="absolute top-4 left-4 px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg">
-                            Price Drop!
-                          </div>
-                        )}
 
                         {/* Action Buttons */}
                         <div className="absolute top-4 right-4 flex gap-2">
@@ -414,7 +392,7 @@ export default function FavoritesPage() {
 
                         <div className="flex items-center gap-2 text-charcoal-500 text-sm mb-4">
                           <MapPin className="w-4 h-4" />
-                          {car.location.city}, {car.location.state}
+                          {car.locationCity}, {car.locationState}
                         </div>
 
                         <div className="border-t border-pearl-200 pt-4 flex items-center justify-between">
@@ -422,11 +400,6 @@ export default function FavoritesPage() {
                             <div className="text-2xl font-display font-bold text-naija-500">
                               {formatPrice(car.price)}
                             </div>
-                            {car.previousPrice && (
-                              <div className="text-sm text-charcoal-400 line-through">
-                                {formatPrice(car.previousPrice)}
-                              </div>
-                            )}
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -469,15 +442,10 @@ export default function FavoritesPage() {
                       {/* Image */}
                       <div className="md:w-72 h-48 md:h-auto relative overflow-hidden flex-shrink-0">
                         <img
-                          src={car.images[0]}
+                          src={car.image}
                           alt={`${car.make} ${car.model}`}
                           className="w-full h-full object-cover"
                         />
-                        {car.previousPrice && (
-                          <div className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
-                            -{Math.round((1 - car.price / car.previousPrice) * 100)}%
-                          </div>
-                        )}
                         <button
                           onClick={(e) => handleCompareToggle(car, e)}
                           className={`absolute bottom-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
@@ -536,7 +504,7 @@ export default function FavoritesPage() {
                             </span>
                             <span className="flex items-center gap-1.5">
                               <MapPin className="w-4 h-4 text-naija-400" />
-                              {car.location.city}, {car.location.state}
+                              {car.locationCity}, {car.locationState}
                             </span>
                           </div>
                         </div>
@@ -546,16 +514,11 @@ export default function FavoritesPage() {
                             <div className="text-2xl font-display font-bold text-naija-500">
                               {formatPrice(car.price)}
                             </div>
-                            {car.previousPrice && (
-                              <div className="text-sm text-charcoal-400 line-through">
-                                Was {formatPrice(car.previousPrice)}
-                              </div>
-                            )}
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="text-right mr-4">
                               <p className="text-sm text-charcoal-500">Listed by</p>
-                              <p className="font-medium text-charcoal-700">{car.dealer.name}</p>
+                              <p className="font-medium text-charcoal-700">{car.dealerName}</p>
                             </div>
                             <button
                               onClick={(e) => {
@@ -617,7 +580,7 @@ export default function FavoritesPage() {
                   {compareList.map((car) => (
                     <div key={car.id} className="text-center">
                       <img
-                        src={car.images[0]}
+                        src={car.image}
                         alt={`${car.make} ${car.model}`}
                         className="w-full h-40 object-cover rounded-xl mb-3"
                       />
@@ -654,19 +617,15 @@ export default function FavoritesPage() {
                   <div className="font-medium text-charcoal-500 pt-4 border-t">Location</div>
                   {compareList.map((car) => (
                     <div key={car.id} className="text-center pt-4 border-t text-charcoal-700">
-                      {car.location.city}, {car.location.state}
+                      {car.locationCity}, {car.locationState}
                     </div>
                   ))}
 
                   {/* Dealer Row */}
-                  <div className="font-medium text-charcoal-500 pt-4 border-t">Dealer</div>
+                  <div className="font-medium text-charcoal-500 pt-4 border-t">Seller</div>
                   {compareList.map((car) => (
                     <div key={car.id} className="text-center pt-4 border-t">
-                      <p className="text-charcoal-700">{car.dealer.name}</p>
-                      <div className="flex items-center justify-center gap-1 text-sm">
-                        <span className="text-gold-500">★</span>
-                        <span className="text-charcoal-500">{car.dealer.rating}</span>
-                      </div>
+                      <p className="text-charcoal-700">{car.dealerName}</p>
                     </div>
                   ))}
 

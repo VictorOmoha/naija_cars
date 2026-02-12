@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Car, Camera, DollarSign, FileText, Shield, CheckCircle,
   ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus
 } from 'lucide-react';
+import api from '../services/api';
+import { useApp } from '../context/AppContext';
 
 const SellCarPage = () => {
+  const navigate = useNavigate();
+  const { addToast } = useApp();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState([]);
   const [formData, setFormData] = useState({
     // Basic Info
@@ -101,11 +106,43 @@ const SellCarPage = () => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', { formData, images });
-    alert('Your listing has been submitted for review!');
+    setIsSubmitting(true);
+
+    try {
+      // Create the listing
+      const response = await api.post('/listings', {
+        ...formData,
+        price: parseFloat(formData.price),
+        year: parseInt(formData.year),
+        mileage: formData.mileage ? parseInt(formData.mileage) : null,
+      });
+
+      const listing = response.data.data.listing;
+
+      // Upload images if any were selected
+      if (images.length > 0) {
+        const mediaFormData = new FormData();
+        mediaFormData.append('listingId', listing.id);
+        images.forEach((img) => {
+          mediaFormData.append('files', img.file);
+        });
+
+        await api.post('/media/upload', mediaFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
+      addToast('Your listing has been submitted successfully!', 'success');
+      navigate(`/car/${listing.id}`);
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message || 'Failed to submit listing. Please try again.';
+      addToast(message, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -160,7 +197,7 @@ const SellCarPage = () => {
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
                 >
                   <option value="">Select Year</option>
-                  {Array.from({ length: 30 }, (_, i) => 2024 - i).map(year => (
+                  {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -708,10 +745,11 @@ const SellCarPage = () => {
                   ) : (
                     <button
                       type="submit"
-                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2"
+                      disabled={isSubmitting}
+                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Submit Listing
-                      <ArrowRight className="w-5 h-5" />
+                      {isSubmitting ? 'Submitting...' : 'Submit Listing'}
+                      {!isSubmitting && <ArrowRight className="w-5 h-5" />}
                     </button>
                   )}
                 </div>

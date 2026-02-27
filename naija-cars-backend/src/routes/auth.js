@@ -243,4 +243,69 @@ router.post('/verify-otp',
   }
 );
 
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset
+ * @access  Public
+ */
+router.post('/forgot-password',
+  [
+    body('email')
+      .isEmail().withMessage('Please provide a valid email')
+      .normalizeEmail()
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: errors.array() }
+        });
+      }
+
+      const result = await authService.requestPasswordReset(req.body.email);
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password with code
+ * @access  Public
+ */
+router.post('/reset-password',
+  [
+    body('email')
+      .isEmail().withMessage('Please provide a valid email')
+      .normalizeEmail(),
+    body('code')
+      .isLength({ min: 6, max: 6 }).withMessage('Reset code must be 6 digits')
+      .isNumeric().withMessage('Reset code must contain only numbers'),
+    body('newPassword')
+      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: errors.array() }
+        });
+      }
+
+      const { email, code, newPassword } = req.body;
+      const result = await authService.resetPassword(email, code, newPassword);
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 module.exports = router;

@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound, ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import useAuthStore from '../../stores/authStore';
+import { authAPI } from '../../services/api';
 
 const AuthModal = () => {
   const { isSignInOpen, setIsSignInOpen, addToast } = useApp();
   const { login, register, verifyOTP, sendOTP, isLoading, error, clearError } = useAuthStore();
 
-  const [mode, setMode] = useState('login'); // 'login', 'register', 'verify-otp'
+  const [mode, setMode] = useState('login'); // 'login', 'register', 'verify-otp', 'forgot-password', 'reset-password'
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const [step, setStep] = useState(1); // For multi-step registration
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,6 +51,9 @@ const AuthModal = () => {
     }
   ];
 
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
   const handleClose = () => {
     setIsSignInOpen(false);
     setMode('login');
@@ -61,6 +67,9 @@ const AuthModal = () => {
       lastName: '',
     });
     setOtpCode('');
+    setResetEmail('');
+    setResetCode('');
+    setNewPassword('');
     clearError();
   };
 
@@ -141,6 +150,53 @@ const AuthModal = () => {
       addToast('New verification code sent', 'success');
     } catch (err) {
       addToast('Failed to resend code', 'error');
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      addToast('Please enter your email', 'error');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await authAPI.forgotPassword(resetEmail);
+      addToast('Reset code sent! Check your email.', 'success');
+      setMode('reset-password');
+    } catch (err) {
+      addToast(err?.response?.data?.error?.message || 'Failed to send reset code', 'error');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (resetCode.length !== 6) {
+      addToast('Please enter the 6-digit code', 'error');
+      return;
+    }
+    if (newPassword.length < 8) {
+      addToast('Password must be at least 8 characters', 'error');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      addToast('Password must contain uppercase, lowercase, and number', 'error');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await authAPI.resetPassword({ email: resetEmail, code: resetCode, newPassword });
+      addToast('Password reset successful! You can now sign in.', 'success');
+      setMode('login');
+      setResetEmail('');
+      setResetCode('');
+      setNewPassword('');
+    } catch (err) {
+      addToast(err?.response?.data?.error?.message || 'Failed to reset password', 'error');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -260,13 +316,165 @@ const AuthModal = () => {
                     {isLoading ? 'Signing in...' : 'Sign In'}
                   </button>
 
-                  <div className="text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setMode('forgot-password'); setResetEmail(formData.email); clearError(); }}
+                      className="text-sm text-charcoal-500 hover:text-naija-600 transition-colors"
+                    >
+                      Forgot your password?
+                    </button>
                     <button
                       type="button"
                       onClick={switchToRegister}
                       className="text-naija-600 hover:text-naija-700 font-medium transition-colors"
                     >
                       Don't have an account? Sign up
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* FORGOT PASSWORD MODE */}
+            {mode === 'forgot-password' && (
+              <>
+                <div className="p-8 pb-0 text-center">
+                  <div className="w-16 h-16 bg-naija-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <KeyRound className="w-8 h-8 text-naija-600" />
+                  </div>
+                  <h2 className="font-display text-2xl font-semibold text-charcoal-800 mb-2">
+                    Reset Password
+                  </h2>
+                  <p className="text-charcoal-500">
+                    Enter your email and we'll send you a reset code
+                  </p>
+                </div>
+
+                <form onSubmit={handleForgotPassword} className="p-8 space-y-5">
+                  <div>
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        required
+                        className="w-full pl-12 pr-4 py-3 bg-pearl-50 border border-pearl-200
+                                 rounded-xl focus:outline-none focus:ring-2 focus:ring-naija-500
+                                 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="w-full py-3 bg-gradient-to-r from-naija-500 to-naija-600
+                             text-white rounded-xl font-medium hover:shadow-button
+                             transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resetLoading ? 'Sending...' : 'Send Reset Code'}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={switchToLogin}
+                      className="flex items-center gap-1 mx-auto text-naija-600 hover:text-naija-700 font-medium transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back to Sign In
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* RESET PASSWORD MODE */}
+            {mode === 'reset-password' && (
+              <>
+                <div className="p-8 pb-0 text-center">
+                  <div className="w-16 h-16 bg-naija-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-8 h-8 text-naija-600" />
+                  </div>
+                  <h2 className="font-display text-2xl font-semibold text-charcoal-800 mb-2">
+                    Enter New Password
+                  </h2>
+                  <p className="text-charcoal-500">
+                    Enter the code sent to {resetEmail}
+                  </p>
+                </div>
+
+                <form onSubmit={handleResetPassword} className="p-8 space-y-5">
+                  <div>
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider text-center">
+                      Reset Code
+                    </label>
+                    <input
+                      type="text"
+                      value={resetCode}
+                      onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="000000"
+                      maxLength={6}
+                      className="w-full px-4 py-4 text-center text-2xl tracking-widest font-semibold
+                               bg-pearl-50 border border-pearl-200 rounded-xl
+                               focus:outline-none focus:ring-2 focus:ring-naija-500
+                               focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        required
+                        className="w-full pl-12 pr-12 py-3 bg-pearl-50 border border-pearl-200
+                                 rounded-xl focus:outline-none focus:ring-2 focus:ring-naija-500
+                                 focus:border-transparent transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal-400
+                                 hover:text-charcoal-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-charcoal-500">
+                      Must contain uppercase, lowercase, and number
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={resetLoading || resetCode.length !== 6}
+                    className="w-full py-3 bg-gradient-to-r from-naija-500 to-naija-600
+                             text-white rounded-xl font-medium hover:shadow-button
+                             transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resetLoading ? 'Resetting...' : 'Reset Password'}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot-password')}
+                      className="text-naija-600 hover:text-naija-700 font-medium transition-colors"
+                    >
+                      Didn't receive the code? Try again
                     </button>
                   </div>
                 </form>

@@ -24,17 +24,15 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Socket connected');
       this.connected = true;
     });
 
     this.socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
       this.connected = false;
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+    this.socket.on('connect_error', () => {
+      this.connected = false;
     });
 
     return this.socket;

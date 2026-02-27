@@ -11,7 +11,7 @@ import useAuthStore from '../stores/authStore';
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setIsSignInOpen, setIsListCarOpen, favorites, scrollToSection, addToast } = useApp();
+  const { setIsSignInOpen, setIsListCarOpen, scrollToSection, addToast } = useApp();
   const { user, isAuthenticated, logout } = useAuthStore();
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -204,12 +204,6 @@ const Navbar = () => {
                 className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
               >
                 <Heart className="w-5 h-5" />
-                {favorites.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-naija-500 text-white
-                                 text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {favorites.length}
-                  </span>
-                )}
               </motion.div>
             </Link>
 

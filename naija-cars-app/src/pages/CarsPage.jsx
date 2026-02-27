@@ -8,10 +8,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useApp } from '../context/AppContext';
 import { listingsAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
+import CardSkeleton from '../components/CardSkeleton';
 
 const CarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { favorites, toggleFavorite, addToast } = useApp();
+  const { addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
 
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
@@ -171,10 +174,16 @@ const CarsPage = () => {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const isFavorite = (carId) => favorites.includes(carId);
-
-  const handleToggleFavorite = (car) => {
-    toggleFavorite(car.id);
+  const handleToggleFavorite = async (car) => {
+    if (!isAuthenticated) {
+      addToast('Please sign in to save favorites', 'info');
+      return;
+    }
+    try {
+      await listingsAPI.toggleFavorite(car.id);
+    } catch {
+      addToast('Failed to update favorite', 'error');
+    }
   };
 
   const getConditionLabel = (condition) => {
@@ -507,12 +516,7 @@ const CarsPage = () => {
           </div>
 
           {/* Loading State */}
-          {isLoading && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading cars...</p>
-            </div>
-          )}
+          {isLoading && <CardSkeleton count={6} />}
 
           {/* Error State */}
           {error && !isLoading && (
@@ -570,7 +574,7 @@ const CarsPage = () => {
                       onClick={() => handleToggleFavorite(car)}
                       className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                     >
-                      <Heart className={`w-5 h-5 ${isFavorite(car.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                      <Heart className={`w-5 h-5 ${car.isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                     </button>
 
                     {/* Image Count */}

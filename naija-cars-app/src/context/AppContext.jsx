@@ -21,9 +21,6 @@ export const AppProvider = ({ children }) => {
   // Toast notifications
   const [toasts, setToasts] = useState([]);
 
-  // Favorites
-  const [favorites, setFavorites] = useState([]);
-
   // Search state
   const [searchFilters, setSearchFilters] = useState({
     type: 'buy',
@@ -45,20 +42,6 @@ export const AppProvider = ({ children }) => {
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
-
-  // Toggle favorite
-  const toggleFavorite = useCallback((carId) => {
-    setFavorites(prev => {
-      const isFavorite = prev.includes(carId);
-      if (isFavorite) {
-        addToast('Removed from favorites', 'info');
-        return prev.filter(id => id !== carId);
-      } else {
-        addToast('Added to favorites!', 'success');
-        return [...prev, carId];
-      }
-    });
-  }, [addToast]);
 
   // Open Quick View
   const openQuickView = useCallback((car) => {
@@ -107,9 +90,6 @@ export const AppProvider = ({ children }) => {
     toasts,
     addToast,
     removeToast,
-    // Favorites
-    favorites,
-    toggleFavorite,
     // Search
     searchFilters,
     setSearchFilters,

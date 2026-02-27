@@ -6,9 +6,13 @@ import {
   Star, Shield
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { listingsAPI } from '../../services/api';
+import useAuthStore from '../../stores/authStore';
 
 const QuickViewModal = () => {
-  const { isQuickViewOpen, selectedCar, closeQuickView, addToast, favorites, toggleFavorite } = useApp();
+  const { isQuickViewOpen, selectedCar, closeQuickView, addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
+  const [isLiked, setIsLiked] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
 
   if (!selectedCar) return null;
@@ -16,7 +20,6 @@ const QuickViewModal = () => {
   const isSale = selectedCar.type === 'sale';
   const price = isSale ? selectedCar.price : selectedCar.pricePerDay;
   const priceLabel = isSale ? '' : '/day';
-  const isLiked = favorites.includes(selectedCar.id);
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
@@ -125,7 +128,19 @@ const QuickViewModal = () => {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => toggleFavorite(selectedCar.id)}
+                      onClick={async () => {
+                        if (!isAuthenticated) {
+                          addToast('Please sign in to save favorites', 'info');
+                          return;
+                        }
+                        try {
+                          const { data } = await listingsAPI.toggleFavorite(selectedCar.id);
+                          setIsLiked(data.data.isFavorited);
+                          addToast(data.data.isFavorited ? 'Added to favorites!' : 'Removed from favorites', 'info');
+                        } catch {
+                          addToast('Failed to update favorite', 'error');
+                        }
+                      }}
                       className={`p-2.5 rounded-xl transition-colors ${
                         isLiked
                           ? 'bg-naija-500 text-white'

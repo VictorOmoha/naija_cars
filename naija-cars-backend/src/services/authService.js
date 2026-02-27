@@ -215,10 +215,10 @@ class AuthService {
     });
 
     // TODO: Send SMS via Twilio
-    console.log(`📱 SMS OTP for ${phoneNumber}: ${code}`);
-
     // TODO: Send Email via SendGrid
-    console.log(`📧 Email OTP for ${email}: ${code}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] OTP for ${email}: ${code}`);
+    }
 
     return { message: 'OTP sent successfully' };
   }
@@ -255,6 +255,94 @@ class AuthService {
     });
 
     return { message: 'Verification successful' };
+  }
+
+  /**
+   * Request password reset - generates a reset token
+   */
+  async requestPasswordReset(email) {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (!user) {
+      // Return success even if user not found to prevent email enumeration
+      return { message: 'If an account with that email exists, a reset code has been sent.' };
+    }
+
+    // Generate 6-digit reset code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    // Delete any existing reset codes for this user
+    await prisma.verification.deleteMany({
+      where: {
+        userId: user.id,
+        verificationType: 'OTP_EMAIL',
+        isVerified: false
+      }
+    });
+
+    // Save reset code
+    await prisma.verification.create({
+      data: {
+        userId: user.id,
+        verificationType: 'OTP_EMAIL',
+        code,
+        expiresAt
+      }
+    });
+
+    // TODO: Send email with reset code via SendGrid/Nodemailer
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] Password reset code for ${email}: ${code}`);
+    }
+
+    return { message: 'If an account with that email exists, a reset code has been sent.' };
+  }
+
+  /**
+   * Reset password using reset code
+   */
+  async resetPassword(email, code, newPassword) {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (!user) {
+      throw new Error('Invalid reset code');
+    }
+
+    const verification = await prisma.verification.findFirst({
+      where: {
+        userId: user.id,
+        verificationType: 'OTP_EMAIL',
+        code,
+        isVerified: false,
+        expiresAt: { gte: new Date() }
+      }
+    });
+
+    if (!verification) {
+      throw new Error('Invalid or expired reset code');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password and mark verification as used
+    await Promise.all([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash }
+      }),
+      prisma.verification.update({
+        where: { id: verification.id },
+        data: { isVerified: true }
+      })
+    ]);
+
+    return { message: 'Password reset successful. You can now log in with your new password.' };
   }
 }
 

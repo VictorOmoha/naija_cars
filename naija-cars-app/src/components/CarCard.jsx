@@ -5,13 +5,15 @@ import {
   ChevronLeft, ChevronRight, Eye
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { listingsAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
 
 const CarCard = ({ car, index = 0, variant = 'sale' }) => {
-  const { favorites, toggleFavorite, openQuickView } = useApp();
+  const { openQuickView, addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
+  const [isLiked, setIsLiked] = useState(car.isFavorited || false);
   const [currentImage, setCurrentImage] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-
-  const isLiked = favorites.includes(car.id);
 
   const formatPrice = (price) => {
     if (price >= 1000000) {
@@ -24,10 +26,20 @@ const CarCard = ({ car, index = 0, variant = 'sale' }) => {
   const price = isSale ? car.price : car.pricePerDay;
   const priceLabel = isSale ? '' : '/day';
 
-  const handleLikeClick = (e) => {
+  const handleLikeClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleFavorite(car.id);
+    if (!isAuthenticated) {
+      addToast('Please sign in to save favorites', 'info');
+      return;
+    }
+    try {
+      const { data } = await listingsAPI.toggleFavorite(car.id);
+      setIsLiked(data.data.isFavorited);
+      addToast(data.data.isFavorited ? 'Added to favorites!' : 'Removed from favorites', 'info');
+    } catch {
+      addToast('Failed to update favorite', 'error');
+    }
   };
 
   const handleQuickView = (e) => {

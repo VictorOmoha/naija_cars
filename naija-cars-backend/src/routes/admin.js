@@ -1,8 +1,20 @@
 const express = require('express');
+const { body, query, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
 const { authenticate, requireUserType } = require('../middleware/auth');
 
 const router = express.Router();
+
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Validation failed', details: errors.array() }
+    });
+  }
+  next();
+};
 
 // All routes require authentication and admin role
 router.use(authenticate);
@@ -60,12 +72,15 @@ router.get('/stats', async (req, res) => {
       : recentListings > 0 ? 100 : 0;
 
     res.json({
-      totalUsers,
-      activeListings,
-      pendingApproval,
-      totalRevenue: totalSubscriptions._sum.amountPaid || 0,
-      userGrowth: parseFloat(userGrowth),
-      listingGrowth: parseFloat(listingGrowth)
+      success: true,
+      data: {
+        totalUsers,
+        activeListings,
+        pendingApproval,
+        totalRevenue: totalSubscriptions._sum.amountPaid || 0,
+        userGrowth: parseFloat(userGrowth),
+        listingGrowth: parseFloat(listingGrowth)
+      }
     });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
@@ -93,7 +108,7 @@ router.get('/listings/recent', async (req, res) => {
       }
     });
 
-    res.json(listings);
+    res.json({ success: true, data: listings });
   } catch (error) {
     console.error('Error fetching recent listings:', error);
     res.status(500).json({
@@ -127,7 +142,7 @@ router.get('/users/recent', async (req, res) => {
       _count: user._count
     }));
 
-    res.json(sanitizedUsers);
+    res.json({ success: true, data: sanitizedUsers });
   } catch (error) {
     console.error('Error fetching recent users:', error);
     res.status(500).json({
@@ -211,10 +226,13 @@ router.get('/users', async (req, res) => {
     }));
 
     res.json({
-      users: sanitizedUsers,
-      totalPages: Math.ceil(total / parseInt(limit)),
-      currentPage: parseInt(page),
-      total
+      success: true,
+      data: {
+        users: sanitizedUsers,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        currentPage: parseInt(page),
+        total
+      }
     });
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -255,7 +273,10 @@ router.patch('/users/:id/verify', async (req, res) => {
 });
 
 // Toggle user active status
-router.patch('/users/:id/status', async (req, res) => {
+router.patch('/users/:id/status', [
+  body('isActive').isBoolean().withMessage('isActive must be a boolean'),
+  validate
+], async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
@@ -401,10 +422,13 @@ router.get('/listings', async (req, res) => {
     ]);
 
     res.json({
-      listings,
-      totalPages: Math.ceil(total / parseInt(limit)),
-      currentPage: parseInt(page),
-      total
+      success: true,
+      data: {
+        listings,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        currentPage: parseInt(page),
+        total
+      }
     });
   } catch (error) {
     console.error('Error fetching listings:', error);
@@ -464,7 +488,10 @@ router.patch('/listings/:id/reject', async (req, res) => {
 });
 
 // Toggle featured status
-router.patch('/listings/:id/featured', async (req, res) => {
+router.patch('/listings/:id/featured', [
+  body('isFeatured').isBoolean().withMessage('isFeatured must be a boolean'),
+  validate
+], async (req, res) => {
   try {
     const { id } = req.params;
     const { isFeatured } = req.body;
@@ -543,7 +570,25 @@ router.delete('/listings/:id', async (req, res) => {
 });
 
 // Create new listing (admin can create on behalf of any seller or as system listing)
-router.post('/listings', async (req, res) => {
+router.post('/listings', [
+  body('make').isString().isLength({ min: 1, max: 50 }).withMessage('make is required and must be 1-50 characters'),
+  body('model').isString().isLength({ min: 1, max: 50 }).withMessage('model is required and must be 1-50 characters'),
+  body('year').isInt({ min: 1900, max: 2030 }).withMessage('year must be an integer between 1900 and 2030'),
+  body('price').isFloat({ gt: 0 }).withMessage('price must be a number greater than 0'),
+  body('listingType').isIn(['SALE', 'RENT']).withMessage('listingType must be SALE or RENT'),
+  body('condition').isIn(['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW']).withMessage('condition must be FOREIGN_USED, NIGERIAN_USED, or BRAND_NEW'),
+  body('trim').optional().isString().trim(),
+  body('mileage').optional({ values: 'null' }).isInt({ min: 0 }).withMessage('mileage must be a non-negative integer'),
+  body('transmission').optional().isString().trim(),
+  body('fuelType').optional().isString().trim(),
+  body('locationState').optional().isString().trim(),
+  body('locationCity').optional().isString().trim(),
+  body('description').optional().isString().trim(),
+  body('status').optional().isString().trim(),
+  body('isFeatured').optional().isBoolean().withMessage('isFeatured must be a boolean'),
+  body('sellerId').optional().isString().trim(),
+  validate
+], async (req, res) => {
   try {
     const {
       sellerId,
@@ -564,14 +609,6 @@ router.post('/listings', async (req, res) => {
       isFeatured = false,
       images = []
     } = req.body;
-
-    // Validate required fields
-    if (!make || !model || !year || !price || !listingType || !condition) {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'Missing required fields: make, model, year, price, listingType, condition' }
-      });
-    }
 
     // Use admin's ID if no sellerId provided
     const actualSellerId = sellerId || req.user.id;
@@ -633,7 +670,24 @@ router.post('/listings', async (req, res) => {
 });
 
 // Update listing
-router.put('/listings/:id', async (req, res) => {
+router.put('/listings/:id', [
+  body('make').optional().isString().isLength({ min: 1, max: 50 }).withMessage('make must be 1-50 characters'),
+  body('model').optional().isString().isLength({ min: 1, max: 50 }).withMessage('model must be 1-50 characters'),
+  body('year').optional().isInt({ min: 1900, max: 2030 }).withMessage('year must be an integer between 1900 and 2030'),
+  body('price').optional().isFloat({ gt: 0 }).withMessage('price must be a number greater than 0'),
+  body('listingType').optional().isIn(['SALE', 'RENT']).withMessage('listingType must be SALE or RENT'),
+  body('condition').optional().isIn(['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW']).withMessage('condition must be FOREIGN_USED, NIGERIAN_USED, or BRAND_NEW'),
+  body('trim').optional().isString().trim(),
+  body('mileage').optional({ values: 'null' }).isInt({ min: 0 }).withMessage('mileage must be a non-negative integer'),
+  body('transmission').optional().isString().trim(),
+  body('fuelType').optional().isString().trim(),
+  body('locationState').optional().isString().trim(),
+  body('locationCity').optional().isString().trim(),
+  body('description').optional().isString().trim(),
+  body('status').optional().isString().trim(),
+  body('isFeatured').optional().isBoolean().withMessage('isFeatured must be a boolean'),
+  validate
+], async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -831,19 +885,13 @@ router.get('/analytics/overview', async (req, res) => {
 });
 
 // ===== User Role Management =====
-router.patch('/users/:id/role', async (req, res) => {
+router.patch('/users/:id/role', [
+  body('userType').isIn(['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER', 'ADMIN']).withMessage('userType must be one of: INDIVIDUAL_SELLER, DEALER, RENTAL_COMPANY, BUYER, ADMIN'),
+  validate
+], async (req, res) => {
   try {
     const { id } = req.params;
     const { userType } = req.body;
-
-    // Validate user type
-    const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER', 'ADMIN'];
-    if (!validTypes.includes(userType)) {
-      return res.status(400).json({
-        success: false,
-        error: { message: 'Invalid user type' }
-      });
-    }
 
     // Prevent changing own role
     if (id === req.user.id) {
@@ -898,7 +946,7 @@ router.get('/sellers', async (req, res) => {
             seller.email
     }));
 
-    res.json(sanitizedSellers);
+    res.json({ success: true, data: sanitizedSellers });
   } catch (error) {
     console.error('Error fetching sellers:', error);
     res.status(500).json({

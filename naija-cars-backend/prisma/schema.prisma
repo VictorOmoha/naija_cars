@@ -127,6 +127,8 @@ model CarListing {
   @@index([status])
   @@index([listingType])
   @@index([createdAt])
+  @@index([sellerId])
+  @@index([year])
   @@map("car_listings")
 }
 
@@ -143,6 +145,7 @@ model Media {
   listing CarListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
+  @@index([mediaType])
   @@map("media")
 }
 
@@ -182,6 +185,7 @@ model Subscription {
 
   @@index([userId])
   @@index([isActive])
+  @@index([paymentReference])
   @@map("subscriptions")
 }
 
@@ -196,6 +200,7 @@ model Favorite {
 
   @@unique([userId, listingId])
   @@index([userId])
+  @@index([listingId])
   @@map("favorites")
 }
 
@@ -212,5 +217,6 @@ model Verification {
 
   @@index([userId])
   @@index([code])
+  @@index([expiresAt])
   @@map("verifications")
 }

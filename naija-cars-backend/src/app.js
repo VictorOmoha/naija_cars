@@ -36,10 +36,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting - more permissive for production use
+// Rate limiting - general API limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased from 100 to 500 requests per window
+  max: 500,
   message: {
     success: false,
     error: {
@@ -48,14 +48,50 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip rate limiting for health checks
   skip: (req) => req.path === '/api/health' || req.path === '/health',
-  // Ensure CORS headers are sent even on rate-limited responses
   handler: (req, res, next, options) => {
     res.status(options.statusCode).json(options.message);
   }
 });
 app.use('/api/', limiter);
+
+// Strict rate limiting for auth endpoints (brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15, // 15 attempts per window
+  message: {
+    success: false,
+    error: {
+      message: 'Too many authentication attempts. Please try again later.'
+    }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  }
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// Strict rate limiting for OTP endpoints (SMS bombing protection)
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 OTP requests per 15 minutes
+  message: {
+    success: false,
+    error: {
+      message: 'Too many OTP requests. Please try again later.'
+    }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next, options) => {
+    res.status(options.statusCode).json(options.message);
+  }
+});
+app.use('/api/auth/send-otp', otpLimiter);
+app.use('/api/auth/verify-otp', otpLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

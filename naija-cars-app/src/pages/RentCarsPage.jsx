@@ -8,10 +8,13 @@ import {
   ChevronDown, Grid, List, SlidersHorizontal, Building2, Zap
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { listingsAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
 
 const RentCarsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { favorites, toggleFavorite, addToast } = useApp();
+  const { addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
 
   // Get filter values from URL params
   const [filters, setFilters] = useState({
@@ -502,10 +505,16 @@ const RentCarsPage = () => {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const isFavorite = (carId) => favorites.includes(carId);
-
-  const handleToggleFavorite = (car) => {
-    toggleFavorite(car.id);
+  const handleToggleFavorite = async (car) => {
+    if (!isAuthenticated) {
+      addToast('Please sign in to save favorites', 'info');
+      return;
+    }
+    try {
+      await listingsAPI.toggleFavorite(car.id);
+    } catch {
+      addToast('Failed to update favorite', 'error');
+    }
   };
 
   const formatPrice = (price) => {
@@ -994,7 +1003,7 @@ const RentCarsPage = () => {
                       >
                         <Heart
                           className={`w-5 h-5 ${
-                            isFavorite(car.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                            car.isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'
                           }`}
                         />
                       </button>

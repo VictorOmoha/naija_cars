@@ -89,8 +89,8 @@ export default function MessagesPage() {
       setMessageText('');
       refetchMessages();
       refetchConversations();
-    } catch (error) {
-      console.error('Error sending message:', error);
+    } catch {
+      // Message send failed silently - could add toast notification here
     }
   };
 

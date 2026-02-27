@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
+import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
 
 const SellCarPage = () => {
   const navigate = useNavigate();
@@ -49,25 +50,6 @@ const SellCarPage = () => {
     { number: 5, title: 'Review', icon: CheckCircle },
   ];
 
-  const carMakes = [
-    'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai',
-    'Kia', 'Nissan', 'Volkswagen', 'Audi', 'Peugeot', 'Mazda', 'Mitsubishi'
-  ];
-
-  const bodyTypes = [
-    'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Pickup', 'Van', 'Wagon'
-  ];
-
-  const nigerianStates = [
-    'Lagos', 'Abuja', 'Kano', 'Rivers', 'Oyo', 'Kaduna', 'Ogun', 'Edo',
-    'Delta', 'Enugu', 'Anambra', 'Imo', 'Katsina', 'Sokoto', 'Borno'
-  ];
-
-  const features = [
-    'Air Conditioning', 'Power Steering', 'Power Windows', 'Central Locking',
-    'Leather Seats', 'Sunroof', 'Navigation System', 'Bluetooth', 'Backup Camera',
-    'Cruise Control', 'Alloy Wheels', 'Fog Lights', 'Keyless Entry', 'ABS'
-  ];
 
   const benefits = [
     { icon: Users, title: 'Reach Millions', desc: 'Access thousands of verified buyers across Nigeria' },
@@ -166,7 +148,7 @@ const SellCarPage = () => {
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
                 >
                   <option value="">Select Make</option>
-                  {carMakes.map(make => (
+                  {CAR_MAKES.map(make => (
                     <option key={make} value={make}>{make}</option>
                   ))}
                 </select>
@@ -287,7 +269,7 @@ const SellCarPage = () => {
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
                 >
                   <option value="">Select Body Type</option>
-                  {bodyTypes.map(type => (
+                  {BODY_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
@@ -327,7 +309,7 @@ const SellCarPage = () => {
                 Features
               </label>
               <div className="flex flex-wrap gap-2">
-                {features.map(feature => (
+                {CAR_FEATURES.map(feature => (
                   <button
                     key={feature}
                     type="button"
@@ -508,7 +490,7 @@ const SellCarPage = () => {
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
                 >
                   <option value="">Select State</option>
-                  {nigerianStates.map(state => (
+                  {NIGERIAN_STATES.map(state => (
                     <option key={state} value={state}>{state}</option>
                   ))}
                 </select>

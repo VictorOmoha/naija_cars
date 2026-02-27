@@ -138,6 +138,7 @@ router.get('/:id', async (req, res, next) => {
 
     // Remove sensitive data
     delete user.passwordHash;
+    delete user.phoneNumber;
 
     res.json({
       success: true,

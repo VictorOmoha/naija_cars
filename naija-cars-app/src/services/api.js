@@ -103,7 +103,9 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   sendOTP: () => api.post('/auth/send-otp'),
   verifyOTP: (code) => api.post('/auth/verify-otp', { code }),
-  refreshToken: () => api.post('/auth/refresh')
+  refreshToken: () => api.post('/auth/refresh'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // Listings endpoints

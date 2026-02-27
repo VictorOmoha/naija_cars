@@ -230,9 +230,9 @@ export default function AdminDashboard() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(listing.status)}`}>
                     {listing.status}
                   </span>
-                  <button className="p-1 hover:bg-pearl-100 rounded-lg transition-colors">
+                  <Link to={`/admin/listings`} className="p-1 hover:bg-pearl-100 rounded-lg transition-colors">
                     <MoreHorizontal className="w-4 h-4 text-charcoal-400" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -272,9 +272,9 @@ export default function AdminDashboard() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getUserTypeBadge(user.userType)}`}>
                     {user.userType.replace('_', ' ')}
                   </span>
-                  <button className="p-1 hover:bg-pearl-100 rounded-lg transition-colors">
+                  <Link to="/admin/users" className="p-1 hover:bg-pearl-100 rounded-lg transition-colors">
                     <MoreHorizontal className="w-4 h-4 text-charcoal-400" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -313,11 +313,11 @@ export default function AdminDashboard() {
             <span className="text-sm font-medium text-charcoal-700">View Analytics</span>
           </Link>
           <Link
-            to="/admin/reports"
+            to="/admin/settings"
             className="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors group"
           >
             <AlertTriangle className="w-8 h-8 text-purple-600 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium text-charcoal-700">View Reports</span>
+            <span className="text-sm font-medium text-charcoal-700">Settings</span>
           </Link>
         </div>
       </motion.div>

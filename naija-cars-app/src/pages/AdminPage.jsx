@@ -102,7 +102,7 @@ export default function AdminPage() {
 
   const handleApproveListing = async (id) => {
     try {
-      await api.put(`/listings/${id}`, { status: 'ACTIVE' });
+      await api.patch(`/admin/listings/${id}/approve`);
       addToast('Listing approved', 'success');
       refetchListings();
     } catch (error) {
@@ -114,7 +114,7 @@ export default function AdminPage() {
     if (!confirm('Are you sure you want to reject this listing?')) return;
 
     try {
-      await api.put(`/listings/${id}`, { status: 'INACTIVE' });
+      await api.patch(`/admin/listings/${id}/reject`);
       addToast('Listing rejected', 'success');
       refetchListings();
     } catch (error) {

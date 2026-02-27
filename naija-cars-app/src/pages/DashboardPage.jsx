@@ -378,6 +378,7 @@ export default function DashboardPage() {
                             View
                           </button>
                           <button
+                            onClick={() => navigate(`/sell?edit=${listing.id}`)}
                             className="px-4 py-2 bg-naija-100 text-naija-700 rounded-lg
                                      hover:bg-naija-200 transition-colors flex items-center gap-2"
                           >

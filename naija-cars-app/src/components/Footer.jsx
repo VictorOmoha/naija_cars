@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -6,6 +7,16 @@ import {
 } from 'lucide-react';
 
 const Footer = () => {
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return;
+    setSubscribed(true);
+    setEmail('');
+    setTimeout(() => setSubscribed(false), 3000);
+  };
   const footerLinks = {
     'Buy Cars': [
       { name: 'All Cars for Sale', href: '/cars' },
@@ -43,11 +54,11 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Facebook, href: '#', label: 'Facebook' },
-    { icon: Twitter, href: '#', label: 'Twitter' },
-    { icon: Instagram, href: '#', label: 'Instagram' },
-    { icon: Linkedin, href: '#', label: 'LinkedIn' },
-    { icon: Youtube, href: '#', label: 'YouTube' },
+    { icon: Facebook, href: 'https://facebook.com/naijacars', label: 'Facebook' },
+    { icon: Twitter, href: 'https://twitter.com/naijacars', label: 'Twitter' },
+    { icon: Instagram, href: 'https://instagram.com/naijacars', label: 'Instagram' },
+    { icon: Linkedin, href: 'https://linkedin.com/company/naijacars', label: 'LinkedIn' },
+    { icon: Youtube, href: 'https://youtube.com/@naijacars', label: 'YouTube' },
   ];
 
   return (
@@ -71,12 +82,15 @@ const Footer = () => {
               </p>
             </div>
 
-            <form className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <div className="relative flex-1 lg:w-80">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pearl-400" />
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  required
                   className="w-full pl-12 pr-4 py-4 bg-charcoal-700/50 border border-charcoal-600
                            text-white rounded-xl focus:border-naija-400 focus:outline-none
                            transition-colors placeholder:text-pearl-500"
@@ -90,7 +104,7 @@ const Footer = () => {
                          text-white font-semibold rounded-xl shadow-button transition-all duration-300
                          hover:bg-naija-600"
               >
-                Subscribe
+                {subscribed ? 'Subscribed!' : 'Subscribe'}
                 <ArrowRight className="w-5 h-5" />
               </motion.button>
             </form>

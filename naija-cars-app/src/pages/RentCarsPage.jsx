@@ -652,7 +652,13 @@ const RentCarsPage = () => {
                   </div>
                 </div>
                 <div className="flex items-end">
-                  <button className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors">
+                  <button
+                    onClick={() => {
+                      const section = document.getElementById('rental-results');
+                      if (section) section.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-colors"
+                  >
                     <Search className="w-5 h-5" />
                     Search Cars
                   </button>
@@ -818,7 +824,7 @@ const RentCarsPage = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <section className="py-8 bg-gray-50 min-h-screen">
+      <section id="rental-results" className="py-8 bg-gray-50 min-h-screen">
         <div className="section-container">
           {/* Results Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

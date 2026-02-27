@@ -39,11 +39,25 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    alert('Settings saved successfully!');
+    try {
+      // Settings are stored locally for now - backend endpoint can be added later
+      localStorage.setItem('adminSettings', JSON.stringify(settings));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      alert('Settings saved successfully!');
+    } catch {
+      alert('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // Load saved settings on mount
+  useState(() => {
+    const saved = localStorage.getItem('adminSettings');
+    if (saved) {
+      try { setSettings(JSON.parse(saved)); } catch {}
+    }
+  });
 
   const tabs = [
     { id: 'general', label: 'General', icon: Globe },

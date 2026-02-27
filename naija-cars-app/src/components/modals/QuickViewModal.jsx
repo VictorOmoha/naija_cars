@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Heart, Share2, MapPin, Gauge, Fuel, Settings2,
@@ -10,8 +11,9 @@ import { listingsAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 
 const QuickViewModal = () => {
-  const { isQuickViewOpen, selectedCar, closeQuickView, addToast } = useApp();
+  const { isQuickViewOpen, selectedCar, closeQuickView, addToast, setIsSignInOpen } = useApp();
   const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
 
@@ -29,8 +31,22 @@ const QuickViewModal = () => {
   };
 
   const handleContact = (method) => {
-    const seller = selectedCar.dealer?.name || selectedCar.company?.name;
-    addToast(`Contacting ${seller} via ${method}...`, 'info');
+    if (!isAuthenticated) {
+      closeQuickView();
+      setIsSignInOpen(true);
+      return;
+    }
+    if (method === 'phone') {
+      const phone = selectedCar.dealer?.phone || selectedCar.company?.phone || selectedCar.seller?.phoneNumber;
+      if (phone) {
+        window.open(`tel:${phone}`, '_self');
+      } else {
+        addToast('Phone number not available', 'info');
+      }
+    } else {
+      closeQuickView();
+      navigate(`/messages?sellerId=${selectedCar.sellerId || selectedCar.seller?.id}&listingId=${selectedCar.id}`);
+    }
   };
 
   const handleShare = () => {

@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Car, Settings, LogOut, Menu, X,
-  ChevronDown, Bell, Shield, BarChart3, MessageSquare,
-  FileText, CreditCard, Tag, ChevronRight
+  ChevronDown, Bell, Shield, BarChart3, ChevronRight
 } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 
@@ -33,21 +32,6 @@ const navItems = [
     name: 'Analytics',
     href: '/admin/analytics',
     icon: BarChart3,
-  },
-  {
-    name: 'Messages',
-    href: '/admin/messages',
-    icon: MessageSquare,
-  },
-  {
-    name: 'Subscriptions',
-    href: '/admin/subscriptions',
-    icon: CreditCard,
-  },
-  {
-    name: 'Reports',
-    href: '/admin/reports',
-    icon: FileText,
   },
   {
     name: 'Settings',
@@ -167,10 +151,10 @@ export default function AdminLayout() {
             <Shield className="w-6 h-6 text-naija-500" />
             <span className="font-display font-bold text-charcoal-800">Admin Portal</span>
           </div>
-          <button className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
+          <Link to="/admin" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
             <Bell className="w-6 h-6 text-charcoal-700" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -268,10 +252,10 @@ export default function AdminLayout() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
+            <Link to="/admin" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
               <Bell className="w-5 h-5 text-charcoal-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            </Link>
             <div className="flex items-center gap-3 pl-4 border-l border-pearl-200">
               <div className="text-right">
                 <div className="text-sm font-medium text-charcoal-800">

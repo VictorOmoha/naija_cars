@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
+import api from '../services/api';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
@@ -18,6 +19,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [passwordData, setPasswordData] = useState({ current: '', newPass: '', confirm: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm({
     defaultValues: {
@@ -466,6 +469,8 @@ export default function ProfilePage() {
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
                             type={showPassword ? 'text' : 'password'}
+                            value={passwordData.current}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, current: e.target.value }))}
                             className="w-full pl-12 pr-12 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter current password"
                           />
@@ -486,6 +491,8 @@ export default function ProfilePage() {
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
                             type="password"
+                            value={passwordData.newPass}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, newPass: e.target.value }))}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter new password"
                           />
@@ -499,13 +506,45 @@ export default function ProfilePage() {
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
                             type="password"
+                            value={passwordData.confirm}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Confirm new password"
                           />
                         </div>
                       </div>
-                      <button className="btn-primary px-6 py-3 rounded-xl">
-                        Update Password
+                      <button
+                        onClick={async () => {
+                          if (!passwordData.current || !passwordData.newPass || !passwordData.confirm) {
+                            addToast('Please fill in all password fields', 'error');
+                            return;
+                          }
+                          if (passwordData.newPass !== passwordData.confirm) {
+                            addToast('New passwords do not match', 'error');
+                            return;
+                          }
+                          if (passwordData.newPass.length < 8) {
+                            addToast('Password must be at least 8 characters', 'error');
+                            return;
+                          }
+                          setPasswordLoading(true);
+                          try {
+                            await api.put('/users/profile', {
+                              currentPassword: passwordData.current,
+                              newPassword: passwordData.newPass,
+                            });
+                            addToast('Password updated successfully!', 'success');
+                            setPasswordData({ current: '', newPass: '', confirm: '' });
+                          } catch (error) {
+                            addToast(error.response?.data?.message || 'Failed to update password', 'error');
+                          } finally {
+                            setPasswordLoading(false);
+                          }
+                        }}
+                        disabled={passwordLoading}
+                        className="btn-primary px-6 py-3 rounded-xl disabled:opacity-50"
+                      >
+                        {passwordLoading ? 'Updating...' : 'Update Password'}
                       </button>
                     </div>
                   </div>
@@ -537,7 +576,10 @@ export default function ProfilePage() {
                           <p className="font-medium text-charcoal-800">SMS Authentication</p>
                           <p className="text-sm text-charcoal-500">Receive a code via SMS when signing in</p>
                         </div>
-                        <button className="text-naija-600 font-medium hover:text-naija-700">
+                        <button
+                          onClick={() => addToast('SMS authentication setup coming soon', 'info')}
+                          className="text-naija-600 font-medium hover:text-naija-700"
+                        >
                           Setup
                         </button>
                       </div>
@@ -571,7 +613,18 @@ export default function ProfilePage() {
                           </span>
                         </div>
                       </div>
-                      <button className="mt-4 text-red-600 font-medium hover:text-red-700">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await logout();
+                            addToast('Signed out of all sessions', 'success');
+                            navigate('/');
+                          } catch {
+                            addToast('Failed to sign out', 'error');
+                          }
+                        }}
+                        className="mt-4 text-red-600 font-medium hover:text-red-700"
+                      >
                         Sign out of all other sessions
                       </button>
                     </div>
@@ -671,7 +724,16 @@ export default function ProfilePage() {
                               {item.status.replace('_', ' ')}
                             </p>
                             {item.status !== 'verified' && (
-                              <button className="mt-3 text-naija-600 font-medium text-sm hover:text-naija-700">
+                              <button
+                                onClick={() => {
+                                  if (item.title === 'Phone') {
+                                    addToast('Phone verification: check your SMS for the code', 'info');
+                                  } else if (item.title === 'ID Verification') {
+                                    addToast('ID verification coming soon', 'info');
+                                  }
+                                }}
+                                className="mt-3 text-naija-600 font-medium text-sm hover:text-naija-700"
+                              >
                                 {item.status === 'pending' ? 'Complete' : 'Start'} →
                               </button>
                             )}

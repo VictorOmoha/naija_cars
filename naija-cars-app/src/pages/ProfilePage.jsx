@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
-import api from '../services/api';
+import api, { authAPI } from '../services/api';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
@@ -529,14 +529,19 @@ export default function ProfilePage() {
                           }
                           setPasswordLoading(true);
                           try {
-                            await api.put('/users/profile', {
+                            await authAPI.changePassword({
                               currentPassword: passwordData.current,
                               newPassword: passwordData.newPass,
                             });
                             addToast('Password updated successfully!', 'success');
                             setPasswordData({ current: '', newPass: '', confirm: '' });
                           } catch (error) {
-                            addToast(error.response?.data?.message || 'Failed to update password', 'error');
+                            addToast(
+                              error.response?.data?.error?.message ||
+                              error.response?.data?.message ||
+                              'Failed to update password',
+                              'error'
+                            );
                           } finally {
                             setPasswordLoading(false);
                           }

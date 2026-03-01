@@ -258,6 +258,37 @@ class AuthService {
   }
 
   /**
+   * Change password for authenticated user
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    // Get user with password hash
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash }
+    });
+
+    return { message: 'Password changed successfully' };
+  }
+
+  /**
    * Request password reset - generates a reset token
    */
   async requestPasswordReset(email) {

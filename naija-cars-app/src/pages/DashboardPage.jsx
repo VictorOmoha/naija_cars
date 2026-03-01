@@ -35,6 +35,16 @@ export default function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  // Fetch conversations to derive per-listing message counts
+  const { data: conversationsData } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
+      const response = await api.get('/messages/conversations');
+      return response.data;
+    },
+    enabled: isAuthenticated,
+  });
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/');
@@ -45,6 +55,16 @@ export default function DashboardPage() {
 
   const listings = listingsData?.data?.listings || [];
   const favoritesCount = favoritesData?.data?.favorites?.length || 0;
+
+  // Build per-listing message count from conversations
+  const conversations = conversationsData?.data?.conversations || [];
+  const messagesByListing = conversations.reduce((map, conv) => {
+    const listingId = conv.listing?.id;
+    if (listingId) {
+      map[listingId] = (map[listingId] || 0) + 1;
+    }
+    return map;
+  }, {});
 
   // Calculate stats
   const totalListings = listings.length;
@@ -364,7 +384,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="flex items-center gap-1">
                             <MessageCircle className="w-4 h-4" />
-                            0 messages
+                            {messagesByListing[listing.id] || 0} messages
                           </span>
                         </div>
 

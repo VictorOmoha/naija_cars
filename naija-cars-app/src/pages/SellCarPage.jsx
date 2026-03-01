@@ -1,26 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Car, Camera, DollarSign, FileText, Shield, CheckCircle,
-  ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus
+  ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus, Loader2
 } from 'lucide-react';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
 import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
 
+// Map frontend condition values → backend enum
+const conditionToBackend = {
+  'brand-new': 'BRAND_NEW',
+  'foreign-used': 'FOREIGN_USED',
+  'nigerian-used': 'NIGERIAN_USED',
+};
+
+// Map backend condition enum → frontend values
+const conditionToFrontend = {
+  'BRAND_NEW': 'brand-new',
+  'FOREIGN_USED': 'foreign-used',
+  'NIGERIAN_USED': 'nigerian-used',
+};
+
 const SellCarPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addToast } = useApp();
+  const editId = searchParams.get('edit'); // listing ID if in edit mode
+  const isEditMode = !!editId;
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [images, setImages] = useState([]);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [images, setImages] = useState([]); // new file uploads
+  const [existingImages, setExistingImages] = useState([]); // already-uploaded URLs
   const [formData, setFormData] = useState({
     // Basic Info
     make: '',
     model: '',
     year: '',
     condition: 'nigerian-used',
+    listingType: 'SALE',
     // Details
     mileage: '',
     transmission: 'automatic',
@@ -38,8 +59,8 @@ const SellCarPage = () => {
     // Contact
     phone: '',
     whatsapp: '',
-    location: '',
-    state: '',
+    locationCity: '',
+    locationState: '',
   });
 
   const steps = [
@@ -50,13 +71,60 @@ const SellCarPage = () => {
     { number: 5, title: 'Review', icon: CheckCircle },
   ];
 
-
   const benefits = [
     { icon: Users, title: 'Reach Millions', desc: 'Access thousands of verified buyers across Nigeria' },
     { icon: Shield, title: 'Secure Transactions', desc: 'Protected payments and verified buyer contacts' },
     { icon: TrendingUp, title: 'Best Prices', desc: 'Get competitive market rates for your vehicle' },
     { icon: Clock, title: 'Quick Sales', desc: 'Average selling time of just 14 days' },
   ];
+
+  // Fetch existing listing data in edit mode
+  useEffect(() => {
+    if (!editId) return;
+
+    const fetchListing = async () => {
+      setIsLoadingEdit(true);
+      try {
+        const response = await api.get(`/listings/${editId}`);
+        const listing = response.data.data.listing;
+
+        setFormData({
+          make: listing.make || '',
+          model: listing.model || '',
+          year: listing.year?.toString() || '',
+          condition: conditionToFrontend[listing.condition] || 'nigerian-used',
+          listingType: listing.listingType || 'SALE',
+          mileage: listing.mileage?.toString() || '',
+          transmission: listing.transmission || 'automatic',
+          fuelType: listing.fuelType || 'petrol',
+          bodyType: listing.bodyType || '',
+          color: listing.color || '',
+          engineSize: listing.engineSize || '',
+          price: listing.price?.toString() || '',
+          negotiable: listing.negotiable ?? true,
+          title: listing.title || `${listing.year} ${listing.make} ${listing.model}`,
+          description: listing.description || '',
+          features: listing.features || [],
+          phone: listing.phone || '',
+          whatsapp: listing.whatsapp || '',
+          locationCity: listing.locationCity || '',
+          locationState: listing.locationState || '',
+        });
+
+        // Load existing images as previews
+        if (listing.media && listing.media.length > 0) {
+          setExistingImages(listing.media.map(m => ({ id: m.id, url: m.url || m.thumbnailUrl })));
+        }
+      } catch (error) {
+        addToast('Failed to load listing for editing', 'error');
+        navigate('/dashboard');
+      } finally {
+        setIsLoadingEdit(false);
+      }
+    };
+
+    fetchListing();
+  }, [editId]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -81,11 +149,16 @@ const SellCarPage = () => {
       file,
       preview: URL.createObjectURL(file)
     }));
-    setImages(prev => [...prev, ...newImages].slice(0, 10));
+    const totalAllowed = 10 - existingImages.length;
+    setImages(prev => [...prev, ...newImages].slice(0, totalAllowed));
   };
 
   const removeImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -93,17 +166,34 @@ const SellCarPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Create the listing
-      const response = await api.post('/listings', {
-        ...formData,
-        price: parseFloat(formData.price),
+      const payload = {
+        listingType: formData.listingType,
+        make: formData.make,
+        model: formData.model,
         year: parseInt(formData.year),
         mileage: formData.mileage ? parseInt(formData.mileage) : null,
-      });
+        transmission: formData.transmission,
+        fuelType: formData.fuelType,
+        condition: conditionToBackend[formData.condition],
+        price: parseFloat(formData.price),
+        locationCity: formData.locationCity,
+        locationState: formData.locationState,
+        description: formData.description,
+      };
 
-      const listing = response.data.data.listing;
+      let listing;
 
-      // Upload images if any were selected
+      if (isEditMode) {
+        // Update existing listing
+        const response = await api.put(`/listings/${editId}`, payload);
+        listing = response.data.data.listing;
+      } else {
+        // Create new listing
+        const response = await api.post('/listings', payload);
+        listing = response.data.data.listing;
+      }
+
+      // Upload new images if any were selected
       if (images.length > 0) {
         const mediaFormData = new FormData();
         mediaFormData.append('listingId', listing.id);
@@ -116,11 +206,14 @@ const SellCarPage = () => {
         });
       }
 
-      addToast('Your listing has been submitted successfully!', 'success');
+      addToast(
+        isEditMode ? 'Listing updated successfully!' : 'Your listing has been submitted for review!',
+        'success'
+      );
       navigate(`/car/${listing.id}`);
     } catch (error) {
       const message =
-        error.response?.data?.error?.message || 'Failed to submit listing. Please try again.';
+        error.response?.data?.error?.message || `Failed to ${isEditMode ? 'update' : 'submit'} listing. Please try again.`;
       addToast(message, 'error');
     } finally {
       setIsSubmitting(false);
@@ -137,6 +230,32 @@ const SellCarPage = () => {
             </h3>
 
             <div className="grid md:grid-cols-2 gap-6">
+              {/* Listing Type */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-charcoal-700 mb-2">
+                  Listing Type *
+                </label>
+                <div className="flex gap-4">
+                  {[{ value: 'SALE', label: 'For Sale' }, { value: 'RENT', label: 'For Rent' }].map(option => (
+                    <label key={option.value} className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      formData.listingType === option.value
+                        ? 'border-naija-500 bg-naija-50 text-naija-700'
+                        : 'border-pearl-300 text-charcoal-600'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="listingType"
+                        value={option.value}
+                        checked={formData.listingType === option.value}
+                        onChange={handleInputChange}
+                        className="sr-only"
+                      />
+                      <span className="font-medium">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-charcoal-700 mb-2">
                   Car Make *
@@ -339,16 +458,17 @@ const SellCarPage = () => {
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {images.map((image, index) => (
-                <div key={index} className="relative aspect-square rounded-xl overflow-hidden group">
+              {/* Existing (already uploaded) images */}
+              {existingImages.map((image, index) => (
+                <div key={`existing-${index}`} className="relative aspect-square rounded-xl overflow-hidden group">
                   <img
-                    src={image.preview}
+                    src={image.url}
                     alt={`Car ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                   <button
                     type="button"
-                    onClick={() => removeImage(index)}
+                    onClick={() => removeExistingImage(index)}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-4 h-4" />
@@ -361,7 +481,28 @@ const SellCarPage = () => {
                 </div>
               ))}
 
-              {images.length < 10 && (
+              {/* New file uploads */}
+              {images.map((image, index) => (
+                <div key={`new-${index}`} className="relative aspect-square rounded-xl overflow-hidden group">
+                  <img
+                    src={image.preview}
+                    alt={`New ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <span className="absolute bottom-2 left-2 px-2 py-1 bg-gold-500 text-white text-xs rounded-full">
+                    New
+                  </span>
+                </div>
+              ))}
+
+              {(existingImages.length + images.length) < 10 && (
                 <label className="aspect-square rounded-xl border-2 border-dashed border-pearl-300 hover:border-naija-500 cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors">
                   <Plus className="w-8 h-8 text-pearl-400" />
                   <span className="text-sm text-pearl-500">Add Photo</span>
@@ -484,8 +625,8 @@ const SellCarPage = () => {
                   State *
                 </label>
                 <select
-                  name="state"
-                  value={formData.state}
+                  name="locationState"
+                  value={formData.locationState}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
                 >
@@ -502,8 +643,8 @@ const SellCarPage = () => {
                 </label>
                 <input
                   type="text"
-                  name="location"
-                  value={formData.location}
+                  name="locationCity"
+                  value={formData.locationCity}
                   onChange={handleInputChange}
                   placeholder="e.g., Victoria Island, Lekki"
                   className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
@@ -522,9 +663,9 @@ const SellCarPage = () => {
 
             <div className="bg-pearl-50 rounded-2xl p-6 space-y-4">
               <div className="flex gap-4">
-                {images[0] && (
+                {(existingImages[0] || images[0]) && (
                   <img
-                    src={images[0].preview}
+                    src={existingImages[0]?.url || images[0]?.preview}
                     alt="Main"
                     className="w-32 h-24 object-cover rounded-xl"
                   />
@@ -537,6 +678,11 @@ const SellCarPage = () => {
                     ₦{Number(formData.price).toLocaleString()}
                     {formData.negotiable && <span className="text-sm font-normal text-charcoal-500 ml-2">Negotiable</span>}
                   </p>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    formData.listingType === 'RENT' ? 'bg-blue-100 text-blue-700' : 'bg-naija-100 text-naija-700'
+                  }`}>
+                    {formData.listingType === 'RENT' ? 'For Rent' : 'For Sale'}
+                  </span>
                 </div>
               </div>
 
@@ -555,7 +701,7 @@ const SellCarPage = () => {
                 </div>
                 <div className="flex justify-between py-2 border-b border-pearl-200">
                   <span className="text-charcoal-500">Condition</span>
-                  <span className="font-medium capitalize">{formData.condition.replace('-', ' ')}</span>
+                  <span className="font-medium capitalize">{formData.condition.replace(/-/g, ' ')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-pearl-200">
                   <span className="text-charcoal-500">Mileage</span>
@@ -567,11 +713,11 @@ const SellCarPage = () => {
                 </div>
                 <div className="flex justify-between py-2 border-b border-pearl-200">
                   <span className="text-charcoal-500">Location</span>
-                  <span className="font-medium">{formData.location}, {formData.state}</span>
+                  <span className="font-medium">{formData.locationCity}, {formData.locationState}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-pearl-200">
                   <span className="text-charcoal-500">Photos</span>
-                  <span className="font-medium">{images.length} uploaded</span>
+                  <span className="font-medium">{existingImages.length + images.length} uploaded</span>
                 </div>
               </div>
 
@@ -589,13 +735,17 @@ const SellCarPage = () => {
               )}
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className={`border rounded-xl p-4 ${isEditMode ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                <CheckCircle className={`w-5 h-5 mt-0.5 ${isEditMode ? 'text-blue-600' : 'text-green-600'}`} />
                 <div>
-                  <h4 className="font-medium text-green-800">Ready to Submit</h4>
-                  <p className="text-sm text-green-700">
-                    Your listing will be reviewed within 24 hours and published once approved.
+                  <h4 className={`font-medium ${isEditMode ? 'text-blue-800' : 'text-green-800'}`}>
+                    {isEditMode ? 'Ready to Update' : 'Ready to Submit'}
+                  </h4>
+                  <p className={`text-sm ${isEditMode ? 'text-blue-700' : 'text-green-700'}`}>
+                    {isEditMode
+                      ? 'Your changes will be saved immediately.'
+                      : 'Your listing will be reviewed within 24 hours and published once approved.'}
                   </p>
                 </div>
               </div>
@@ -608,6 +758,17 @@ const SellCarPage = () => {
     }
   };
 
+  if (isLoadingEdit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-naija-500 animate-spin mx-auto mb-4" />
+          <p className="text-charcoal-600">Loading listing data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Hero Section */}
@@ -618,41 +779,51 @@ const SellCarPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="max-w-3xl"
           >
+            {isEditMode && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-200 rounded-full text-sm font-medium mb-4">
+                <FileText className="w-4 h-4" />
+                Editing Listing
+              </div>
+            )}
             <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-              Sell Your Car <span className="text-green-400">Fast</span>
+              {isEditMode ? 'Update Your Listing' : <>Sell Your Car <span className="text-green-400">Fast</span></>}
             </h1>
             <p className="text-xl text-gray-300">
-              List your vehicle and reach thousands of verified buyers across Nigeria.
-              Get the best price with our trusted marketplace.
+              {isEditMode
+                ? 'Make changes to your listing below. Updates are saved immediately.'
+                : 'List your vehicle and reach thousands of verified buyers across Nigeria. Get the best price with our trusted marketplace.'
+              }
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Benefits */}
-      <section className="py-12 bg-white border-b border-pearl-200">
-        <div className="section-container">
-          <div className="grid md:grid-cols-4 gap-6">
-            {benefits.map((benefit, index) => (
-              <motion.div
-                key={benefit.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-4"
-              >
-                <div className="p-3 bg-naija-100 rounded-xl">
-                  <benefit.icon className="w-6 h-6 text-naija-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-charcoal-800">{benefit.title}</h3>
-                  <p className="text-sm text-charcoal-600">{benefit.desc}</p>
-                </div>
-              </motion.div>
-            ))}
+      {/* Benefits (only on create) */}
+      {!isEditMode && (
+        <section className="py-12 bg-white border-b border-pearl-200">
+          <div className="section-container">
+            <div className="grid md:grid-cols-4 gap-6">
+              {benefits.map((benefit, index) => (
+                <motion.div
+                  key={benefit.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="p-3 bg-naija-100 rounded-xl">
+                    <benefit.icon className="w-6 h-6 text-naija-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-charcoal-800">{benefit.title}</h3>
+                    <p className="text-sm text-charcoal-600">{benefit.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Form Section */}
       <section className="py-16">
@@ -730,8 +901,17 @@ const SellCarPage = () => {
                       disabled={isSubmitting}
                       className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit Listing'}
-                      {!isSubmitting && <ArrowRight className="w-5 h-5" />}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {isEditMode ? 'Updating...' : 'Submitting...'}
+                        </>
+                      ) : (
+                        <>
+                          {isEditMode ? 'Update Listing' : 'Submit Listing'}
+                          <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -741,31 +921,33 @@ const SellCarPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-gray-800">
-        <div className="section-container text-center">
-          <h2 className="text-3xl font-display font-bold text-white mb-4">
-            Need Help Selling Your Car?
-          </h2>
-          <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-            Our team can help you create the perfect listing and connect with serious buyers.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              to="/valuation"
-              className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
-            >
-              Get Free Valuation
-            </Link>
-            <Link
-              to="/contact"
-              className="px-6 py-3 border border-gray-400 text-gray-200 rounded-xl font-medium hover:bg-gray-700 transition-colors"
-            >
-              Contact Support
-            </Link>
+      {/* CTA Section (only on create) */}
+      {!isEditMode && (
+        <section className="py-16 bg-gray-800">
+          <div className="section-container text-center">
+            <h2 className="text-3xl font-display font-bold text-white mb-4">
+              Need Help Selling Your Car?
+            </h2>
+            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+              Our team can help you create the perfect listing and connect with serious buyers.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                to="/valuation"
+                className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
+              >
+                Get Free Valuation
+              </Link>
+              <Link
+                to="/contact"
+                className="px-6 py-3 border border-gray-400 text-gray-200 rounded-xl font-medium hover:bg-gray-700 transition-colors"
+              >
+                Contact Support
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </>
   );
 };

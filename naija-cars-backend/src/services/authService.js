@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { sendOTPEmail, sendPasswordResetEmail } = require('../lib/emailService');
 
 class AuthService {
   /**
@@ -50,13 +51,17 @@ class AuthService {
       }
     });
 
-    // Generate OTP for verification (implement later)
-    // await this.sendVerificationOTP(user.id, phoneNumber, email);
+    // Send OTP for verification
+    await this.sendVerificationOTP(user.id, phoneNumber, email);
 
     // Remove sensitive data
     delete user.passwordHash;
 
-    return user;
+    // Generate tokens so user can immediately verify OTP
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = this.generateRefreshToken(user);
+
+    return { user, accessToken, refreshToken };
   }
 
   /**
@@ -214,11 +219,8 @@ class AuthService {
       }
     });
 
-    // TODO: Send SMS via Twilio
-    // TODO: Send Email via SendGrid
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] OTP for ${email}: ${code}`);
-    }
+    // Send verification email
+    await sendOTPEmail(email, code);
 
     return { message: 'OTP sent successfully' };
   }
@@ -324,10 +326,8 @@ class AuthService {
       }
     });
 
-    // TODO: Send email with reset code via SendGrid/Nodemailer
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] Password reset code for ${email}: ${code}`);
-    }
+    // Send password reset email
+    await sendPasswordResetEmail(email, code);
 
     return { message: 'If an account with that email exists, a reset code has been sent.' };
   }

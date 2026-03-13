@@ -47,7 +47,15 @@ router.post('/register',
         });
       }
 
-      const user = await authService.register(req.body);
+      const { user, accessToken, refreshToken } = await authService.register(req.body);
+
+      // Set refresh token as HTTP-only cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
 
       res.status(201).json({
         success: true,
@@ -60,7 +68,8 @@ router.post('/register',
             userType: user.userType,
             isVerified: user.isVerified,
             profile: user.profile
-          }
+          },
+          accessToken
         }
       });
     } catch (error) {

@@ -80,9 +80,10 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear tokens
+        // Refresh failed — clear tokens and notify the store to log out
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
+        window.dispatchEvent(new Event('auth:session-expired'));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

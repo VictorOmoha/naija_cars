@@ -16,10 +16,19 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await authAPI.register(userData);
+          const { user, accessToken } = response.data.data;
+
+          // Store token so OTP verification (which requires auth) works immediately
+          localStorage.setItem('accessToken', accessToken);
+
           set({
+            user,
+            accessToken,
+            isAuthenticated: true,
             isLoading: false,
             error: null
           });
+
           return response.data;
         } catch (error) {
           const errorMessage = error.response?.data?.error?.message || 'Registration failed';
@@ -151,5 +160,15 @@ const useAuthStore = create(
     }
   )
 );
+
+// Clear auth state when the refresh token expires / becomes invalid
+window.addEventListener('auth:session-expired', () => {
+  useAuthStore.setState({
+    user: null,
+    accessToken: null,
+    isAuthenticated: false,
+    error: null
+  });
+});
 
 export default useAuthStore;

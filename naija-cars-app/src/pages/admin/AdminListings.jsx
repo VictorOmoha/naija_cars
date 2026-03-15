@@ -96,7 +96,7 @@ export default function AdminListings() {
   const fetchSellers = async () => {
     try {
       const response = await api.get('/admin/sellers');
-      setSellers(response.data);
+      setSellers(response.data.data || []);
     } catch (error) {
       console.error('Error fetching sellers:', error);
     }
@@ -220,8 +220,8 @@ export default function AdminListings() {
           condition: conditionFilter,
         },
       });
-      setListings(response.data.listings);
-      setTotalPages(response.data.totalPages);
+      setListings(response.data.data.listings || []);
+      setTotalPages(response.data.data.totalPages || 1);
     } catch (error) {
       console.error('Error fetching listings:', error);
       // Mock data for development

@@ -13,6 +13,16 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
 
+    // One-time migration: auto-verify all existing unverified users
+    // (OTP verification was removed — all users should be verified)
+    const patched = await prisma.user.updateMany({
+      where: { isVerified: false },
+      data: { isVerified: true }
+    });
+    if (patched.count > 0) {
+      console.log(`✅ Auto-verified ${patched.count} existing user(s)`);
+    }
+
     // Create HTTP server
     const server = http.createServer(app);
 

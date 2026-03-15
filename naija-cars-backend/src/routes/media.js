@@ -13,7 +13,6 @@ const router = express.Router();
  */
 router.post('/upload',
   authenticate,
-  requireVerified,
   uploadMultiple,
   async (req, res, next) => {
     try {
@@ -78,6 +77,7 @@ router.post('/upload',
 
       // Upload files
       const uploadedMedia = [];
+      const failedUploads = [];
       let displayOrder = existingPhotoCount + existingVideoCount;
 
       for (const file of files) {
@@ -95,14 +95,25 @@ router.post('/upload',
           uploadedMedia.push(media);
           displayOrder++;
         } catch (error) {
-          console.error('Error uploading file:', error);
-          // Continue with other files
+          console.error('Error uploading file:', error.message);
+          failedUploads.push(file.originalname || 'unknown');
         }
+      }
+
+      // If ALL files failed, return a real error so frontend knows
+      if (uploadedMedia.length === 0) {
+        return res.status(500).json({
+          success: false,
+          error: {
+            message: 'All file uploads failed. Please check Cloudinary configuration and try again.',
+            failed: failedUploads
+          }
+        });
       }
 
       res.status(201).json({
         success: true,
-        message: `${uploadedMedia.length} file(s) uploaded successfully`,
+        message: `${uploadedMedia.length} file(s) uploaded successfully${failedUploads.length > 0 ? ` (${failedUploads.length} failed)` : ''}`,
         data: { media: uploadedMedia }
       });
     } catch (error) {

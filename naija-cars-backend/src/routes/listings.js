@@ -162,7 +162,6 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/',
   authenticate,
-  requireVerified,
   [
     body('listingType').isIn(['SALE', 'RENT']),
     body('make').trim().notEmpty(),

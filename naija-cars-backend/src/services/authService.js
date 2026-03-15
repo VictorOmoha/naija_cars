@@ -32,13 +32,14 @@ class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user with profile
+    // Create user with profile — auto-verified, no OTP required
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
         phoneNumber,
         passwordHash,
         userType,
+        isVerified: true,
         profile: {
           create: {
             firstName,
@@ -50,13 +51,6 @@ class AuthService {
         profile: true
       }
     });
-
-    // Send OTP for verification — non-fatal: user is created even if email fails
-    try {
-      await this.sendVerificationOTP(user.id, phoneNumber, email);
-    } catch (emailError) {
-      console.error('Failed to send verification OTP during registration:', emailError.message);
-    }
 
     // Remove sensitive data
     delete user.passwordHash;

@@ -117,12 +117,8 @@ const AuthModal = () => {
 
     try {
       await register(formData);
-      addToast('Registration successful! Sending verification code...', 'success');
-      setMode('verify-otp');
-      // Auto-send OTP (in production, this would be done by backend)
-      setTimeout(() => {
-        addToast('Verification code sent to your phone and email', 'info');
-      }, 1000);
+      addToast('Welcome to Naija Cars! Your account is ready.', 'success');
+      handleClose();
     } catch (err) {
       addToast(err?.message || 'Registration failed', 'error');
     }

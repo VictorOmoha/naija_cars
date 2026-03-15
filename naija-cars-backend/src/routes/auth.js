@@ -60,7 +60,7 @@ router.post('/register',
 
       res.status(201).json({
         success: true,
-        message: 'Registration successful. Please verify your account.',
+        message: 'Registration successful. Welcome to Naija Cars!',
         data: {
           user: {
             id: user.id,

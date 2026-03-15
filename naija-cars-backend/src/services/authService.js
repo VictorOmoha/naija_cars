@@ -51,8 +51,12 @@ class AuthService {
       }
     });
 
-    // Send OTP for verification
-    await this.sendVerificationOTP(user.id, phoneNumber, email);
+    // Send OTP for verification — non-fatal: user is created even if email fails
+    try {
+      await this.sendVerificationOTP(user.id, phoneNumber, email);
+    } catch (emailError) {
+      console.error('Failed to send verification OTP during registration:', emailError.message);
+    }
 
     // Remove sensitive data
     delete user.passwordHash;

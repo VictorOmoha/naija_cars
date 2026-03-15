@@ -64,9 +64,9 @@ export default function AdminDashboard() {
         api.get('/admin/users/recent'),
       ]);
 
-      setStats(statsRes.data);
-      setRecentListings(listingsRes.data);
-      setRecentUsers(usersRes.data);
+      setStats(statsRes.data.data);
+      setRecentListings(listingsRes.data.data || []);
+      setRecentUsers(usersRes.data.data || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       // Use mock data for now

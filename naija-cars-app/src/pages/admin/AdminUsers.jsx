@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Filter, MoreVertical, UserCheck, UserX, Trash2,
-  ChevronLeft, ChevronRight, Eye, Mail, Phone, Shield,
-  BadgeCheck, X, AlertTriangle, UserCog
+  Search, MoreVertical, UserCheck, UserX, Trash2,
+  ChevronLeft, ChevronRight, Eye, Mail, Phone,
+  BadgeCheck, X, AlertTriangle, UserCog, Edit2, Save
 } from 'lucide-react';
-import api from '../../services/api';
+import api, { adminAPI } from '../../services/api';
 
 const roleOptions = [
   { value: 'BUYER', label: 'Buyer' },
@@ -42,6 +42,9 @@ export default function AdminUsers() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
   const [actionDropdown, setActionDropdown] = useState(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [roleChangeUser, setRoleChangeUser] = useState(null);
@@ -65,8 +68,8 @@ export default function AdminUsers() {
           status: statusFilter,
         },
       });
-      setUsers(response.data.users);
-      setTotalPages(response.data.totalPages);
+      setUsers(response.data.data.users);
+      setTotalPages(response.data.data.totalPages);
     } catch (error) {
       console.error('Error fetching users:', error);
       // Mock data for development
@@ -159,10 +162,36 @@ export default function AdminUsers() {
     });
   };
 
-  const viewUserDetails = (user) => {
+  const viewUserDetails = (user, startInEditMode = false) => {
     setSelectedUser(user);
+    setEditForm({
+      firstName: user.profile?.firstName || '',
+      lastName: user.profile?.lastName || '',
+      phoneNumber: user.phoneNumber || '',
+      businessName: user.profile?.businessName || '',
+      bio: user.profile?.bio || '',
+      location: user.profile?.location || '',
+    });
+    setEditMode(startInEditMode);
     setShowUserModal(true);
     setActionDropdown(null);
+  };
+
+  const handleSaveUser = async () => {
+    if (!selectedUser) return;
+    setSaving(true);
+    try {
+      const res = await adminAPI.updateUser(selectedUser.id, editForm);
+      const updated = res.data.data;
+      setSelectedUser(updated);
+      setUsers(users.map(u => u.id === updated.id ? { ...u, ...updated } : u));
+      setEditMode(false);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert(error.response?.data?.error?.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -305,6 +334,13 @@ export default function AdminUsers() {
                                 <Eye className="w-4 h-4" />
                                 View Details
                               </button>
+                              <button
+                                onClick={() => viewUserDetails(user, true)}
+                                className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Edit Profile
+                              </button>
                               {!user.isVerified && (
                                 <button
                                   onClick={() => handleVerifyUser(user.id)}
@@ -406,13 +442,26 @@ export default function AdminUsers() {
               className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
             >
               <div className="px-6 py-4 border-b border-pearl-200 flex items-center justify-between">
-                <h2 className="font-display font-semibold text-charcoal-800">User Details</h2>
-                <button
-                  onClick={() => setShowUserModal(false)}
-                  className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <h2 className="font-display font-semibold text-charcoal-800">
+                  {editMode ? 'Edit User Profile' : 'User Details'}
+                </h2>
+                <div className="flex items-center gap-2">
+                  {!editMode && (
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                      title="Edit profile"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setShowUserModal(false); setEditMode(false); }}
+                    className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div className="p-6 space-y-6">
                 {/* User Header */}
@@ -443,70 +492,156 @@ export default function AdminUsers() {
                   </div>
                 </div>
 
-                {/* Contact Info */}
-                <div className="space-y-3">
-                  <h3 className="font-medium text-charcoal-700">Contact Information</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-charcoal-600">
-                      <Mail className="w-4 h-4 text-charcoal-400" />
-                      {selectedUser.email}
+                {editMode ? (
+                  /* ── Edit Form ── */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">First Name</label>
+                        <input
+                          type="text"
+                          value={editForm.firstName}
+                          onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))}
+                          className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={editForm.lastName}
+                          onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))}
+                          className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-charcoal-600">
-                      <Phone className="w-4 h-4 text-charcoal-400" />
-                      {selectedUser.phoneNumber}
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Phone Number</label>
+                      <input
+                        type="text"
+                        value={editForm.phoneNumber}
+                        onChange={e => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))}
+                        className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Business Name</label>
+                      <input
+                        type="text"
+                        value={editForm.businessName}
+                        onChange={e => setEditForm(f => ({ ...f, businessName: e.target.value }))}
+                        placeholder="For dealers / rental companies"
+                        className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Location</label>
+                      <input
+                        type="text"
+                        value={editForm.location}
+                        onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                        className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Bio</label>
+                      <textarea
+                        value={editForm.bio}
+                        onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-pearl-200 rounded-xl resize-none focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
+                      />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={handleSaveUser}
+                        disabled={saving}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors font-medium disabled:opacity-60"
+                      >
+                        <Save className="w-4 h-4" />
+                        {saving ? 'Saving…' : 'Save Changes'}
+                      </button>
+                      <button
+                        onClick={() => setEditMode(false)}
+                        className="flex-1 py-2.5 bg-pearl-100 text-charcoal-700 rounded-xl hover:bg-pearl-200 transition-colors font-medium"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* ── View Mode ── */
+                  <>
+                    {/* Contact Info */}
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-charcoal-700">Contact Information</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-charcoal-600">
+                          <Mail className="w-4 h-4 text-charcoal-400" />
+                          {selectedUser.email}
+                        </div>
+                        <div className="flex items-center gap-3 text-charcoal-600">
+                          <Phone className="w-4 h-4 text-charcoal-400" />
+                          {selectedUser.phoneNumber || '—'}
+                        </div>
+                        {selectedUser.profile?.location && (
+                          <div className="flex items-center gap-3 text-charcoal-600">
+                            <span className="w-4 h-4 text-charcoal-400 text-sm">📍</span>
+                            {selectedUser.profile.location}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Location */}
-                {(selectedUser.profile?.city || selectedUser.profile?.state) && (
-                  <div className="space-y-3">
-                    <h3 className="font-medium text-charcoal-700">Location</h3>
-                    <div className="text-charcoal-600">
-                      {selectedUser.profile?.city}, {selectedUser.profile?.state}
+                    {selectedUser.profile?.bio && (
+                      <div className="bg-pearl-50 rounded-xl p-3 text-sm text-charcoal-600">
+                        {selectedUser.profile.bio}
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-pearl-50 rounded-xl p-4 text-center">
+                        <div className="text-2xl font-bold text-charcoal-800">{selectedUser._count?.listings || 0}</div>
+                        <div className="text-sm text-charcoal-500">Total Listings</div>
+                      </div>
+                      <div className="bg-pearl-50 rounded-xl p-4 text-center">
+                        <div className="text-lg font-bold text-charcoal-800">{formatDate(selectedUser.createdAt)}</div>
+                        <div className="text-sm text-charcoal-500">Member Since</div>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3">
+                      {!selectedUser.isVerified && (
+                        <button
+                          onClick={() => { handleVerifyUser(selectedUser.id); setShowUserModal(false); }}
+                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium"
+                        >
+                          Verify User
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { handleToggleActive(selectedUser.id, selectedUser.isActive); setShowUserModal(false); }}
+                        className={`flex-1 py-2.5 rounded-xl transition-colors font-medium ${
+                          selectedUser.isActive
+                            ? 'bg-amber-500 text-white hover:bg-amber-600'
+                            : 'bg-naija-500 text-white hover:bg-naija-600'
+                        }`}
+                      >
+                        {selectedUser.isActive ? 'Suspend' : 'Activate'}
+                      </button>
+                      {selectedUser.userType !== 'ADMIN' && (
+                        <button
+                          onClick={() => { handleDeleteUser(selectedUser.id); }}
+                          className="px-4 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-pearl-50 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-charcoal-800">{selectedUser._count?.listings || 0}</div>
-                    <div className="text-sm text-charcoal-500">Total Listings</div>
-                  </div>
-                  <div className="bg-pearl-50 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-charcoal-800">{formatDate(selectedUser.createdAt)}</div>
-                    <div className="text-sm text-charcoal-500">Member Since</div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  {!selectedUser.isVerified && (
-                    <button
-                      onClick={() => {
-                        handleVerifyUser(selectedUser.id);
-                        setShowUserModal(false);
-                      }}
-                      className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium"
-                    >
-                      Verify User
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      handleToggleActive(selectedUser.id, selectedUser.isActive);
-                      setShowUserModal(false);
-                    }}
-                    className={`flex-1 py-2.5 rounded-xl transition-colors font-medium ${
-                      selectedUser.isActive
-                        ? 'bg-amber-500 text-white hover:bg-amber-600'
-                        : 'bg-naija-500 text-white hover:bg-naija-600'
-                    }`}
-                  >
-                    {selectedUser.isActive ? 'Suspend' : 'Activate'}
-                  </button>
-                </div>
               </div>
             </motion.div>
           </motion.div>

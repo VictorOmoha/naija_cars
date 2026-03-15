@@ -201,9 +201,7 @@ const SellCarPage = () => {
           mediaFormData.append('files', img.file);
         });
 
-        await api.post('/media/upload', mediaFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post('/media/upload', mediaFormData);
       }
 
       addToast(

@@ -44,6 +44,55 @@ router.get('/me/favorites', authenticate, async (req, res, next) => {
 });
 
 /**
+ * @route   GET /api/users/me/listings
+ * @desc    Get all of the authenticated user's own listings (all statuses)
+ * @access  Private
+ */
+router.get('/me/listings', authenticate, async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status, type } = req.query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+    const where = {
+      sellerId: req.user.id,
+      ...(status && { status: status.toUpperCase() }),
+      ...(type && { listingType: type.toUpperCase() })
+    };
+
+    const [listings, total] = await Promise.all([
+      prisma.carListing.findMany({
+        where,
+        include: {
+          media: {
+            orderBy: { displayOrder: 'asc' },
+            take: 1
+          }
+        },
+        skip,
+        take: parseInt(limit, 10),
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.carListing.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        listings,
+        pagination: {
+          total,
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          pages: Math.ceil(total / parseInt(limit, 10))
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   PUT /api/users/profile
  * @desc    Update user profile
  * @access  Private

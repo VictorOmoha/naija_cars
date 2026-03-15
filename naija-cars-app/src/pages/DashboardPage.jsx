@@ -15,11 +15,11 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Fetch user's listings
+  // Fetch user's own listings (all statuses)
   const { data: listingsData, refetch } = useQuery({
     queryKey: ['my-listings'],
     queryFn: async () => {
-      const response = await api.get(`/users/${user.id}/listings`);
+      const response = await api.get('/users/me/listings');
       return response.data;
     },
     enabled: isAuthenticated && !!user,
@@ -56,6 +56,17 @@ export default function DashboardPage() {
   const listings = listingsData?.data?.listings || [];
   const favoritesCount = favoritesData?.data?.favorites?.length || 0;
 
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-success-100 text-success-700';
+      case 'PENDING': return 'bg-gold-100 text-gold-700';
+      case 'SOLD': return 'bg-blue-100 text-blue-700';
+      case 'RENTED': return 'bg-purple-100 text-purple-700';
+      case 'INACTIVE': return 'bg-charcoal-100 text-charcoal-600';
+      default: return 'bg-charcoal-100 text-charcoal-600';
+    }
+  };
+
   // Build per-listing message count from conversations
   const conversations = conversationsData?.data?.conversations || [];
   const messagesByListing = conversations.reduce((map, conv) => {
@@ -69,6 +80,7 @@ export default function DashboardPage() {
   // Calculate stats
   const totalListings = listings.length;
   const activeListings = listings.filter(l => l.status === 'ACTIVE').length;
+  const pendingListings = listings.filter(l => l.status === 'PENDING').length;
   const totalViews = listings.reduce((sum, l) => sum + (l.viewsCount || 0), 0);
   const totalFavorites = listings.reduce((sum, l) => sum + (l.favoritesCount || 0), 0);
 
@@ -126,6 +138,21 @@ export default function DashboardPage() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
+            {/* Pending listings notice */}
+            {pendingListings > 0 && (
+              <div className="bg-gold-50 border border-gold-200 rounded-2xl p-4 flex items-start gap-3">
+                <div className="mt-0.5 w-5 h-5 rounded-full bg-gold-400 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">!</div>
+                <div>
+                  <p className="font-semibold text-gold-800">
+                    {pendingListings} listing{pendingListings > 1 ? 's' : ''} awaiting admin review
+                  </p>
+                  <p className="text-sm text-gold-700 mt-0.5">
+                    Your {pendingListings > 1 ? 'cars are' : 'car is'} pending approval and will go live once reviewed. Check the "My Listings" tab to see them.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-white rounded-2xl p-6 shadow-card">
@@ -263,11 +290,7 @@ export default function DashboardPage() {
                         <div className="text-lg font-bold text-naija-600">
                           ₦{parseFloat(listing.price).toLocaleString()}
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded-lg ${
-                          listing.status === 'ACTIVE'
-                            ? 'bg-success-100 text-success-700'
-                            : 'bg-charcoal-100 text-charcoal-600'
-                        }`}>
+                        <span className={`text-xs px-2 py-1 rounded-lg ${getStatusStyle(listing.status)}`}>
                           {listing.status}
                         </span>
                       </div>
@@ -360,13 +383,7 @@ export default function DashboardPage() {
                             <div className="text-2xl font-bold text-naija-600">
                               ₦{parseFloat(listing.price).toLocaleString()}
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-lg ${
-                              listing.status === 'ACTIVE'
-                                ? 'bg-success-100 text-success-700'
-                                : listing.status === 'PENDING'
-                                ? 'bg-gold-100 text-gold-700'
-                                : 'bg-charcoal-100 text-charcoal-600'
-                            }`}>
+                            <span className={`text-xs px-2 py-1 rounded-lg ${getStatusStyle(listing.status)}`}>
                               {listing.status}
                             </span>
                           </div>

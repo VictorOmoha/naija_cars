@@ -152,6 +152,87 @@ router.get('/users/recent', async (req, res) => {
   }
 });
 
+// ===== Get Single User =====
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        profile: true,
+        _count: { select: { listings: true, favorites: true } }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'User not found' }
+      });
+    }
+
+    const { passwordHash, ...safeUser } = user;
+    res.json({ success: true, data: safeUser });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch user' } });
+  }
+});
+
+// ===== Update User Profile =====
+router.put('/users/:id', [
+  body('firstName').optional().trim().isLength({ min: 2 }).withMessage('First name must be at least 2 characters'),
+  body('lastName').optional().trim().isLength({ min: 2 }).withMessage('Last name must be at least 2 characters'),
+  body('phoneNumber').optional().trim(),
+  body('businessName').optional().trim(),
+  body('bio').optional().trim(),
+  body('location').optional().trim(),
+  validate
+], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, phoneNumber, businessName, bio, location } = req.body;
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, error: { message: 'User not found' } });
+    }
+
+    // Update phone on user if provided
+    if (phoneNumber !== undefined) {
+      await prisma.user.update({ where: { id }, data: { phoneNumber } });
+    }
+
+    // Update profile fields
+    const profileData = {};
+    if (firstName !== undefined) profileData.firstName = firstName;
+    if (lastName !== undefined) profileData.lastName = lastName;
+    if (businessName !== undefined) profileData.businessName = businessName;
+    if (bio !== undefined) profileData.bio = bio;
+    if (location !== undefined) profileData.location = location;
+
+    if (Object.keys(profileData).length > 0) {
+      await prisma.userProfile.upsert({
+        where: { userId: id },
+        update: profileData,
+        create: { userId: id, ...profileData }
+      });
+    }
+
+    const updated = await prisma.user.findUnique({
+      where: { id },
+      include: { profile: true, _count: { select: { listings: true } } }
+    });
+
+    const { passwordHash, ...safeUser } = updated;
+    res.json({ success: true, message: 'User updated successfully', data: safeUser });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ success: false, error: { message: 'Failed to update user' } });
+  }
+});
+
 // ===== Users Management =====
 router.get('/users', async (req, res) => {
   try {

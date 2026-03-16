@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Heart, Share2, MapPin, Gauge, Fuel, Settings2,
+  X, Heart, MapPin, Gauge, Fuel, Settings2,
   BadgeCheck, Phone, MessageCircle, ChevronLeft, ChevronRight,
   Star, Shield
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingsAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
+import SharePopover from '../SharePopover';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
 const QuickViewModal = () => {
   const { isQuickViewOpen, selectedCar, closeQuickView, addToast, setIsSignInOpen } = useApp();
@@ -49,10 +52,12 @@ const QuickViewModal = () => {
     }
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    addToast('Link copied to clipboard!', 'success');
-  };
+  const shareUrl = selectedCar?.id
+    ? `${API_BASE}/share/car/${selectedCar.id}`
+    : window.location.href;
+  const shareText = selectedCar
+    ? `Check out this ${selectedCar.year} ${selectedCar.make} ${selectedCar.model} on Naija Cars! 🚗`
+    : 'Check out this listing on Naija Cars!';
 
   return (
     <AnimatePresence>
@@ -165,15 +170,7 @@ const QuickViewModal = () => {
                     >
                       <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                     </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={handleShare}
-                      className="p-2.5 bg-pearl-100 rounded-xl text-charcoal-500
-                               hover:text-naija-500 transition-colors"
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </motion.button>
+                    <SharePopover url={shareUrl} text={shareText} />
                   </div>
                 </div>
 

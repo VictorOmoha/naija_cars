@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, MapPin, Phone, Mail, Globe, Clock, Star, BadgeCheck,
-  Car, MessageCircle, Share2, Heart, ChevronRight, Filter, Grid, List,
+  Car, MessageCircle, Heart, ChevronRight, Filter, Grid, List,
   Calendar, Users, Shield, Award, ExternalLink, Facebook, Instagram, Twitter,
   AlertCircle, ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { usersAPI } from '../services/api';
+import SharePopover from '../components/SharePopover';
 
 export default function DealerPage() {
   const { id } = useParams();
@@ -54,18 +55,8 @@ export default function DealerPage() {
     return `₦${price.toLocaleString()}`;
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.share({
-        title: dealerName,
-        text: `Check out ${dealerName} on NaijaCars`,
-        url: window.location.href,
-      });
-    } catch {
-      navigator.clipboard.writeText(window.location.href);
-      addToast('Link copied to clipboard', 'success');
-    }
-  };
+  const dealerShareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const dealerShareText = `Check out ${dealerName} on Naija Cars! 🚗`;
 
   // Loading state
   if (loading) {
@@ -160,14 +151,9 @@ export default function DealerPage() {
           >
             <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleShare}
-            className="p-3 bg-white/90 text-charcoal-600 rounded-xl backdrop-blur-sm hover:bg-white"
-          >
-            <Share2 className="w-5 h-5" />
-          </motion.button>
+          <div className="bg-white/90 rounded-xl backdrop-blur-sm">
+            <SharePopover url={dealerShareUrl} text={dealerShareText} />
+          </div>
         </div>
       </div>
 

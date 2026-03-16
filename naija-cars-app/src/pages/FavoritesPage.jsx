@@ -4,12 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Trash2, Grid, List, MapPin, Gauge, Fuel, Settings2,
-  BadgeCheck, Bell, GitCompare, X, ChevronDown, Share2,
+  BadgeCheck, Bell, GitCompare, X, ChevronDown,
   ExternalLink, Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import { usersAPI, listingsAPI } from '../services/api';
+import SharePopover from '../components/SharePopover';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
 export default function FavoritesPage() {
   const { addToast } = useApp();
@@ -111,19 +114,6 @@ export default function FavoritesPage() {
     addToast(priceAlerts[carId] ? 'Price alert disabled' : 'Price alert enabled', 'success');
   };
 
-  const handleShare = async (car, e) => {
-    e.stopPropagation();
-    try {
-      await navigator.share({
-        title: `${car.year} ${car.make} ${car.model}`,
-        text: `Check out this ${car.year} ${car.make} ${car.model} for ${formatPrice(car.price)}`,
-        url: window.location.origin + `/car/${car.id}`,
-      });
-    } catch (err) {
-      navigator.clipboard.writeText(window.location.origin + `/car/${car.id}`);
-      addToast('Link copied to clipboard', 'success');
-    }
-  };
 
   // Loading state
   if (isLoading) {
@@ -402,12 +392,10 @@ export default function FavoritesPage() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={(e) => handleShare(car, e)}
-                              className="p-2 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors"
-                            >
-                              <Share2 className="w-5 h-5" />
-                            </button>
+                            <SharePopover
+                              url={`${API_BASE}/share/car/${car.id}`}
+                              text={`Check out this ${car.year} ${car.make} ${car.model} for ${formatPrice(car.price)} on Naija Cars! 🚗`}
+                            />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import ScrollToTop from './components/ScrollToTop';
 import AuthModal from './components/modals/AuthModal';
 import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
 import QuickViewModal from './components/modals/QuickViewModal';
@@ -85,6 +86,9 @@ function App() {
     <ErrorBoundary>
       <AppProvider>
         <div className="min-h-screen bg-pearl-200">
+          {/* Scroll to top on every navigation */}
+          <ScrollToTop />
+
           {/* Premium grain texture overlay */}
           <div className="texture-overlay" />
 

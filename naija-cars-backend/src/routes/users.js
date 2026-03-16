@@ -273,6 +273,68 @@ router.put('/profile',
 );
 
 /**
+ * @route   GET /api/users/dealers
+ * @desc    Get all dealers / sellers with active listings
+ * @access  Public
+ */
+router.get('/dealers', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const where = {
+      userType: { in: ['DEALER', 'RENTAL_COMPANY', 'INDIVIDUAL_SELLER'] },
+      isActive: true,
+      listings: { some: { status: 'ACTIVE' } },
+      ...(search && {
+        OR: [
+          { profile: { businessName: { contains: search, mode: 'insensitive' } } },
+          { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+          { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+          { profile: { city: { contains: search, mode: 'insensitive' } } },
+          { profile: { state: { contains: search, mode: 'insensitive' } } }
+        ]
+      })
+    };
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        include: {
+          profile: true,
+          _count: { select: { listings: { where: { status: 'ACTIVE' } } } }
+        },
+        orderBy: [
+          { userType: 'asc' },   // DEALERs first
+          { createdAt: 'desc' }
+        ],
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.user.count({ where })
+    ]);
+
+    // Strip sensitive fields
+    const safeUsers = users.map(({ passwordHash, phoneNumber, ...u }) => u);
+
+    res.json({
+      success: true,
+      data: {
+        dealers: safeUsers,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/users/:id
  * @desc    Get user profile by ID
  * @access  Public

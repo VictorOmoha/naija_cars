@@ -130,7 +130,8 @@ export const usersAPI = {
   getById: (id) => api.get(`/users/${id}`),
   updateProfile: (data) => api.put('/users/profile', data),
   getListings: (id, params) => api.get(`/users/${id}/listings`, { params }),
-  getFavorites: () => api.get('/users/me/favorites')
+  getFavorites: () => api.get('/users/me/favorites'),
+  getDealers: (params) => api.get('/users/dealers', { params })
 };
 
 // Admin endpoints

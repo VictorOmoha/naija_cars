@@ -22,6 +22,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const DealerPage = lazy(() => import('./pages/DealerPage'));
+const DealersPage = lazy(() => import('./pages/DealersPage'));
 const ValuationPage = lazy(() => import('./pages/ValuationPage'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
@@ -133,6 +134,7 @@ function App() {
                 </Route>
 
                 {/* Public Pages */}
+                <Route path="/dealers" element={<DealersPage />} />
                 <Route path="/dealer/:id" element={<DealerPage />} />
                 <Route path="/valuation" element={<ValuationPage />} />
                 <Route path="/about" element={<AboutPage />} />

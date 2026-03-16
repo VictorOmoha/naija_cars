@@ -59,7 +59,7 @@ const Navbar = () => {
     },
     { name: 'Sell Your Car', href: '/sell' },
     { name: 'Car Valuation', href: '/valuation' },
-    { name: 'Dealers', href: '/cars?userType=dealer' },
+    { name: 'Dealers', href: '/dealers' },
   ];
 
   const handleNavClick = (link, e) => {

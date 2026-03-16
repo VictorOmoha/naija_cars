@@ -38,6 +38,8 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: SERVER_URL
+        sync: false
 
   # Frontend Static Site
   - type: web

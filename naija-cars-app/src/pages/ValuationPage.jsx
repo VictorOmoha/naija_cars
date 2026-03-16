@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import {
@@ -204,13 +205,36 @@ function buildPriceHistory(estimatedValue) {
 
 const conditions = ['Brand New', 'Foreign Used (Tokunbo)', 'Nigerian Used (Locally Used)'];
 
+// Map condition labels from the quick form to the full-form values
+const CONDITION_MAP = {
+  'Brand New':      'Brand New',
+  'Foreign Used':   'Foreign Used (Tokunbo)',
+  'Nigerian Used':  'Nigerian Used (Locally Used)',
+};
+
 export default function ValuationPage() {
   const { addToast } = useApp();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [valuationResult, setValuationResult] = useState(null);
 
-  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm();
+  // Pre-fill from quick-valuation query params (e.g. ?make=Toyota&model=Camry&year=2022&condition=Foreign+Used&mileage=50000)
+  const defaultMake      = searchParams.get('make') || '';
+  const defaultModel     = searchParams.get('model') || '';
+  const defaultYear      = searchParams.get('year') || '';
+  const defaultMileage   = searchParams.get('mileage') || '';
+  const defaultCondition = CONDITION_MAP[searchParams.get('condition')] || '';
+
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm({
+    defaultValues: {
+      make:      defaultMake,
+      model:     defaultModel,
+      year:      defaultYear,
+      mileage:   defaultMileage,
+      condition: defaultCondition,
+    }
+  });
 
   // watchMake drives the Model dropdown — don't use separate state for this
   const watchMake = watch('make');

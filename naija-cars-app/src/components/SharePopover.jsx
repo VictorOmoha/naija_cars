@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Share2, Copy, Check, X } from 'lucide-react';
+import { Share2, Copy, Check } from 'lucide-react';
 
 const WA_ICON = (
   <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24">
@@ -165,16 +165,10 @@ export default function SharePopover({ url, text, className = '' }) {
                  border border-pearl-200 overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-pearl-100">
+      <div className="px-4 py-3 border-b border-pearl-100">
         <p className="text-xs font-semibold text-charcoal-600 uppercase tracking-wide">
           Share listing
         </p>
-        <button
-          onClick={() => setOpen(false)}
-          className="text-charcoal-400 hover:text-charcoal-600 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Platform buttons */}

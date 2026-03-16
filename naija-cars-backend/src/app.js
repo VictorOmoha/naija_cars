@@ -132,6 +132,7 @@ app.use('/api/listings', require('./routes/listings'));
 app.use('/api/media', require('./routes/media'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/contact', require('./routes/contact'));
 
 // Social share / OG proxy — serves rich HTML to bots, redirects browsers to SPA
 // No CORS or auth needed — these are public HTML pages for link previews

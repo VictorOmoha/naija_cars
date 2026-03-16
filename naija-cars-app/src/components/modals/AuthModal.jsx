@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound, ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -6,10 +6,18 @@ import useAuthStore from '../../stores/authStore';
 import { authAPI } from '../../services/api';
 
 const AuthModal = () => {
-  const { isSignInOpen, setIsSignInOpen, addToast } = useApp();
+  const { isSignInOpen, setIsSignInOpen, authModalInitialMode, addToast } = useApp();
   const { login, register, verifyOTP, sendOTP, isLoading, error, clearError } = useAuthStore();
 
   const [mode, setMode] = useState('login'); // 'login', 'register', 'verify-otp', 'forgot-password', 'reset-password'
+
+  // Sync mode to whatever the caller requested whenever the modal opens
+  useEffect(() => {
+    if (isSignInOpen) {
+      setMode(authModalInitialMode || 'login');
+      setStep(1);
+    }
+  }, [isSignInOpen, authModalInitialMode]);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [step, setStep] = useState(1); // For multi-step registration

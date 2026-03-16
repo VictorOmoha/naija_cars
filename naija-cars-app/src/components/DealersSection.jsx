@@ -51,12 +51,12 @@ const dealers = [
 ];
 
 const DealersSection = () => {
-  const { setIsSignInOpen } = useApp();
+  const { openAuthModal } = useApp();
   const navigate = useNavigate();
 
-  // Opens the register modal so the user can sign up as a dealer
+  // Opens the register modal pre-set to the register tab
   const handleBecomeDealer = () => {
-    setIsSignInOpen(true);
+    openAuthModal('register');
   };
 
   // Navigate to the full dealers listing page
@@ -64,9 +64,9 @@ const DealersSection = () => {
     navigate('/cars?userType=dealer');
   };
 
-  // Navigate to the individual dealer profile page
-  const handleDealerClick = (dealer) => {
-    navigate(`/dealer/${dealer.id}`);
+  // These cards are showcase/demo dealers — navigate to the dealers listing
+  const handleDealerClick = () => {
+    navigate('/cars?userType=dealer');
   };
 
   return (

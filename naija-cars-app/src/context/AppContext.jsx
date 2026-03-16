@@ -13,6 +13,7 @@ export const useApp = () => {
 export const AppProvider = ({ children }) => {
   // Modal states
   const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [authModalInitialMode, setAuthModalInitialMode] = useState('login');
   const [isListCarOpen, setIsListCarOpen] = useState(false);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
@@ -55,6 +56,12 @@ export const AppProvider = ({ children }) => {
     setSelectedCar(null);
   }, []);
 
+  // Open auth modal with a specific mode ('login' | 'register')
+  const openAuthModal = useCallback((mode = 'login') => {
+    setAuthModalInitialMode(mode);
+    setIsSignInOpen(true);
+  }, []);
+
   // Scroll to section
   const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
@@ -78,6 +85,8 @@ export const AppProvider = ({ children }) => {
     // Modals
     isSignInOpen,
     setIsSignInOpen,
+    authModalInitialMode,
+    openAuthModal,
     isListCarOpen,
     setIsListCarOpen,
     isQuickViewOpen,

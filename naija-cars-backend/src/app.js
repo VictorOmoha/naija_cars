@@ -93,6 +93,10 @@ const otpLimiter = rateLimit({
 app.use('/api/auth/send-otp', otpLimiter);
 app.use('/api/auth/verify-otp', otpLimiter);
 
+// Static files — serves public/ for local avatar uploads (dev fallback)
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

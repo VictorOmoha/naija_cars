@@ -100,13 +100,21 @@ model CarListing {
   model          String
   year           Int
   trim           String?
+  title          String?
   mileage        Int?
   transmission   String
   fuelType       String        @map("fuel_type")
+  bodyType       String?       @map("body_type")
+  color          String?
+  engineSize     String?       @map("engine_size")
+  features       String[]      @default([])
   condition      Condition
   price          Float
+  negotiable     Boolean       @default(true)
   locationState  String        @map("location_state")
   locationCity   String        @map("location_city")
+  phone          String?
+  whatsapp       String?
   vinNumber      String?       @map("vin_number")
   description    String?
   status         ListingStatus @default(PENDING)

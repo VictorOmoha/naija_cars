@@ -1,10 +1,25 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const sharp = require('sharp');
 const prisma = require('../lib/prisma');
 const cloudinary = require('../config/cloudinary');
 const { authenticate } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
+
+// Detect whether real Cloudinary credentials have been provided
+const CLOUDINARY_CONFIGURED =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name' &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_KEY !== 'your-api-key';
+
+if (!CLOUDINARY_CONFIGURED) {
+  console.warn(
+    '[avatar] Cloudinary credentials not set — avatar uploads will be saved to local disk (dev mode).'
+  );
+}
 
 const router = express.Router();
 
@@ -127,24 +142,39 @@ router.post('/me/avatar',
         });
       }
 
-      // Compress & square-crop to 400×400
+      // Compress & square-crop to 400×400 JPEG
       const compressedBuffer = await sharp(req.file.buffer)
         .resize(400, 400, { fit: 'cover' })
         .jpeg({ quality: 85 })
         .toBuffer();
 
-      // Upload to Cloudinary
-      const avatarUrl = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          { folder: `naija-cars/avatars/${req.user.id}`, resource_type: 'image' },
-          (err, result) => (err ? reject(err) : resolve(result.secure_url))
-        ).end(compressedBuffer);
-      });
+      let avatarUrl;
 
-      // Persist URL in UserProfile
-      await prisma.userProfile.update({
+      if (CLOUDINARY_CONFIGURED) {
+        // --- Upload to Cloudinary ---
+        avatarUrl = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { folder: `naija-cars/avatars/${req.user.id}`, resource_type: 'image' },
+            (err, result) => (err ? reject(err) : resolve(result.secure_url))
+          ).end(compressedBuffer);
+        });
+      } else {
+        // --- Local disk fallback (development) ---
+        const avatarsDir = path.join(__dirname, '../../public/avatars');
+        if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
+
+        const filename = `${req.user.id}.jpg`;
+        fs.writeFileSync(path.join(avatarsDir, filename), compressedBuffer);
+
+        const baseUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`;
+        avatarUrl = `${baseUrl}/avatars/${filename}`;
+      }
+
+      // Persist URL in UserProfile — upsert in case the profile row is missing
+      await prisma.userProfile.upsert({
         where: { userId: req.user.id },
-        data: { avatarUrl }
+        update: { avatarUrl },
+        create: { userId: req.user.id, avatarUrl }
       });
 
       // Return fresh user object so the frontend can update its store

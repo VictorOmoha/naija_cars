@@ -189,8 +189,9 @@ router.post('/',
       }
 
       const {
-        listingType, make, model, year, trim, mileage, transmission,
-        fuelType, condition, price, locationState, locationCity,
+        listingType, make, model, year, trim, title, mileage, transmission,
+        fuelType, bodyType, color, engineSize, features, condition, price,
+        negotiable, locationState, locationCity, phone, whatsapp,
         vinNumber, description
       } = req.body;
 
@@ -198,10 +199,19 @@ router.post('/',
         data: {
           listingType, make, model,
           year: parseInt(year, 10),
-          trim, mileage: mileage ? parseInt(mileage, 10) : null,
-          transmission, fuelType, condition,
+          trim, title,
+          mileage: mileage ? parseInt(mileage, 10) : null,
+          transmission, fuelType,
+          bodyType: bodyType || null,
+          color: color || null,
+          engineSize: engineSize || null,
+          features: Array.isArray(features) ? features : [],
+          condition,
           price: parseFloat(price),
+          negotiable: negotiable !== undefined ? Boolean(negotiable) : true,
           locationState, locationCity,
+          phone: phone || null,
+          whatsapp: whatsapp || null,
           vinNumber, description,
           sellerId: req.user.id
         },
@@ -252,9 +262,11 @@ router.put('/:id', authenticate, async (req, res, next) => {
     }
 
     const allowedFields = [
-      'listingType', 'make', 'model', 'year', 'trim', 'mileage',
-      'transmission', 'fuelType', 'condition', 'price',
-      'locationState', 'locationCity', 'vinNumber', 'description'
+      'listingType', 'make', 'model', 'year', 'trim', 'title', 'mileage',
+      'transmission', 'fuelType', 'bodyType', 'color', 'engineSize',
+      'features', 'condition', 'price', 'negotiable',
+      'locationState', 'locationCity', 'phone', 'whatsapp',
+      'vinNumber', 'description'
     ];
     const updateData = {};
     for (const field of allowedFields) {
@@ -262,9 +274,15 @@ router.put('/:id', authenticate, async (req, res, next) => {
         updateData[field] = req.body[field];
       }
     }
-    if (updateData.year) updateData.year = parseInt(updateData.year, 10);
-    if (updateData.mileage) updateData.mileage = parseInt(updateData.mileage, 10);
-    if (updateData.price) updateData.price = parseFloat(updateData.price);
+    if (updateData.year !== undefined) updateData.year = parseInt(updateData.year, 10);
+    if (updateData.mileage !== undefined && updateData.mileage !== null) {
+      updateData.mileage = parseInt(updateData.mileage, 10);
+    }
+    if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
+    if (updateData.negotiable !== undefined) updateData.negotiable = Boolean(updateData.negotiable);
+    if (updateData.features !== undefined) {
+      updateData.features = Array.isArray(updateData.features) ? updateData.features : [];
+    }
 
     const listing = await prisma.carListing.update({
       where: { id: req.params.id },

@@ -22,8 +22,8 @@ export default function EnhancedListCarModal() {
     defaultValues: {
       listingType: 'SALE',
       condition: 'FOREIGN_USED',
-      transmission: 'Automatic',
-      fuelType: 'Petrol'
+      transmission: 'automatic',
+      fuelType: 'petrol'
     }
   });
 
@@ -423,8 +423,8 @@ export default function EnhancedListCarModal() {
                         className="w-full px-4 py-3 bg-pearl-50 border border-pearl-200 rounded-xl
                                  focus:outline-none focus:ring-2 focus:ring-naija-500"
                       >
-                        <option value="Automatic">Automatic</option>
-                        <option value="Manual">Manual</option>
+                        <option value="automatic">Automatic</option>
+                        <option value="manual">Manual</option>
                       </select>
                     </div>
 
@@ -437,10 +437,10 @@ export default function EnhancedListCarModal() {
                         className="w-full px-4 py-3 bg-pearl-50 border border-pearl-200 rounded-xl
                                  focus:outline-none focus:ring-2 focus:ring-naija-500"
                       >
-                        <option value="Petrol">Petrol</option>
-                        <option value="Diesel">Diesel</option>
-                        <option value="Hybrid">Hybrid</option>
-                        <option value="Electric">Electric</option>
+                        <option value="petrol">Petrol</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="electric">Electric</option>
                       </select>
                     </div>
                   </div>

@@ -7,9 +7,14 @@
  *
  * The `url` should be the backend /share/car/:id URL so social bots
  * receive proper OG meta tags and regular users get redirected to the SPA.
+ *
+ * Uses a React Portal rendered into document.body so the dropdown is NEVER
+ * clipped by any parent container with overflow:hidden or overflow-y:auto.
+ * Position is calculated from the trigger button's getBoundingClientRect().
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Share2, Copy, Check, X } from 'lucide-react';
 
 const WA_ICON = (
@@ -33,10 +38,16 @@ const TG_ICON = (
   </svg>
 );
 
+// Dropdown height estimate (px) — used to decide open direction
+const DROPDOWN_HEIGHT = 268;
+const DROPDOWN_WIDTH = 208; // w-52
+
 export default function SharePopover({ url, text, className = '' }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const ref = useRef(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, openUp: true });
+  const btnRef = useRef(null);
+  const dropRef = useRef(null);
 
   const encoded = encodeURIComponent(url);
   const encodedText = encodeURIComponent(text || url);
@@ -68,18 +79,70 @@ export default function SharePopover({ url, text, className = '' }) {
     },
   ];
 
-  // Close on outside click
+  // Calculate portal position from the trigger button's screen rect
+  const calcPosition = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
+
+    // Align right edge of dropdown with right edge of button
+    let left = rect.right - DROPDOWN_WIDTH;
+    if (left < 8) left = 8; // keep on screen
+
+    const top = openUp
+      ? rect.top - DROPDOWN_HEIGHT - 8
+      : rect.bottom + 8;
+
+    setDropPos({ top, left, openUp });
+  }, []);
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (!open) calcPosition();
+    setOpen(o => !o);
+  };
+
+  // Recalculate on scroll/resize while open
+  useEffect(() => {
+    if (!open) return;
+    const update = () => calcPosition();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open, calcPosition]);
+
+  // Close on outside click (checks both btn and portal drop)
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        btnRef.current && btnRef.current.contains(e.target)
+      ) return;
+      if (
+        dropRef.current && dropRef.current.contains(e.target)
+      ) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open]);
+
   const handleCopy = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -87,69 +150,86 @@ export default function SharePopover({ url, text, className = '' }) {
     } catch {/* silent */ }
   };
 
+  const dropdown = open ? (
+    <div
+      ref={dropRef}
+      onClick={e => e.stopPropagation()}
+      style={{
+        position: 'fixed',
+        top: dropPos.top,
+        left: dropPos.left,
+        width: DROPDOWN_WIDTH,
+        zIndex: 9999,
+      }}
+      className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.18)]
+                 border border-pearl-200 overflow-hidden"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-pearl-100">
+        <p className="text-xs font-semibold text-charcoal-600 uppercase tracking-wide">
+          Share listing
+        </p>
+        <button
+          onClick={() => setOpen(false)}
+          className="text-charcoal-400 hover:text-charcoal-600 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Platform buttons */}
+      <div className="p-2 space-y-1">
+        {platforms.map(({ label, href, bg, icon }) => (
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className={`flex items-center gap-3 w-full px-3 py-2.5 ${bg}
+                       text-white text-sm font-medium rounded-xl transition-colors`}
+          >
+            {icon}
+            {label}
+          </a>
+        ))}
+
+        {/* Copy link */}
+        <button
+          onClick={handleCopy}
+          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm
+                     font-medium transition-all border-2 ${
+                       copied
+                         ? 'border-naija-400 bg-naija-50 text-naija-600'
+                         : 'border-pearl-200 text-charcoal-700 hover:border-charcoal-300'
+                     }`}
+        >
+          {copied
+            ? <Check className="w-4 h-4 flex-shrink-0" />
+            : <Copy className="w-4 h-4 flex-shrink-0" />}
+          {copied ? 'Copied!' : 'Copy link'}
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div className={`relative ${className}`}>
       {/* Trigger button */}
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
-        className="flex items-center gap-1.5 p-2 rounded-xl text-charcoal-500 hover:text-naija-600
-                   hover:bg-naija-50 transition-colors"
+        ref={btnRef}
+        onClick={handleOpen}
+        className="flex items-center gap-1.5 p-2 rounded-xl text-charcoal-500
+                   hover:text-naija-600 hover:bg-naija-50 transition-colors"
         title="Share"
+        aria-label="Share"
+        aria-expanded={open}
       >
         <Share2 className="w-5 h-5" />
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          onClick={e => e.stopPropagation()}
-          className="absolute bottom-full right-0 mb-2 w-52 bg-white rounded-2xl
-                     shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-pearl-200
-                     overflow-hidden z-[200]"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-pearl-100">
-            <p className="text-xs font-semibold text-charcoal-600 uppercase tracking-wide">
-              Share listing
-            </p>
-            <button onClick={() => setOpen(false)} className="text-charcoal-400 hover:text-charcoal-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Platform buttons */}
-          <div className="p-2 space-y-1">
-            {platforms.map(({ label, href, bg, icon }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 w-full px-3 py-2.5 ${bg}
-                           text-white text-sm font-medium rounded-xl transition-colors`}
-              >
-                {icon}
-                {label}
-              </a>
-            ))}
-
-            {/* Copy link */}
-            <button
-              onClick={handleCopy}
-              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm
-                         font-medium transition-all border-2 ${
-                           copied
-                             ? 'border-naija-400 bg-naija-50 text-naija-600'
-                             : 'border-pearl-200 text-charcoal-700 hover:border-charcoal-300'
-                         }`}
-            >
-              {copied ? <Check className="w-4 h-4 flex-shrink-0" /> : <Copy className="w-4 h-4 flex-shrink-0" />}
-              {copied ? 'Copied!' : 'Copy link'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Portal — renders outside every overflow:hidden ancestor */}
+      {createPortal(dropdown, document.body)}
     </div>
   );
 }

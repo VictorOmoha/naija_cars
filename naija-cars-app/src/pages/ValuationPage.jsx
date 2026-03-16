@@ -209,10 +209,10 @@ export default function ValuationPage() {
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [valuationResult, setValuationResult] = useState(null);
-  const [selectedMake, setSelectedMake] = useState('');
 
   const { register, handleSubmit, formState: { errors }, watch, reset } = useForm();
 
+  // watchMake drives the Model dropdown — don't use separate state for this
   const watchMake = watch('make');
 
   const onSubmit = async (data) => {
@@ -264,7 +264,6 @@ export default function ValuationPage() {
     reset();
     setValuationResult(null);
     setStep(1);
-    setSelectedMake('');
   };
 
   return (
@@ -367,7 +366,6 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('make', { required: 'Make is required' })}
-                        onChange={(e) => setSelectedMake(e.target.value)}
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                       >
                         <option value="">Select Make</option>
@@ -386,11 +384,11 @@ export default function ValuationPage() {
                       </label>
                       <select
                         {...register('model', { required: 'Model is required' })}
-                        disabled={!selectedMake}
+                        disabled={!watchMake}
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100"
                       >
                         <option value="">Select Model</option>
-                        {(carModels[selectedMake] || []).map(model => (
+                        {(carModels[watchMake] || []).map(model => (
                           <option key={model} value={model}>{model}</option>
                         ))}
                       </select>
@@ -405,7 +403,7 @@ export default function ValuationPage() {
                         className="w-full px-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                       >
                         <option value="">Select Year</option>
-                        {Array.from({ length: 15 }, (_, i) => 2024 - i).map(year => (
+                        {Array.from({ length: 16 }, (_, i) => new Date().getFullYear() - i).map(year => (
                           <option key={year} value={year}>{year}</option>
                         ))}
                       </select>

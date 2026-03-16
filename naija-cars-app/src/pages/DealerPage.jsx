@@ -55,9 +55,6 @@ export default function DealerPage() {
     return `₦${price.toLocaleString()}`;
   };
 
-  const dealerShareUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const dealerShareText = `Check out ${dealerName} on Naija Cars! 🚗`;
-
   // Loading state
   if (loading) {
     return (
@@ -122,10 +119,13 @@ export default function DealerPage() {
 
   const dealerLocation = [profile.city, profile.state].filter(Boolean).join(', ') || 'Nigeria';
 
+  const dealerShareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const dealerShareText = `Check out ${dealerName} on Naija Cars! 🚗`;
+
   const coverImage = profile.coverImage
     || 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1200';
 
-  const avatarUrl = profile.avatar
+  const avatarUrl = profile.avatarUrl || profile.businessLogoUrl
     || `https://ui-avatars.com/api/?name=${encodeURIComponent(dealerName)}&background=008753&color=fff&size=200`;
 
   return (

@@ -186,13 +186,13 @@ router.put('/users/:id', [
   body('lastName').optional().trim().isLength({ min: 2 }).withMessage('Last name must be at least 2 characters'),
   body('phoneNumber').optional().trim(),
   body('businessName').optional().trim(),
-  body('bio').optional().trim(),
-  body('location').optional().trim(),
+  body('about').optional().trim(),
+  body('state').optional().trim(),
   validate
 ], async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, phoneNumber, businessName, bio, location } = req.body;
+    const { firstName, lastName, phoneNumber, businessName, about, state } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) {
@@ -204,13 +204,13 @@ router.put('/users/:id', [
       await prisma.user.update({ where: { id }, data: { phoneNumber } });
     }
 
-    // Update profile fields
+    // Update profile fields (only fields that exist in UserProfile schema)
     const profileData = {};
     if (firstName !== undefined) profileData.firstName = firstName;
     if (lastName !== undefined) profileData.lastName = lastName;
     if (businessName !== undefined) profileData.businessName = businessName;
-    if (bio !== undefined) profileData.bio = bio;
-    if (location !== undefined) profileData.location = location;
+    if (about !== undefined) profileData.about = about;
+    if (state !== undefined) profileData.state = state;
 
     if (Object.keys(profileData).length > 0) {
       await prisma.userProfile.upsert({
@@ -620,7 +620,7 @@ router.get('/listings/:id', async (req, res) => {
       });
     }
 
-    res.json(listing);
+    res.json({ success: true, data: listing });
   } catch (error) {
     console.error('Error fetching listing:', error);
     res.status(500).json({
@@ -654,7 +654,7 @@ router.delete('/listings/:id', async (req, res) => {
 router.post('/listings', [
   body('make').isString().isLength({ min: 1, max: 50 }).withMessage('make is required and must be 1-50 characters'),
   body('model').isString().isLength({ min: 1, max: 50 }).withMessage('model is required and must be 1-50 characters'),
-  body('year').isInt({ min: 1900, max: 2030 }).withMessage('year must be an integer between 1900 and 2030'),
+  body('year').isInt({ min: 1900, max: new Date().getFullYear() + 1 }).withMessage('year must be a valid vehicle year'),
   body('price').isFloat({ gt: 0 }).withMessage('price must be a number greater than 0'),
   body('listingType').isIn(['SALE', 'RENT']).withMessage('listingType must be SALE or RENT'),
   body('condition').isIn(['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW']).withMessage('condition must be FOREIGN_USED, NIGERIAN_USED, or BRAND_NEW'),
@@ -887,7 +887,7 @@ router.get('/analytics/overview', async (req, res) => {
     // Get daily user registrations for last 30 days
     const usersByDay = await prisma.$queryRaw`
       SELECT DATE("createdAt") as date, COUNT(*)::int as count
-      FROM "User"
+      FROM "users"
       WHERE "createdAt" >= ${thirtyDaysAgo}
       GROUP BY DATE("createdAt")
       ORDER BY date ASC
@@ -896,7 +896,7 @@ router.get('/analytics/overview', async (req, res) => {
     // Get daily listings for last 30 days
     const listingsByDay = await prisma.$queryRaw`
       SELECT DATE("createdAt") as date, COUNT(*)::int as count
-      FROM "CarListing"
+      FROM "car_listings"
       WHERE "createdAt" >= ${thirtyDaysAgo}
       GROUP BY DATE("createdAt")
       ORDER BY date ASC
@@ -947,14 +947,17 @@ router.get('/analytics/overview', async (req, res) => {
     });
 
     res.json({
-      usersByDay,
-      listingsByDay,
-      listingsByStatus: listingsByStatus.map(s => ({ status: s.status, count: s._count.status })),
-      listingsByType: listingsByType.map(t => ({ type: t.listingType, count: t._count.listingType })),
-      usersByType: usersByType.map(u => ({ type: u.userType, count: u._count.userType })),
-      topLocations: topLocations.map(l => ({ state: l.locationState, count: l._count.locationState })),
-      topMakes: topMakes.map(m => ({ make: m.make, count: m._count.make })),
-      mostViewedListings
+      success: true,
+      data: {
+        usersByDay,
+        listingsByDay,
+        listingsByStatus: listingsByStatus.map(s => ({ status: s.status, count: s._count.status })),
+        listingsByType: listingsByType.map(t => ({ type: t.listingType, count: t._count.listingType })),
+        usersByType: usersByType.map(u => ({ type: u.userType, count: u._count.userType })),
+        topLocations: topLocations.map(l => ({ state: l.locationState, count: l._count.locationState })),
+        topMakes: topMakes.map(m => ({ make: m.make, count: m._count.make })),
+        mostViewedListings
+      }
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);

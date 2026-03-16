@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Settings, Globe, Mail, Bell, Shield, CreditCard,
@@ -52,12 +52,12 @@ export default function AdminSettings() {
   };
 
   // Load saved settings on mount
-  useState(() => {
+  useEffect(() => {
     const saved = localStorage.getItem('adminSettings');
     if (saved) {
       try { setSettings(JSON.parse(saved)); } catch {}
     }
-  });
+  }, []);
 
   const tabs = [
     { id: 'general', label: 'General', icon: Globe },

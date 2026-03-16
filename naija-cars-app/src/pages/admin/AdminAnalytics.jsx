@@ -18,46 +18,9 @@ export default function AdminAnalytics() {
     setLoading(true);
     try {
       const response = await api.get('/admin/analytics/overview');
-      setAnalytics(response.data);
+      setAnalytics(response.data.data);
     } catch (error) {
-      console.error('Error fetching analytics:', error);
-      // Mock data for development
-      setAnalytics({
-        usersByDay: [],
-        listingsByDay: [],
-        listingsByStatus: [
-          { status: 'ACTIVE', count: 15 },
-          { status: 'PENDING', count: 5 },
-          { status: 'SOLD', count: 8 },
-          { status: 'INACTIVE', count: 2 }
-        ],
-        listingsByType: [
-          { type: 'SALE', count: 18 },
-          { type: 'RENT', count: 12 }
-        ],
-        usersByType: [
-          { type: 'BUYER', count: 45 },
-          { type: 'DEALER', count: 12 },
-          { type: 'INDIVIDUAL_SELLER', count: 8 },
-          { type: 'RENTAL_COMPANY', count: 5 },
-          { type: 'ADMIN', count: 1 }
-        ],
-        topLocations: [
-          { state: 'Lagos', count: 25 },
-          { state: 'Abuja', count: 12 },
-          { state: 'Rivers', count: 8 },
-          { state: 'Kano', count: 5 },
-          { state: 'Oyo', count: 4 }
-        ],
-        topMakes: [
-          { make: 'Toyota', count: 15 },
-          { make: 'Honda', count: 10 },
-          { make: 'Mercedes-Benz', count: 8 },
-          { make: 'BMW', count: 6 },
-          { make: 'Lexus', count: 5 }
-        ],
-        mostViewedListings: []
-      });
+      setAnalytics(null);
     } finally {
       setLoading(false);
     }
@@ -104,6 +67,18 @@ export default function AdminAnalytics() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-naija-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <BarChart3 className="w-12 h-12 text-charcoal-300" />
+        <p className="text-charcoal-500 font-medium">Failed to load analytics data</p>
+        <button onClick={fetchAnalytics} className="px-4 py-2 bg-naija-500 text-white rounded-xl text-sm font-medium hover:bg-naija-600 transition-colors">
+          Try Again
+        </button>
       </div>
     );
   }

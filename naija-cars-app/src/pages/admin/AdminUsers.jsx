@@ -71,16 +71,8 @@ export default function AdminUsers() {
       setUsers(response.data.data.users);
       setTotalPages(response.data.data.totalPages);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      // Mock data for development
-      setUsers([
-        { id: '1', email: 'john@example.com', phoneNumber: '+2348012345678', userType: 'DEALER', isVerified: true, isActive: true, createdAt: new Date().toISOString(), profile: { firstName: 'John', lastName: 'Doe', businessName: 'AutoKing Motors', city: 'Lagos', state: 'Lagos' }, _count: { listings: 15 } },
-        { id: '2', email: 'jane@example.com', phoneNumber: '+2348023456789', userType: 'INDIVIDUAL_SELLER', isVerified: false, isActive: true, createdAt: new Date().toISOString(), profile: { firstName: 'Jane', lastName: 'Smith', city: 'Abuja', state: 'FCT' }, _count: { listings: 3 } },
-        { id: '3', email: 'mike@example.com', phoneNumber: '+2348034567890', userType: 'BUYER', isVerified: true, isActive: true, createdAt: new Date().toISOString(), profile: { firstName: 'Mike', lastName: 'Johnson', city: 'Port Harcourt', state: 'Rivers' }, _count: { listings: 0 } },
-        { id: '4', email: 'sarah@example.com', phoneNumber: '+2348045678901', userType: 'RENTAL_COMPANY', isVerified: true, isActive: false, createdAt: new Date().toISOString(), profile: { firstName: 'Sarah', lastName: 'Williams', businessName: 'Premium Rentals', city: 'Ibadan', state: 'Oyo' }, _count: { listings: 8 } },
-        { id: '5', email: 'admin@naijacars.com', phoneNumber: '+2348056789012', userType: 'ADMIN', isVerified: true, isActive: true, createdAt: new Date().toISOString(), profile: { firstName: 'Admin', lastName: 'User', city: 'Lagos', state: 'Lagos' }, _count: { listings: 0 } },
-      ]);
-      setTotalPages(3);
+      setUsers([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -169,8 +161,8 @@ export default function AdminUsers() {
       lastName: user.profile?.lastName || '',
       phoneNumber: user.phoneNumber || '',
       businessName: user.profile?.businessName || '',
-      bio: user.profile?.bio || '',
-      location: user.profile?.location || '',
+      about: user.profile?.about || '',
+      state: user.profile?.state || '',
     });
     setEditMode(startInEditMode);
     setShowUserModal(true);
@@ -535,19 +527,20 @@ export default function AdminUsers() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Location</label>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">State</label>
                       <input
                         type="text"
-                        value={editForm.location}
-                        onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                        value={editForm.state}
+                        onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}
+                        placeholder="e.g. Lagos, Abuja"
                         className="w-full px-3 py-2 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">Bio</label>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">About</label>
                       <textarea
-                        value={editForm.bio}
-                        onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))}
+                        value={editForm.about}
+                        onChange={e => setEditForm(f => ({ ...f, about: e.target.value }))}
                         rows={3}
                         className="w-full px-3 py-2 border border-pearl-200 rounded-xl resize-none focus:ring-2 focus:ring-naija-500 focus:border-naija-500"
                       />
@@ -584,18 +577,18 @@ export default function AdminUsers() {
                           <Phone className="w-4 h-4 text-charcoal-400" />
                           {selectedUser.phoneNumber || '—'}
                         </div>
-                        {selectedUser.profile?.location && (
+                        {selectedUser.profile?.state && (
                           <div className="flex items-center gap-3 text-charcoal-600">
                             <span className="w-4 h-4 text-charcoal-400 text-sm">📍</span>
-                            {selectedUser.profile.location}
+                            {selectedUser.profile.state}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {selectedUser.profile?.bio && (
+                    {selectedUser.profile?.about && (
                       <div className="bg-pearl-50 rounded-xl p-3 text-sm text-charcoal-600">
-                        {selectedUser.profile.bio}
+                        {selectedUser.profile.about}
                       </div>
                     )}
 

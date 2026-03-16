@@ -25,7 +25,20 @@
       "Bash(python3:*)",
       "Bash(py:*)",
       "Bash(del \"D:\\\\NaijaCars\\\\test_mobile_nav.py\" \"D:\\\\NaijaCars\\\\test_mobile_menu_click.py\" \"D:\\\\NaijaCars\\\\test_live_site.py\" \"D:\\\\NaijaCars\\\\test_live_detailed.py\" \"D:\\\\NaijaCars\\\\mobile_view.png\" \"D:\\\\NaijaCars\\\\mobile_before_click.png\" \"D:\\\\NaijaCars\\\\mobile_after_click.png\" \"D:\\\\NaijaCars\\\\live_mobile_view.png\" \"D:\\\\NaijaCars\\\\live_mobile_scrolled_top.png\" \"D:\\\\NaijaCars\\\\live_mobile_menu_open.png\")",
-      "Bash(cmd /c \"del /q D:\\\\NaijaCars\\\\test_*.py D:\\\\NaijaCars\\\\*mobile*.png D:\\\\NaijaCars\\\\*live*.png\")"
+      "Bash(cmd /c \"del /q D:\\\\NaijaCars\\\\test_*.py D:\\\\NaijaCars\\\\*mobile*.png D:\\\\NaijaCars\\\\*live*.png\")",
+      "Bash(powershell -Command \"cd ''D:\\\\NAIJACARS\\\\naija-cars-backend''; npm run dev\")",
+      "Bash(powershell -Command \"cd ''D:\\\\NAIJACARS\\\\naija-cars-app''; npm run dev\")",
+      "Bash(git -C \"D:\\\\NaijaCars\" log --oneline -20)",
+      "Bash(git -C \"D:\\\\NaijaCars\" log --format=\"%h %s\" -10)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(xargs grep -l \"import.*React\")",
+      "Bash(npx vite build)",
+      "Bash(node -e \"try { require\\(''./src/app.js''\\); console.log\\(''Backend app.js loads OK''\\); } catch\\(e\\) { console.error\\(e.message\\); }\")",
+      "Bash(git rm naija-cars-app/src/components/CarCard.jsx.modern naija-cars-app/src/components/FeaturedCarsNew.jsx naija-cars-app/src/components/Hero.jsx.modern naija-cars-app/src/components/HeroNew.jsx naija-cars-app/src/components/Navbar.jsx.modern naija-cars-app/src/components/NavbarNew.jsx)",
+      "Bash(git rm src/components/modals/ListCarModal.jsx src/components/modals/SignInModal.jsx)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

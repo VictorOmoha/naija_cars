@@ -79,15 +79,6 @@ const QuickViewModal = () => {
             className="relative w-full max-w-4xl bg-white border border-pearl-200
                      rounded-3xl shadow-card-hover overflow-hidden max-h-[90vh] overflow-y-auto"
           >
-            {/* Close Button */}
-            <button
-              onClick={closeQuickView}
-              className="absolute top-4 right-4 p-2 bg-white/90 text-charcoal-600
-                       hover:text-charcoal-800 rounded-xl transition-colors z-20 shadow-card"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
             <div className="grid md:grid-cols-2">
               {/* Left - Image Gallery */}
               <div className="relative h-72 md:h-full min-h-[400px] bg-pearl-100">
@@ -138,14 +129,15 @@ const QuickViewModal = () => {
               {/* Right - Details */}
               <div className="p-6 space-y-6">
                 {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="font-display text-2xl font-semibold text-charcoal-800">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-display text-2xl font-semibold text-charcoal-800 leading-tight">
                       {selectedCar.year} {selectedCar.make} {selectedCar.model}
                     </h2>
                     <p className="text-charcoal-600">{selectedCar.trim}</p>
                   </div>
-                  <div className="flex gap-2">
+                  {/* Action buttons — no absolute close button so nothing overlaps */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -171,6 +163,14 @@ const QuickViewModal = () => {
                       <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                     </motion.button>
                     <SharePopover url={shareUrl} text={shareText} />
+                    <button
+                      onClick={closeQuickView}
+                      className="p-2.5 bg-pearl-100 text-charcoal-600 hover:text-charcoal-800
+                               hover:bg-pearl-200 rounded-xl transition-colors"
+                      title="Close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
 

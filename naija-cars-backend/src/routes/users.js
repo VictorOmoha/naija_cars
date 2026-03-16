@@ -1,7 +1,10 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const sharp = require('sharp');
 const prisma = require('../lib/prisma');
+const cloudinary = require('../config/cloudinary');
 const { authenticate } = require('../middleware/auth');
+const { uploadSingle } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -93,8 +96,78 @@ router.get('/me/listings', authenticate, async (req, res, next) => {
 });
 
 /**
+ * @route   POST /api/users/me/avatar
+ * @desc    Upload / replace profile avatar image
+ * @access  Private
+ */
+router.post('/me/avatar',
+  authenticate,
+  uploadSingle,
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'No image file provided' }
+        });
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Invalid format. Only JPEG, PNG, and WebP are allowed.' }
+        });
+      }
+
+      if (req.file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Image too large. Maximum 5MB allowed.' }
+        });
+      }
+
+      // Compress & square-crop to 400×400
+      const compressedBuffer = await sharp(req.file.buffer)
+        .resize(400, 400, { fit: 'cover' })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      // Upload to Cloudinary
+      const avatarUrl = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          { folder: `naija-cars/avatars/${req.user.id}`, resource_type: 'image' },
+          (err, result) => (err ? reject(err) : resolve(result.secure_url))
+        ).end(compressedBuffer);
+      });
+
+      // Persist URL in UserProfile
+      await prisma.userProfile.update({
+        where: { userId: req.user.id },
+        data: { avatarUrl }
+      });
+
+      // Return fresh user object so the frontend can update its store
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { profile: true }
+      });
+      delete user.passwordHash;
+
+      res.json({
+        success: true,
+        message: 'Avatar updated successfully',
+        data: { avatarUrl, user }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * @route   PUT /api/users/profile
- * @desc    Update user profile
+ * @desc    Update user profile text fields
  * @access  Private
  */
 router.put('/profile',
@@ -103,6 +176,7 @@ router.put('/profile',
     body('firstName').optional().trim().isLength({ min: 2 }),
     body('lastName').optional().trim().isLength({ min: 2 }),
     body('about').optional().trim().isLength({ max: 500 }),
+    body('bio').optional().trim().isLength({ max: 500 }),  // alias → about
     body('address').optional().trim(),
     body('city').optional().trim(),
     body('state').optional().trim(),
@@ -114,40 +188,53 @@ router.put('/profile',
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          error: {
-            message: 'Validation failed',
-            details: errors.array()
-          }
+          error: { message: 'Validation failed', details: errors.array() }
         });
       }
 
       const {
-        firstName,
-        lastName,
-        about,
-        address,
-        city,
-        state,
-        businessName
+        firstName, lastName,
+        about, bio,          // accept both; bio is the frontend field name
+        address, city, state,
+        businessName, phone
       } = req.body;
 
-      const profile = await prisma.userProfile.update({
+      // bio is the frontend field; about is the DB column — accept either
+      const aboutValue = about !== undefined ? about : bio;
+
+      // Update UserProfile
+      await prisma.userProfile.update({
         where: { userId: req.user.id },
         data: {
-          ...(firstName && { firstName }),
-          ...(lastName && { lastName }),
-          ...(about !== undefined && { about }),
-          ...(address && { address }),
-          ...(city && { city }),
-          ...(state && { state }),
-          ...(businessName && { businessName })
+          ...(firstName !== undefined && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+          ...(aboutValue !== undefined && { about: aboutValue }),
+          ...(address !== undefined && { address }),
+          ...(city !== undefined && { city }),
+          ...(state !== undefined && { state }),
+          ...(businessName !== undefined && { businessName })
         }
       });
+
+      // Update phone on the User row if provided
+      if (phone !== undefined) {
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { phoneNumber: phone }
+        });
+      }
+
+      // Return fresh user so the frontend can sync its store
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { profile: true }
+      });
+      delete user.passwordHash;
 
       res.json({
         success: true,
         message: 'Profile updated successfully',
-        data: { profile }
+        data: { user }
       });
     } catch (error) {
       next(error);

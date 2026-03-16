@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', newPass: '', confirm: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
@@ -57,11 +59,11 @@ export default function ProfilePage() {
       firstName: user?.profile?.firstName || '',
       lastName: user?.profile?.lastName || '',
       email: user?.email || '',
-      phone: user?.profile?.phone || '',
+      phone: user?.phoneNumber || '',
       address: user?.profile?.address || '',
       city: user?.profile?.city || '',
       state: user?.profile?.state || '',
-      bio: user?.profile?.bio || '',
+      bio: user?.profile?.about || '',   // DB field is `about`, form field is `bio`
     }
   });
 
@@ -90,24 +92,58 @@ export default function ProfilePage() {
     { id: 'help', label: 'Help & Support', icon: HelpCircle, href: '/help' },
   ];
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setAvatarPreview(reader.result);
+    reader.readAsDataURL(file);
+
+    // Upload to server right away — no need to click Save Changes
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/users/me/avatar', formData);
+      // Sync the returned user object (with new avatarUrl) into the store
+      updateUser(data.data.user);
+      addToast('Profile photo updated!', 'success');
+    } catch (err) {
+      addToast(
+        err.response?.data?.error?.message || 'Failed to upload photo',
+        'error'
+      );
+      setAvatarPreview(null);  // revert preview on failure
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
   const onSubmit = async (data) => {
+    setProfileSaving(true);
     try {
-      await updateUser(data);
+      const res = await api.put('/users/profile', {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        bio: data.bio,          // backend accepts both `bio` and `about`
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+      });
+      // Sync returned user into Zustand store so the sidebar / header refresh
+      updateUser(res.data.data.user);
       addToast('Profile updated successfully!', 'success');
       setIsEditing(false);
-    } catch (error) {
-      addToast('Failed to update profile', 'error');
+    } catch (err) {
+      addToast(
+        err.response?.data?.error?.message || 'Failed to update profile',
+        'error'
+      );
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -159,14 +195,24 @@ export default function ProfilePage() {
                 <div className="relative inline-block">
                   <div className="w-28 h-28 rounded-2xl overflow-hidden border-4 border-white shadow-lifted mx-auto">
                     <img
-                      src={avatarPreview || user?.profile?.avatar || `https://ui-avatars.com/api/?name=${user?.profile?.firstName || 'User'}&background=008753&color=fff&size=128`}
+                      src={avatarPreview || user?.profile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent((user?.profile?.firstName || 'U') + ' ' + (user?.profile?.lastName || ''))}&background=008753&color=fff&size=128`}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <label className="absolute bottom-0 right-0 p-2 bg-naija-500 text-white rounded-xl cursor-pointer hover:bg-naija-600 transition-colors shadow-button">
-                    <Camera className="w-4 h-4" />
-                    <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                  <label className={`absolute bottom-0 right-0 p-2 rounded-xl cursor-pointer shadow-button transition-colors
+                    ${avatarUploading ? 'bg-charcoal-400 cursor-not-allowed' : 'bg-naija-500 hover:bg-naija-600'} text-white`}>
+                    {avatarUploading
+                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Camera className="w-4 h-4" />
+                    }
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      disabled={avatarUploading}
+                      onChange={handleAvatarChange}
+                    />
                   </label>
                 </div>
 
@@ -306,10 +352,14 @@ export default function ProfilePage() {
                         </button>
                         <button
                           onClick={handleSubmit(onSubmit)}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors"
+                          disabled={profileSaving}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors disabled:opacity-60"
                         >
-                          <Save className="w-4 h-4" />
-                          Save Changes
+                          {profileSaving
+                            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            : <Save className="w-4 h-4" />
+                          }
+                          {profileSaving ? 'Saving…' : 'Save Changes'}
                         </button>
                       </div>
                     )}

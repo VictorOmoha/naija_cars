@@ -13,6 +13,9 @@ import { useApp } from '../context/AppContext';
 import SeoHead from '../components/SeoHead';
 
 const SITE_URL = 'https://naijacars.online';
+// Share URL routes through the backend so social bots receive proper OG meta tags
+// (SPAs can't serve OG tags to bots — they don't run JS)
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
 // Social share helpers
 function buildShareLinks(car, url) {
@@ -98,7 +101,8 @@ export default function CarDetailsPage() {
 
   const carTitle = `${car.year} ${car.make} ${car.model}${car.trim ? ' ' + car.trim : ''}`;
   const carPrice = parseFloat(car.price);
-  const shareUrl = `${SITE_URL}/car/${car.id}`;
+  // Bot-friendly share URL → backend serves OG HTML to crawlers, redirects browsers to SPA
+  const shareUrl = `${API_BASE}/share/car/${car.id}`;
   const shareLinks = buildShareLinks(car, shareUrl);
   const mainImage = car.media?.[0]?.url;
 
@@ -123,7 +127,7 @@ export default function CarDetailsPage() {
         title={`${carTitle} – ₦${(carPrice / 1_000_000).toFixed(1)}M`}
         description={seoDescription}
         image={mainImage}
-        url={`/car/${car.id}`}
+        url={`/car/${car.id}`}  // canonical = SPA page
         type="article"
       />
 

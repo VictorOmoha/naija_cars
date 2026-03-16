@@ -190,7 +190,7 @@ router.post('/',
 
       const {
         listingType, make, model, year, trim, title, mileage, transmission,
-        fuelType, bodyType, color, engineSize, features, condition, price,
+        fuelType, bodyType, color, engineSize, condition, price,
         negotiable, locationState, locationCity, phone, whatsapp,
         vinNumber, description
       } = req.body;
@@ -205,7 +205,6 @@ router.post('/',
           bodyType: bodyType || null,
           color: color || null,
           engineSize: engineSize || null,
-          features: Array.isArray(features) ? features : [],
           condition,
           price: parseFloat(price),
           negotiable: negotiable !== undefined ? Boolean(negotiable) : true,
@@ -264,7 +263,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
     const allowedFields = [
       'listingType', 'make', 'model', 'year', 'trim', 'title', 'mileage',
       'transmission', 'fuelType', 'bodyType', 'color', 'engineSize',
-      'features', 'condition', 'price', 'negotiable',
+      'condition', 'price', 'negotiable',
       'locationState', 'locationCity', 'phone', 'whatsapp',
       'vinNumber', 'description'
     ];
@@ -280,9 +279,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     }
     if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
     if (updateData.negotiable !== undefined) updateData.negotiable = Boolean(updateData.negotiable);
-    if (updateData.features !== undefined) {
-      updateData.features = Array.isArray(updateData.features) ? updateData.features : [];
-    }
 
     const listing = await prisma.carListing.update({
       where: { id: req.params.id },

@@ -107,7 +107,6 @@ model CarListing {
   bodyType       String?       @map("body_type")
   color          String?
   engineSize     String?       @map("engine_size")
-  features       String[]      @default([])
   condition      Condition
   price          Float
   negotiable     Boolean       @default(true)

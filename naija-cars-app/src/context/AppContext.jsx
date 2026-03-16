@@ -14,6 +14,9 @@ export const AppProvider = ({ children }) => {
   // Modal states
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [authModalInitialMode, setAuthModalInitialMode] = useState('login');
+
+  // Notification badge count — updated by NotificationsPage
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isListCarOpen, setIsListCarOpen] = useState(false);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
@@ -87,6 +90,9 @@ export const AppProvider = ({ children }) => {
     setIsSignInOpen,
     authModalInitialMode,
     openAuthModal,
+    // Notifications
+    unreadNotificationCount,
+    setUnreadNotificationCount,
     isListCarOpen,
     setIsListCarOpen,
     isQuickViewOpen,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -129,7 +129,7 @@ const filterOptions = [
 
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuthStore();
-  const { addToast } = useApp();
+  const { addToast, setUnreadNotificationCount } = useApp();
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState(mockNotifications);
@@ -138,10 +138,18 @@ export default function NotificationsPage() {
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [isSelecting, setIsSelecting] = useState(false);
 
-  if (!isAuthenticated) {
-    navigate('/');
-    return null;
-  }
+  // Never call navigate() in the render body — use useEffect
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Keep the navbar badge in sync with local unread count
+  useEffect(() => {
+    const count = notifications.filter(n => !n.read).length;
+    setUnreadNotificationCount(count);
+  }, [notifications, setUnreadNotificationCount]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

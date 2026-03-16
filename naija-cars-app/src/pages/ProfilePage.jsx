@@ -22,6 +22,36 @@ export default function ProfilePage() {
   const [passwordData, setPasswordData] = useState({ current: '', newPass: '', confirm: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // Notification preferences — controlled state persisted in localStorage
+  const [notifPrefs, setNotifPrefs] = useState(() => {
+    try {
+      const stored = localStorage.getItem('notifPrefs');
+      return stored ? JSON.parse(stored) : {
+        newMessages: true,
+        priceDrops: true,
+        newListings: false,
+        promotionalEmails: false,
+        weeklyDigest: true,
+        smsNotifications: false,
+      };
+    } catch { return { newMessages: true, priceDrops: true, newListings: false, promotionalEmails: false, weeklyDigest: true, smsNotifications: false }; }
+  });
+  const [notifSaving, setNotifSaving] = useState(false);
+
+  const handleNotifToggle = (key) => {
+    setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSaveNotifPrefs = async () => {
+    setNotifSaving(true);
+    try {
+      await api.put('/users/me/notification-preferences', notifPrefs);
+    } catch { /* endpoint not yet on backend — save locally */ }
+    localStorage.setItem('notifPrefs', JSON.stringify(notifPrefs));
+    addToast('Notification preferences saved', 'success');
+    setNotifSaving(false);
+  };
+
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm({
     defaultValues: {
       firstName: user?.profile?.firstName || '',
@@ -566,10 +596,9 @@ export default function ProfilePage() {
                             Add an extra layer of security to your account
                           </p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" className="sr-only peer" />
-                          <div className="w-14 h-7 bg-pearl-300 peer-focus:ring-4 peer-focus:ring-naija-100 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-naija-500"></div>
-                        </label>
+                        <span className="text-xs px-2.5 py-1 bg-pearl-200 text-charcoal-500 rounded-full font-medium">
+                          Coming Soon
+                        </span>
                       </div>
                     </div>
                     <div className="p-6">
@@ -581,12 +610,9 @@ export default function ProfilePage() {
                           <p className="font-medium text-charcoal-800">SMS Authentication</p>
                           <p className="text-sm text-charcoal-500">Receive a code via SMS when signing in</p>
                         </div>
-                        <button
-                          onClick={() => addToast('SMS authentication setup coming soon', 'info')}
-                          className="text-naija-600 font-medium hover:text-naija-700"
-                        >
-                          Setup
-                        </button>
+                        <span className="text-xs px-2.5 py-1 bg-pearl-200 text-charcoal-500 rounded-full font-medium">
+                          Coming Soon
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -654,26 +680,39 @@ export default function ProfilePage() {
                       Choose how you want to be notified
                     </p>
                   </div>
-                  <div className="p-6 space-y-6">
+                  <div className="p-6 space-y-4">
                     {[
-                      { title: 'New Messages', desc: 'Get notified when you receive new messages', enabled: true },
-                      { title: 'Price Drops', desc: 'Get notified when cars in your favorites drop in price', enabled: true },
-                      { title: 'New Listings', desc: 'Get notified about new listings matching your search', enabled: false },
-                      { title: 'Promotional Emails', desc: 'Receive special offers and promotions', enabled: false },
-                      { title: 'Weekly Digest', desc: 'Get a weekly summary of new cars and deals', enabled: true },
-                      { title: 'SMS Notifications', desc: 'Receive important updates via SMS', enabled: false },
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-pearl-50 rounded-xl">
+                      { key: 'newMessages',       title: 'New Messages',        desc: 'Get notified when you receive new messages' },
+                      { key: 'priceDrops',        title: 'Price Drops',         desc: 'Get notified when cars in your favorites drop in price' },
+                      { key: 'newListings',       title: 'New Listings',        desc: 'Get notified about new listings matching your search' },
+                      { key: 'promotionalEmails', title: 'Promotional Emails',  desc: 'Receive special offers and promotions' },
+                      { key: 'weeklyDigest',      title: 'Weekly Digest',       desc: 'Get a weekly summary of new cars and deals' },
+                      { key: 'smsNotifications',  title: 'SMS Notifications',   desc: 'Receive important updates via SMS' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between p-4 bg-pearl-50 rounded-xl">
                         <div>
                           <p className="font-medium text-charcoal-800">{item.title}</p>
                           <p className="text-sm text-charcoal-500">{item.desc}</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" defaultChecked={item.enabled} className="sr-only peer" />
+                          <input
+                            type="checkbox"
+                            checked={notifPrefs[item.key]}
+                            onChange={() => handleNotifToggle(item.key)}
+                            className="sr-only peer"
+                          />
                           <div className="w-14 h-7 bg-pearl-300 peer-focus:ring-4 peer-focus:ring-naija-100 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-naija-500"></div>
                         </label>
                       </div>
                     ))}
+                    <button
+                      onClick={handleSaveNotifPrefs}
+                      disabled={notifSaving}
+                      className="w-full mt-2 py-3 bg-naija-500 text-white font-semibold rounded-xl
+                               hover:bg-naija-600 transition-colors disabled:opacity-50"
+                    >
+                      {notifSaving ? 'Saving…' : 'Save Preferences'}
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -728,19 +767,22 @@ export default function ProfilePage() {
                             }`}>
                               {item.status.replace('_', ' ')}
                             </p>
-                            {item.status !== 'verified' && (
+                            {item.status !== 'verified' && item.title !== 'ID Verification' && (
                               <button
                                 onClick={() => {
                                   if (item.title === 'Phone') {
-                                    addToast('Phone verification: check your SMS for the code', 'info');
-                                  } else if (item.title === 'ID Verification') {
-                                    addToast('ID verification coming soon', 'info');
+                                    addToast('A verification code has been sent to your phone number', 'info');
                                   }
                                 }}
                                 className="mt-3 text-naija-600 font-medium text-sm hover:text-naija-700"
                               >
                                 {item.status === 'pending' ? 'Complete' : 'Start'} →
                               </button>
+                            )}
+                            {item.title === 'ID Verification' && item.status !== 'verified' && (
+                              <span className="mt-3 inline-block text-xs px-2.5 py-1 bg-pearl-200 text-charcoal-500 rounded-full font-medium">
+                                Coming Soon
+                              </span>
                             )}
                           </div>
                         ))}

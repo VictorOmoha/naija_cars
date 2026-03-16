@@ -1,12 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, SlidersHorizontal } from 'lucide-react';
 import CarCard from './CarCard';
 import { featuredCars } from '../data/cars';
-import { useApp } from '../context/AppContext';
 
 const FeaturedCars = () => {
-  const { addToast } = useApp();
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('all');
 
   const filters = [
@@ -17,13 +17,29 @@ const FeaturedCars = () => {
     { id: 'new', label: 'Brand New' },
   ];
 
+  // Filter the homepage showcase cards by category
+  const filteredCars = activeFilter === 'all'
+    ? featuredCars
+    : featuredCars.filter(car =>
+        activeFilter === 'new'
+          ? car.condition === 'Brand New'
+          : (car.category || []).includes(activeFilter)
+      );
+
   const handleFilterClick = (filterId) => {
     setActiveFilter(filterId);
-    addToast(`Filtering by: ${filters.find(f => f.id === filterId)?.label}`, 'info');
   };
 
+  // Navigate to the full cars listing with the matching filter pre-applied
   const handleViewAll = () => {
-    addToast('Loading all 15,000+ cars...', 'info');
+    const filterMap = { suv: 'SUV', sedan: 'Sedan', luxury: '', new: 'Brand New' };
+    if (activeFilter === 'new') {
+      navigate('/cars?condition=new');
+    } else if (activeFilter !== 'all' && filterMap[activeFilter]) {
+      navigate(`/cars?bodyType=${filterMap[activeFilter]}`);
+    } else {
+      navigate('/cars');
+    }
   };
 
   return (
@@ -77,20 +93,33 @@ const FeaturedCars = () => {
                 {filter.label}
               </button>
             ))}
-            <button className="p-2.5 rounded-xl bg-white text-charcoal-500
-                           border border-pearl-300 hover:border-naija-300 hover:text-naija-500
-                           transition-all duration-300">
+            <button
+              onClick={() => navigate('/cars')}
+              className="p-2.5 rounded-xl bg-white text-charcoal-500
+                         border border-pearl-300 hover:border-naija-300 hover:text-naija-500
+                         transition-all duration-300"
+              title="Advanced filters"
+            >
               <SlidersHorizontal className="w-5 h-5" />
             </button>
           </motion.div>
         </div>
 
         {/* Cars Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredCars.map((car, index) => (
-            <CarCard key={car.id} car={car} index={index} variant="sale" />
-          ))}
-        </div>
+        {filteredCars.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCars.map((car, index) => (
+              <CarCard key={car.id} car={car} index={index} variant="sale" />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-charcoal-500">
+            <p className="text-lg font-medium mb-3">No featured listings in this category yet.</p>
+            <button onClick={() => navigate('/cars')} className="text-naija-600 font-semibold hover:underline">
+              Browse all cars →
+            </button>
+          </div>
+        )}
 
         {/* View All Button */}
         <motion.div

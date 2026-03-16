@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, Shield, Clock, Headphones } from 'lucide-react';
 import CarCard from './CarCard';
 import { rentalCars } from '../data/cars';
 import { useApp } from '../context/AppContext';
 
 const RentalsSection = () => {
-  const { addToast, setIsListCarOpen } = useApp();
+  const { setIsListCarOpen } = useApp();
+  const navigate = useNavigate();
   const benefits = [
     {
       icon: Shield,
@@ -30,7 +32,7 @@ const RentalsSection = () => {
   ];
 
   const handleBrowseRentals = () => {
-    addToast('Loading all rental cars...', 'info');
+    navigate('/rent');
   };
 
   const handleListForRent = () => {

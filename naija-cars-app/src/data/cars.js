@@ -10,6 +10,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Diesel",
     condition: "Foreign Used",
+    category: ['suv'],
     location: { state: "Lagos", city: "Victoria Island" },
     type: "sale",
     images: [
@@ -34,6 +35,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Petrol",
     condition: "Foreign Used",
+    category: ['suv', 'luxury'],
     location: { state: "Abuja", city: "Maitama" },
     type: "sale",
     images: [
@@ -58,6 +60,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Petrol",
     condition: "Brand New",
+    category: ['suv', 'luxury', 'new'],
     location: { state: "Lagos", city: "Lekki" },
     type: "sale",
     images: [
@@ -82,6 +85,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Petrol",
     condition: "Nigerian Used",
+    category: ['suv', 'luxury'],
     location: { state: "Port Harcourt", city: "GRA" },
     type: "sale",
     images: [
@@ -106,6 +110,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Diesel",
     condition: "Foreign Used",
+    category: ['suv', 'luxury'],
     location: { state: "Lagos", city: "Ikoyi" },
     type: "sale",
     images: [
@@ -130,6 +135,7 @@ export const featuredCars = [
     transmission: "Automatic",
     fuelType: "Petrol",
     condition: "Nigerian Used",
+    category: ['sedan'],
     location: { state: "Kano", city: "Nassarawa" },
     type: "sale",
     images: [

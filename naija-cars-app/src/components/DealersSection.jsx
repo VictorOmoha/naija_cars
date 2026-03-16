@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { BadgeCheck, Star, MapPin, Car, ArrowRight, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
 const dealers = [
@@ -50,18 +51,22 @@ const dealers = [
 ];
 
 const DealersSection = () => {
-  const { addToast } = useApp();
+  const { setIsSignInOpen } = useApp();
+  const navigate = useNavigate();
 
+  // Opens the register modal so the user can sign up as a dealer
   const handleBecomeDealer = () => {
-    addToast('Opening dealer registration form...', 'info');
+    setIsSignInOpen(true);
   };
 
+  // Navigate to the full dealers listing page
   const handleViewAllDealers = () => {
-    addToast('Loading all 850+ verified dealers...', 'info');
+    navigate('/cars?userType=dealer');
   };
 
+  // Navigate to the individual dealer profile page
   const handleDealerClick = (dealer) => {
-    addToast(`Viewing ${dealer.name}'s profile...`, 'info');
+    navigate(`/dealer/${dealer.id}`);
   };
 
   return (

@@ -35,7 +35,7 @@ const Footer = () => {
     'For Dealers': [
       { name: 'Become a Dealer', href: '/contact' },
       { name: 'Dealer Dashboard', href: '/dashboard' },
-      { name: 'Find Dealers', href: '/dealer/1' },
+      { name: 'Find Dealers', href: '/cars?userType=dealer' },
       { name: 'Advertise', href: '/contact' },
       { name: 'Dealer Support', href: '/help' },
     ],

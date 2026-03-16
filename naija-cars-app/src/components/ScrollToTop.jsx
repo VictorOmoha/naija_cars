@@ -2,16 +2,15 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 /**
- * Scrolls the window to the top on every route change.
- * Prevents the viewport staying at the footer position when navigating
- * from footer links or any bottom-of-page link.
+ * Scrolls the window to the top on every navigation — including
+ * query-param-only changes (e.g. /cars → /cars?condition=foreign).
  */
 export default function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [pathname]);
+  }, [pathname, search]);
 
   return null;
 }

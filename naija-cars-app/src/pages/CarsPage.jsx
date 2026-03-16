@@ -20,8 +20,9 @@ const CarsPage = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('newest');
 
-  // Get filter values from URL params
-  const [filters, setFilters] = useState({
+  // Get filter values from URL params — kept in sync whenever the URL changes
+  // (e.g. clicking a footer link like /cars?condition=foreign while already on /cars)
+  const filtersFromParams = () => ({
     condition: searchParams.get('condition') || '',
     make: searchParams.get('make') || '',
     model: searchParams.get('model') || '',
@@ -34,6 +35,15 @@ const CarsPage = () => {
     fuelType: searchParams.get('fuelType') || '',
     bodyType: searchParams.get('bodyType') || '',
   });
+
+  const [filters, setFilters] = useState(filtersFromParams);
+
+  // Sync filter state whenever the URL search params change externally
+  // (covers footer links, browser back/forward, and direct URL edits)
+  useEffect(() => {
+    setFilters(filtersFromParams());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()]);
 
   const [searchQuery, setSearchQuery] = useState('');
 

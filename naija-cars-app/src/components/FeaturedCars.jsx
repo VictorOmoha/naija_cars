@@ -2,12 +2,80 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, SlidersHorizontal } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import CarCard from './CarCard';
 import { featuredCars } from '../data/cars';
+import { listingsAPI } from '../services/api';
+
+// Derive homepage filter categories from a DB listing
+function getCategoryTags(listing) {
+  const tags = [];
+  const body = listing.bodyType?.toLowerCase() || '';
+  if (['suv', 'crossover', 'jeep', 'pickup', 'truck'].includes(body)) tags.push('suv');
+  if (['sedan', 'coupe', 'hatchback', 'saloon'].includes(body)) tags.push('sedan');
+  const luxuryMakes = ['mercedes-benz', 'bmw', 'lexus', 'range rover', 'audi', 'porsche', 'land rover', 'bentley', 'rolls-royce'];
+  if (luxuryMakes.includes((listing.make || '').toLowerCase())) tags.push('luxury');
+  if (listing.condition === 'BRAND_NEW') tags.push('new');
+  return tags;
+}
+
+// Shape a DB listing into the format CarCard + QuickViewModal expect
+function transformToCardShape(listing) {
+  const images = listing.media?.length
+    ? listing.media.map((m) => m.url)
+    : ['https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600'];
+
+  const conditionMap = {
+    BRAND_NEW: 'Brand New',
+    FOREIGN_USED: 'Foreign Used',
+    NIGERIAN_USED: 'Nigerian Used',
+  };
+
+  return {
+    id: listing.id,                          // real UUID — shareable ✓
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    trim: listing.trim || '',
+    price: parseFloat(listing.price),
+    mileage: listing.mileage || 0,
+    transmission: listing.transmission,
+    fuelType: listing.fuelType,
+    condition: conditionMap[listing.condition] || listing.condition?.replace(/_/g, ' '),
+    category: getCategoryTags(listing),
+    location: {
+      city: listing.locationCity || '',
+      state: listing.locationState || '',
+    },
+    type: 'sale',
+    images,
+    verified: listing.seller?.profile?.verificationBadge || false,
+    featured: listing.isFeatured || false,
+    isFavorited: listing.isFavorited || false,
+    dealer: {
+      name: listing.seller?.profile?.businessName || 'Private Seller',
+      verified: listing.seller?.profile?.verificationBadge || false,
+      rating: 4.5,
+    },
+  };
+}
 
 const FeaturedCars = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('all');
+
+  // Fetch real active listings from the API (6 newest)
+  const { data: apiData } = useQuery({
+    queryKey: ['homepage-featured'],
+    queryFn: () => listingsAPI.getAll({ limit: 6, page: 1 }),
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+    select: (res) => res?.data?.data?.listings ?? [],
+  });
+
+  // Use real DB listings when available; fall back to static showcase data
+  const baseCards = apiData?.length
+    ? apiData.map(transformToCardShape)
+    : featuredCars;
 
   const filters = [
     { id: 'all', label: 'All Cars' },
@@ -17,22 +85,18 @@ const FeaturedCars = () => {
     { id: 'new', label: 'Brand New' },
   ];
 
-  // Filter the homepage showcase cards by category
   const filteredCars = activeFilter === 'all'
-    ? featuredCars
-    : featuredCars.filter(car =>
+    ? baseCards
+    : baseCards.filter((car) =>
         activeFilter === 'new'
           ? car.condition === 'Brand New'
           : (car.category || []).includes(activeFilter)
       );
 
-  const handleFilterClick = (filterId) => {
-    setActiveFilter(filterId);
-  };
+  const handleFilterClick = (filterId) => setActiveFilter(filterId);
 
-  // Navigate to the full cars listing with the matching filter pre-applied
   const handleViewAll = () => {
-    const filterMap = { suv: 'SUV', sedan: 'Sedan', luxury: '', new: 'Brand New' };
+    const filterMap = { suv: 'SUV', sedan: 'Sedan', new: 'Brand New' };
     if (activeFilter === 'new') {
       navigate('/cars?condition=new');
     } else if (activeFilter !== 'all' && filterMap[activeFilter]) {

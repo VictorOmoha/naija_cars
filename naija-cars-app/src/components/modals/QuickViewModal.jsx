@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Heart, MapPin, Gauge, Fuel, Settings2,
   BadgeCheck, Phone, MessageCircle, ChevronLeft, ChevronRight,
-  Star, Shield
+  Star, Shield, ExternalLink
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingsAPI } from '../../services/api';
@@ -21,6 +21,21 @@ const QuickViewModal = () => {
   const [currentImage, setCurrentImage] = useState(0);
 
   if (!selectedCar) return null;
+
+  // Normalise image array — supports both static mock format (images:[url,...])
+  // and real DB format (media:[{url,...}]) so the modal works after API fetch
+  const imageUrls = Array.isArray(selectedCar.images) && selectedCar.images.length
+    ? selectedCar.images
+    : selectedCar.media?.map((m) => m.url) || [];
+
+  // Normalise location — supports {city, state} object or flat locationCity / locationState
+  const locationCity = selectedCar.location?.city || selectedCar.locationCity || '';
+  const locationState = selectedCar.location?.state || selectedCar.locationState || '';
+  const locationLabel = [locationCity, locationState].filter(Boolean).join(', ');
+
+  // Determine whether this car has a real DB UUID (contains dashes) so we know
+  // whether the share URL / full-details link will actually resolve
+  const hasRealId = typeof selectedCar.id === 'string' && selectedCar.id.includes('-');
 
   const isSale = selectedCar.type === 'sale';
   const price = isSale ? selectedCar.price : selectedCar.pricePerDay;
@@ -52,7 +67,10 @@ const QuickViewModal = () => {
     }
   };
 
-  const shareUrl = selectedCar?.id
+  // Only route through the OG-proxy backend for real DB listings (UUID IDs).
+  // Mock/static cards have numeric IDs that don't exist in the DB — fall back
+  // to current page URL so the share at least points somewhere sensible.
+  const shareUrl = hasRealId
     ? `${API_BASE}/share/car/${selectedCar.id}`
     : window.location.href;
   const shareText = selectedCar
@@ -83,17 +101,17 @@ const QuickViewModal = () => {
               {/* Left - Image Gallery */}
               <div className="relative h-72 md:h-full min-h-[400px] bg-pearl-100">
                 <img
-                  src={selectedCar.images[currentImage]}
+                  src={imageUrls[currentImage] || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600'}
                   alt={`${selectedCar.make} ${selectedCar.model}`}
                   className="w-full h-full object-cover"
                 />
 
                 {/* Image Navigation */}
-                {selectedCar.images.length > 1 && (
+                {imageUrls.length > 1 && (
                   <>
                     <button
                       onClick={() => setCurrentImage((prev) =>
-                        prev === 0 ? selectedCar.images.length - 1 : prev - 1
+                        prev === 0 ? imageUrls.length - 1 : prev - 1
                       )}
                       className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/90
                                rounded-xl text-charcoal-700 hover:bg-white transition-colors shadow-card"
@@ -102,7 +120,7 @@ const QuickViewModal = () => {
                     </button>
                     <button
                       onClick={() => setCurrentImage((prev) =>
-                        prev === selectedCar.images.length - 1 ? 0 : prev + 1
+                        prev === imageUrls.length - 1 ? 0 : prev + 1
                       )}
                       className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/90
                                rounded-xl text-charcoal-700 hover:bg-white transition-colors shadow-card"
@@ -120,10 +138,12 @@ const QuickViewModal = () => {
                 </div>
 
                 {/* Image Counter */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5
-                             bg-white/90 rounded-xl text-xs text-charcoal-700 font-medium shadow-card">
-                  {currentImage + 1} / {selectedCar.images.length}
-                </div>
+                {imageUrls.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5
+                               bg-white/90 rounded-xl text-xs text-charcoal-700 font-medium shadow-card">
+                    {currentImage + 1} / {imageUrls.length}
+                  </div>
+                )}
               </div>
 
               {/* Right - Details */}
@@ -245,10 +265,12 @@ const QuickViewModal = () => {
                 </div>
 
                 {/* Location */}
-                <div className="flex items-center gap-2 text-charcoal-500">
-                  <MapPin className="w-5 h-5" />
-                  <span>{selectedCar.location.city}, {selectedCar.location.state}</span>
-                </div>
+                {locationLabel && (
+                  <div className="flex items-center gap-2 text-charcoal-500">
+                    <MapPin className="w-5 h-5" />
+                    <span>{locationLabel}</span>
+                  </div>
+                )}
 
                 {/* Features (for rentals) */}
                 {!isSale && selectedCar.features && (
@@ -291,6 +313,22 @@ const QuickViewModal = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* View Full Details — only for real DB listings */}
+                  {hasRealId && (
+                    <button
+                      onClick={() => {
+                        closeQuickView();
+                        navigate(`/car/${selectedCar.id}`);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 mb-3 py-2.5
+                               border border-charcoal-200 text-charcoal-600 text-sm font-medium
+                               rounded-xl hover:border-naija-400 hover:text-naija-600 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      View Full Details
+                    </button>
+                  )}
 
                   {/* Contact Buttons */}
                   <div className="grid grid-cols-2 gap-3">

@@ -23,6 +23,18 @@ async function startServer() {
       console.log(`✅ Auto-verified ${patched.count} existing user(s)`);
     }
 
+    // Validate Cloudinary credentials
+    const cloudinaryConfigured =
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name' &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_KEY !== 'your-api-key';
+    if (cloudinaryConfigured) {
+      console.log('✅ Cloudinary configured — media uploads enabled');
+    } else {
+      console.warn('⚠️  Cloudinary NOT configured — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in environment. Profile and listing photo uploads will fall back to local disk (not persistent on Render).');
+    }
+
     // Create HTTP server
     const server = http.createServer(app);
 

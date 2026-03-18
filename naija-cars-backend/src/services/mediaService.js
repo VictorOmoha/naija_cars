@@ -54,7 +54,7 @@ class MediaService {
       return media;
     } catch (error) {
       console.error('Error uploading image:', error);
-      throw new Error('Failed to upload image');
+      throw new Error(error.message || 'Failed to upload image');
     }
   }
 
@@ -94,7 +94,7 @@ class MediaService {
       return media;
     } catch (error) {
       console.error('Error uploading video:', error);
-      throw new Error('Failed to upload video');
+      throw new Error(error.message || 'Failed to upload video');
     }
   }
 

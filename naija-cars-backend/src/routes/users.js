@@ -166,7 +166,9 @@ router.post('/me/avatar',
         const filename = `${req.user.id}.jpg`;
         fs.writeFileSync(path.join(avatarsDir, filename), compressedBuffer);
 
-        const baseUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`;
+        const baseUrl = process.env.SERVER_URL
+          || process.env.RENDER_EXTERNAL_URL
+          || `http://localhost:${process.env.PORT || 5000}`;
         avatarUrl = `${baseUrl}/avatars/${filename}`;
       }
 
@@ -232,10 +234,20 @@ router.put('/profile',
       // bio is the frontend field; about is the DB column — accept either
       const aboutValue = about !== undefined ? about : bio;
 
-      // Update UserProfile
-      await prisma.userProfile.update({
+      // Update UserProfile — upsert guards against missing profile row
+      await prisma.userProfile.upsert({
         where: { userId: req.user.id },
-        data: {
+        update: {
+          ...(firstName !== undefined && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+          ...(aboutValue !== undefined && { about: aboutValue }),
+          ...(address !== undefined && { address }),
+          ...(city !== undefined && { city }),
+          ...(state !== undefined && { state }),
+          ...(businessName !== undefined && { businessName })
+        },
+        create: {
+          userId: req.user.id,
           ...(firstName !== undefined && { firstName }),
           ...(lastName !== undefined && { lastName }),
           ...(aboutValue !== undefined && { about: aboutValue }),

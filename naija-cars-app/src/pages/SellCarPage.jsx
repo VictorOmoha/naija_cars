@@ -156,8 +156,15 @@ const SellCarPage = () => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingImage = (index) => {
-    setExistingImages(prev => prev.filter((_, i) => i !== index));
+  const removeExistingImage = async (index) => {
+    const image = existingImages[index];
+    try {
+      await api.delete(`/media/${image.id}`);
+      setExistingImages(prev => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error('Failed to delete image:', error);
+      addToast('Failed to delete image. Please try again.', 'error');
+    }
   };
 
   const handleSubmit = async (e) => {

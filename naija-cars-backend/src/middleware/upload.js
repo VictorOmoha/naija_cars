@@ -23,11 +23,37 @@ const upload = multer({
   }
 });
 
+// Wrap multer middleware with proper error handling
+const handleMulterError = (multerMiddleware) => (req, res, next) => {
+  multerMiddleware(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      // Multer-specific errors
+      const messages = {
+        LIMIT_FILE_SIZE: 'File too large. Maximum size is 50MB per file.',
+        LIMIT_FILE_COUNT: 'Too many files. Maximum is 20 files per upload.',
+        LIMIT_UNEXPECTED_FILE: 'Unexpected file field name.',
+      };
+      return res.status(400).json({
+        success: false,
+        error: { message: messages[err.code] || `Upload error: ${err.message}` }
+      });
+    }
+    if (err) {
+      // Non-multer errors (e.g., file filter rejection)
+      return res.status(400).json({
+        success: false,
+        error: { message: err.message || 'File upload failed.' }
+      });
+    }
+    next();
+  });
+};
+
 module.exports = {
-  uploadSingle: upload.single('file'),
-  uploadMultiple: upload.array('files', 20),
-  uploadFields: upload.fields([
+  uploadSingle: handleMulterError(upload.single('file')),
+  uploadMultiple: handleMulterError(upload.array('files', 20)),
+  uploadFields: handleMulterError(upload.fields([
     { name: 'photos', maxCount: 20 },
     { name: 'videos', maxCount: 3 }
-  ])
+  ]))
 };

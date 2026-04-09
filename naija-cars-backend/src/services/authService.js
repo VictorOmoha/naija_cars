@@ -20,13 +20,17 @@ class AuthService {
 
     if (existingUser) {
       const field = existingUser.email === email.toLowerCase() ? 'email' : 'phone number';
-      throw new Error(`User with this ${field} already exists`);
+      const err = new Error(`User with this ${field} already exists`);
+      err.status = 409;
+      throw err;
     }
 
     // Validate user type
     const validTypes = ['INDIVIDUAL_SELLER', 'DEALER', 'RENTAL_COMPANY', 'BUYER'];
     if (!validTypes.includes(userType)) {
-      throw new Error('Invalid user type');
+      const err = new Error('Invalid user type');
+      err.status = 400;
+      throw err;
     }
 
     // Hash password
@@ -81,18 +85,24 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid email or password');
+      const err = new Error('Invalid email or password');
+      err.status = 401;
+      throw err;
     }
 
     // Check if user is active
     if (!user.isActive) {
-      throw new Error('Account has been deactivated. Please contact support.');
+      const err = new Error('Account has been deactivated. Please contact support.');
+      err.status = 403;
+      throw err;
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
-      throw new Error('Invalid email or password');
+      const err = new Error('Invalid email or password');
+      err.status = 401;
+      throw err;
     }
 
     // Generate tokens
@@ -124,7 +134,9 @@ class AuthService {
       });
 
       if (!user || !user.isActive) {
-        throw new Error('Invalid refresh token');
+        const err = new Error('Invalid refresh token');
+        err.status = 401;
+        throw err;
       }
 
       // Generate new access token
@@ -132,7 +144,10 @@ class AuthService {
 
       return { accessToken };
     } catch (error) {
-      throw new Error('Invalid or expired refresh token');
+      if (error.status) throw error;
+      const err = new Error('Invalid or expired refresh token');
+      err.status = 401;
+      throw err;
     }
   }
 
@@ -267,13 +282,17 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
     }
 
     // Verify current password
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isValid) {
-      throw new Error('Current password is incorrect');
+      const err = new Error('Current password is incorrect');
+      err.status = 401;
+      throw err;
     }
 
     // Hash new password

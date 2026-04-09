@@ -52,9 +52,6 @@ export default function MediaUploader({ listingId, initialMedia = [], onUploadCo
       });
 
       const response = await api.post('/media/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(progress);

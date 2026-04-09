@@ -40,6 +40,12 @@ enum MediaType {
   VIDEO
 }
 
+enum SubscriptionPlan {
+  BASIC
+  PRO
+  PREMIUM
+}
+
 enum VerificationType {
   OTP_PHONE
   OTP_EMAIL
@@ -178,22 +184,39 @@ model Message {
 }
 
 model Subscription {
-  id               String   @id @default(uuid())
-  userId           String   @map("user_id")
-  planType         String   @map("plan_type")
-  startDate        DateTime @map("start_date")
-  endDate          DateTime @map("end_date")
-  isActive         Boolean  @default(true) @map("is_active")
-  amountPaid       Float    @map("amount_paid")
-  paymentReference String   @map("payment_reference")
-  createdAt        DateTime @default(now()) @map("created_at")
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  planType         SubscriptionPlan @map("plan_type")
+  startDate        DateTime         @default(now()) @map("start_date")
+  endDate          DateTime         @map("end_date")
+  isActive         Boolean          @default(true) @map("is_active")
+  autoRenew        Boolean          @default(true) @map("auto_renew")
+  amountPaid       Float            @map("amount_paid")
+  paymentReference String           @map("payment_reference")
+  paystackRef      String?          @map("paystack_ref")
+  listingsUsed     Int              @default(0) @map("listings_used")
+  listingsLimit    Int              @map("listings_limit")
+  cancelledAt      DateTime?        @map("cancelled_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([isActive])
   @@index([paymentReference])
+  @@index([endDate])
   @@map("subscriptions")
+}
+
+model PaystackEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique @map("event_id")
+  eventType String   @map("event_type")
+  processed Boolean  @default(false)
+  payload   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("paystack_events")
 }
 
 model Favorite {

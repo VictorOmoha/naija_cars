@@ -5,8 +5,10 @@ import {
   Car, Camera, DollarSign, FileText, Shield, CheckCircle,
   ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus, Loader2
 } from 'lucide-react';
-import api from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import api, { subscriptionAPI } from '../services/api';
 import { useApp } from '../context/AppContext';
+import useAuthStore from '../stores/authStore';
 import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
 
 // Map frontend condition values → backend enum
@@ -27,8 +29,18 @@ const SellCarPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { addToast } = useApp();
+  const { isAuthenticated } = useAuthStore();
   const editId = searchParams.get('edit'); // listing ID if in edit mode
   const isEditMode = !!editId;
+
+  // Subscription check
+  const { data: subData, isLoading: subLoading } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: () => subscriptionAPI.getMySubscription(),
+    enabled: isAuthenticated,
+  });
+  const subscription = subData?.data?.data?.subscription;
+  const hasActiveSub = !!subscription;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -218,7 +230,7 @@ const SellCarPage = () => {
       }
 
       addToast(
-        isEditMode ? 'Listing updated successfully!' : 'Your listing has been submitted for review!',
+        isEditMode ? 'Listing updated successfully!' : 'Your listing is now live!',
         'success'
       );
       navigate(`/car/${listing.id}`);
@@ -775,6 +787,57 @@ const SellCarPage = () => {
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-naija-500 animate-spin mx-auto mb-4" />
           <p className="text-charcoal-600">Loading listing data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show subscription gate if no active subscription (skip for edit mode)
+  if (!isEditMode && !subLoading && !hasActiveSub && isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-pearl-50 pt-32 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-10">
+            <Car className="w-16 h-16 text-naija-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-display font-bold text-charcoal-800 mb-3">
+              Subscription Required
+            </h1>
+            <p className="text-charcoal-600 mb-6">
+              You need an active subscription to list cars on NaijaCars. Choose a plan that fits your needs.
+            </p>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-naija-500 hover:bg-naija-600 text-white font-semibold rounded-xl transition-colors"
+            >
+              View Plans <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show listing limit warning
+  if (!isEditMode && hasActiveSub && subscription.listingsRemaining === 0) {
+    return (
+      <div className="min-h-screen bg-pearl-50 pt-32 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-10">
+            <Car className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-display font-bold text-charcoal-800 mb-3">
+              Listing Limit Reached
+            </h1>
+            <p className="text-charcoal-600 mb-6">
+              You've used all {subscription.listingsLimit} listings on your {subscription.planName} plan this month.
+              Upgrade for more listings.
+            </p>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-naija-500 hover:bg-naija-600 text-white font-semibold rounded-xl transition-colors"
+            >
+              Upgrade Plan <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
         </div>
       </div>
     );

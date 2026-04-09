@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
-import api from '../services/api';
+import { Link } from 'react-router-dom';
+import api, { subscriptionAPI } from '../services/api';
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
@@ -24,6 +25,14 @@ export default function DashboardPage() {
     },
     enabled: isAuthenticated && !!user,
   });
+
+  // Fetch subscription status
+  const { data: subData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: () => subscriptionAPI.getMySubscription(),
+    enabled: isAuthenticated,
+  });
+  const subscription = subData?.data?.data?.subscription;
 
   // Fetch favorites count
   const { data: favoritesData } = useQuery({
@@ -138,18 +147,49 @@ export default function DashboardPage() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Pending listings notice */}
-            {pendingListings > 0 && (
-              <div className="bg-gold-50 border border-gold-200 rounded-2xl p-4 flex items-start gap-3">
-                <div className="mt-0.5 w-5 h-5 rounded-full bg-gold-400 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">!</div>
+            {/* Subscription Status */}
+            {subscription ? (
+              <div className="bg-naija-50 border border-naija-200 rounded-2xl p-5 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gold-800">
-                    {pendingListings} listing{pendingListings > 1 ? 's' : ''} awaiting admin review
+                  <p className="font-semibold text-naija-800">
+                    {subscription.planName} Plan
                   </p>
+                  <p className="text-sm text-naija-700 mt-0.5">
+                    {subscription.listingsLimit === -1
+                      ? `Unlimited listings \u2022 ${subscription.listingsUsed} used`
+                      : `${subscription.listingsUsed}/${subscription.listingsLimit} listings used`}
+                    {' '}&middot; Expires {new Date(subscription.endDate).toLocaleDateString()}
+                  </p>
+                  {subscription.listingsLimit !== -1 && (
+                    <div className="mt-2 w-48 bg-naija-100 rounded-full h-2">
+                      <div
+                        className="bg-naija-500 h-2 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, (subscription.listingsUsed / subscription.listingsLimit) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <Link
+                  to="/pricing"
+                  className="px-5 py-2 bg-naija-500 hover:bg-naija-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  {subscription.planType === 'PREMIUM' ? 'Manage' : 'Upgrade'}
+                </Link>
+              </div>
+            ) : (
+              <div className="bg-gold-50 border border-gold-200 rounded-2xl p-5 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gold-800">No active subscription</p>
                   <p className="text-sm text-gold-700 mt-0.5">
-                    Your {pendingListings > 1 ? 'cars are' : 'car is'} pending approval and will go live once reviewed. Check the "My Listings" tab to see them.
+                    Subscribe to start listing your cars on NaijaCars.
                   </p>
                 </div>
+                <Link
+                  to="/pricing"
+                  className="px-5 py-2 bg-naija-500 hover:bg-naija-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  View Plans
+                </Link>
               </div>
             )}
 

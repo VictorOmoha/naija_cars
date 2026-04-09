@@ -31,6 +31,8 @@ const ContactPage = lazy(() => import('./pages/ContactPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
+const SubscriptionCallbackPage = lazy(() => import('./pages/SubscriptionCallbackPage'));
 
 // Admin Pages (lazy loaded)
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout'));
@@ -142,6 +144,8 @@ function App() {
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/help" element={<HelpPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/subscription/callback" element={<ProtectedRoute><SubscriptionCallbackPage /></ProtectedRoute>} />
 
                 {/* 404 Catch-all */}
                 <Route path="*" element={

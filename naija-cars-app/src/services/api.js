@@ -152,3 +152,12 @@ export const adminAPI = {
   toggleFeatured: (id, isFeatured) => api.patch(`/admin/listings/${id}/featured`, { isFeatured }),
   deleteListing: (id) => api.delete(`/admin/listings/${id}`)
 };
+
+// Subscription endpoints
+export const subscriptionAPI = {
+  getPlans: () => api.get('/subscriptions/plans'),
+  getMySubscription: () => api.get('/subscriptions/me'),
+  initialize: (planType) => api.post('/subscriptions/initialize', { planType }),
+  verify: (reference) => api.get('/subscriptions/verify', { params: { reference } }),
+  cancel: () => api.post('/subscriptions/cancel'),
+};

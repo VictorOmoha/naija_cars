@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
 const { authenticate, requireVerified } = require('../middleware/auth');
+const { requireActiveSubscription } = require('../middleware/subscription');
 
 const router = express.Router();
 
@@ -162,6 +163,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/',
   authenticate,
+  requireActiveSubscription,
   [
     body('listingType').isIn(['SALE', 'RENT']),
     body('make').trim().notEmpty(),
@@ -195,37 +197,54 @@ router.post('/',
         vinNumber, description
       } = req.body;
 
-      const listing = await prisma.carListing.create({
-        data: {
-          listingType, make, model,
-          year: parseInt(year, 10),
-          trim, title,
-          mileage: mileage ? parseInt(mileage, 10) : null,
-          transmission, fuelType,
-          bodyType: bodyType || null,
-          color: color || null,
-          engineSize: engineSize || null,
-          condition,
-          price: parseFloat(price),
-          negotiable: negotiable !== undefined ? Boolean(negotiable) : true,
-          locationState, locationCity,
-          phone: phone || null,
-          whatsapp: whatsapp || null,
-          vinNumber, description,
-          sellerId: req.user.id
-        },
-        include: {
-          seller: {
-            include: {
-              profile: true
+      // Determine if user's plan allows featured listings
+      const isFeatured = req.subscription &&
+        (req.subscription.planType === 'PRO' || req.subscription.planType === 'PREMIUM');
+
+      // Create listing + increment subscription usage atomically
+      const listing = await prisma.$transaction(async (tx) => {
+        const newListing = await tx.carListing.create({
+          data: {
+            listingType, make, model,
+            year: parseInt(year, 10),
+            trim, title,
+            mileage: mileage ? parseInt(mileage, 10) : null,
+            transmission, fuelType,
+            bodyType: bodyType || null,
+            color: color || null,
+            engineSize: engineSize || null,
+            condition,
+            price: parseFloat(price),
+            negotiable: negotiable !== undefined ? Boolean(negotiable) : true,
+            locationState, locationCity,
+            phone: phone || null,
+            whatsapp: whatsapp || null,
+            vinNumber, description,
+            sellerId: req.user.id,
+            status: 'ACTIVE',
+            isFeatured,
+          },
+          include: {
+            seller: {
+              include: {
+                profile: true
+              }
             }
           }
-        }
+        });
+
+        // Increment listings used on subscription
+        await tx.subscription.update({
+          where: { id: req.subscription.id },
+          data: { listingsUsed: { increment: 1 } },
+        });
+
+        return newListing;
       });
 
       res.status(201).json({
         success: true,
-        message: 'Listing created successfully',
+        message: 'Your listing is now live!',
         data: { listing }
       });
     } catch (error) {

@@ -97,6 +97,9 @@ app.use('/api/auth/verify-otp', otpLimiter);
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Raw body for Paystack webhook signature verification (must come before express.json)
+app.use('/api/subscriptions/webhook', express.raw({ type: 'application/json' }));
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -136,6 +139,7 @@ app.use('/api/listings', require('./routes/listings'));
 app.use('/api/media', require('./routes/media'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/contact', require('./routes/contact'));
 
 // Social share / OG proxy — serves rich HTML to bots, redirects browsers to SPA

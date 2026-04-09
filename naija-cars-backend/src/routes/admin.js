@@ -28,10 +28,10 @@ router.get('/stats', async (req, res) => {
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
     // Get current stats
-    const [totalUsers, activeListings, pendingApproval, totalSubscriptions] = await Promise.all([
+    const [totalUsers, activeListings, activeSubscribers, totalSubscriptions] = await Promise.all([
       prisma.user.count(),
       prisma.carListing.count({ where: { status: 'ACTIVE' } }),
-      prisma.carListing.count({ where: { status: 'PENDING' } }),
+      prisma.subscription.count({ where: { isActive: true, endDate: { gt: now } } }),
       prisma.subscription.aggregate({
         where: { isActive: true },
         _sum: { amountPaid: true }
@@ -76,7 +76,7 @@ router.get('/stats', async (req, res) => {
       data: {
         totalUsers,
         activeListings,
-        pendingApproval,
+        activeSubscribers,
         totalRevenue: totalSubscriptions._sum.amountPaid || 0,
         userGrowth: parseFloat(userGrowth),
         listingGrowth: parseFloat(listingGrowth)

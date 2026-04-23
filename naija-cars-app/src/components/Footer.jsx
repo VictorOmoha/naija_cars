@@ -33,10 +33,10 @@ const Footer = () => {
       { name: 'Chauffeur Service', href: '/rent?service=chauffeur' },
     ],
     'For Dealers': [
+      { name: 'Pricing & Plans', href: '/pricing' },
       { name: 'Become a Dealer', href: '/contact' },
       { name: 'Dealer Dashboard', href: '/dashboard' },
       { name: 'Find Dealers', href: '/cars?userType=dealer' },
-      { name: 'Advertise', href: '/contact' },
       { name: 'Dealer Support', href: '/help' },
     ],
     'Company': [

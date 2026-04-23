@@ -58,6 +58,7 @@ const Navbar = () => {
       ]
     },
     { name: 'Sell Your Car', href: '/sell' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Car Valuation', href: '/valuation' },
     { name: 'Dealers', href: '/dealers' },
   ];

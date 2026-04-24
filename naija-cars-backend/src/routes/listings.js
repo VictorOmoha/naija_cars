@@ -258,8 +258,33 @@ router.post('/',
  * @desc    Update listing
  * @access  Private (Owner only)
  */
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id',
+  authenticate,
+  [
+    body('listingType').optional().isIn(['SALE', 'RENT']),
+    body('make').optional().trim().notEmpty(),
+    body('model').optional().trim().notEmpty(),
+    body('year').optional().isInt({ min: 1900, max: new Date().getFullYear() + 1 }),
+    body('transmission').optional().trim().notEmpty(),
+    body('fuelType').optional().trim().notEmpty(),
+    body('condition').optional().isIn(['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW']),
+    body('price').optional().isFloat({ gt: 0 }),
+    body('mileage').optional({ nullable: true }).isInt({ min: 0 }),
+    body('locationState').optional().trim().notEmpty(),
+    body('locationCity').optional().trim().notEmpty(),
+    body('negotiable').optional().isBoolean(),
+    body('description').optional().trim(),
+  ],
+  async (req, res, next) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Validation failed', details: errors.array() }
+      });
+    }
+
     // Check if listing exists and user owns it
     const existingListing = await prisma.carListing.findUnique({
       where: { id: req.params.id }
@@ -345,8 +370,26 @@ router.delete('/:id', authenticate, async (req, res, next) => {
       });
     }
 
-    await prisma.carListing.delete({
-      where: { id: req.params.id }
+    await prisma.$transaction(async (tx) => {
+      await tx.carListing.delete({ where: { id: req.params.id } });
+
+      // Return the slot to the user's active subscription so deleting a
+      // listing doesn't consume a spot permanently.
+      const activeSub = await tx.subscription.findFirst({
+        where: {
+          userId: req.user.id,
+          isActive: true,
+          endDate: { gt: new Date() },
+          listingsUsed: { gt: 0 },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (activeSub) {
+        await tx.subscription.update({
+          where: { id: activeSub.id },
+          data: { listingsUsed: { decrement: 1 } },
+        });
+      }
     });
 
     res.json({

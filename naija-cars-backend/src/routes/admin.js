@@ -338,10 +338,12 @@ router.patch('/users/:id/verify', async (req, res) => {
     res.json({
       success: true,
       message: 'User verified successfully',
-      user: {
-        id: user.id,
-        email: user.email,
-        isVerified: user.isVerified
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          isVerified: user.isVerified
+        }
       }
     });
   } catch (error) {
@@ -379,10 +381,12 @@ router.patch('/users/:id/status', [
     res.json({
       success: true,
       message: isActive ? 'User activated successfully' : 'User suspended successfully',
-      user: {
-        id: user.id,
-        email: user.email,
-        isActive: user.isActive
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          isActive: user.isActive
+        }
       }
     });
   } catch (error) {
@@ -994,10 +998,12 @@ router.patch('/users/:id/role', [
     res.json({
       success: true,
       message: `User role updated to ${userType}`,
-      user: {
-        id: user.id,
-        email: user.email,
-        userType: user.userType
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          userType: user.userType
+        }
       }
     });
   } catch (error) {

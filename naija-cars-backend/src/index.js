@@ -78,20 +78,30 @@ async function startServer() {
       // Join user to their personal room
       socket.join(socket.userId);
 
-      // Join conversation room (verify user is a participant)
+      // Conversation IDs are built as the two participant UUIDs sorted and
+      // joined with `_`. Split and match exactly — substring matching would
+      // let user "ab" join a room `abcd_efgh` they don't belong to.
+      const isConversationParticipant = (conversationId) => {
+        if (typeof conversationId !== 'string') return false;
+        const parts = conversationId.split('_');
+        return parts.length === 2 && parts.includes(socket.userId);
+      };
+
       socket.on('join-conversation', (conversationId) => {
-        if (typeof conversationId === 'string' && conversationId.includes(socket.userId)) {
+        if (isConversationParticipant(conversationId)) {
           socket.join(conversationId);
         }
       });
 
-      // Leave conversation room
       socket.on('leave-conversation', (conversationId) => {
-        socket.leave(conversationId);
+        if (isConversationParticipant(conversationId)) {
+          socket.leave(conversationId);
+        }
       });
 
       // Typing indicator
       socket.on('typing', ({ conversationId, isTyping }) => {
+        if (!isConversationParticipant(conversationId)) return;
         socket.to(conversationId).emit('user-typing', {
           userId: socket.userId,
           isTyping

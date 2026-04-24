@@ -185,7 +185,14 @@ router.get(
         });
       }
 
-      const { userId, planType } = txn.metadata;
+      const { userId, planType } = txn.metadata || {};
+
+      if (!userId || !planType) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Transaction metadata is missing or malformed' },
+        });
+      }
 
       // Security: ensure the transaction belongs to the authenticated user
       if (userId !== req.user.id) {

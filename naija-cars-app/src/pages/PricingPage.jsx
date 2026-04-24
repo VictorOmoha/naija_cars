@@ -8,10 +8,10 @@ import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 
 const planIcons = { BASIC: Zap, PRO: Crown, PREMIUM: Rocket };
-const planColors = {
-  BASIC: 'naija-500',
-  PRO: 'amber-500',
-  PREMIUM: 'purple-600',
+const planColorClasses = {
+  BASIC: { bg: 'bg-naija-500/10', text: 'text-naija-500' },
+  PRO: { bg: 'bg-amber-500/10', text: 'text-amber-500' },
+  PREMIUM: { bg: 'bg-purple-600/10', text: 'text-purple-600' },
 };
 
 const PricingPage = () => {
@@ -82,6 +82,7 @@ const PricingPage = () => {
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {plans.map((plan, index) => {
             const Icon = planIcons[plan.id] || Zap;
+            const colors = planColorClasses[plan.id] || planColorClasses.BASIC;
             const isCurrentPlan = currentSub?.planType === plan.id;
             const isPopular = plan.id === 'PRO';
 
@@ -106,8 +107,8 @@ const PricingPage = () => {
                 )}
 
                 <div className="text-center mb-6">
-                  <div className={`w-14 h-14 mx-auto mb-4 rounded-xl bg-${planColors[plan.id]}/10 flex items-center justify-center`}>
-                    <Icon className={`w-7 h-7 text-${planColors[plan.id]}`} />
+                  <div className={`w-14 h-14 mx-auto mb-4 rounded-xl ${colors.bg} flex items-center justify-center`}>
+                    <Icon className={`w-7 h-7 ${colors.text}`} />
                   </div>
                   <h2 className="text-2xl font-display font-bold text-charcoal-800">
                     {plan.name}

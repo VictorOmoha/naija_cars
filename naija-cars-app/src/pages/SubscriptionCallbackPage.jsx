@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { subscriptionAPI } from '../services/api';
 
 const SubscriptionCallbackPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const reference = searchParams.get('reference') || searchParams.get('trxref');
 
@@ -22,9 +24,41 @@ const SubscriptionCallbackPage = () => {
     const verify = async () => {
       try {
         const response = await subscriptionAPI.verify(reference);
+        const activatedSub = response.data.data?.subscription;
         setStatus('success');
         setMessage(response.data.message || 'Subscription activated!');
-        setSubscription(response.data.data?.subscription);
+        setSubscription(activatedSub);
+
+        // The subscription was just activated server-side. The cached
+        // ['my-subscription'] from before payment still says "no sub" —
+        // if we just invalidate, the next page (/sell) renders the
+        // "Subscription Required" gate during the refetch. Push the
+        // fresh subscription into the cache directly (matching the
+        // /me response shape) so the gate never appears, then trigger
+        // a refetch so the cache stays in sync with the server.
+        if (activatedSub) {
+          const planNames = { BASIC: 'Basic', PRO: 'Pro', PREMIUM: 'Premium' };
+          const listingsRemaining =
+            activatedSub.listingsLimit === -1
+              ? -1
+              : activatedSub.listingsLimit - (activatedSub.listingsUsed || 0);
+          const shaped = {
+            id: activatedSub.id,
+            planType: activatedSub.planType,
+            planName: planNames[activatedSub.planType] || activatedSub.planType,
+            startDate: activatedSub.startDate,
+            endDate: activatedSub.endDate,
+            listingsUsed: activatedSub.listingsUsed || 0,
+            listingsLimit: activatedSub.listingsLimit,
+            listingsRemaining,
+            autoRenew: activatedSub.autoRenew,
+            cancelledAt: activatedSub.cancelledAt,
+          };
+          queryClient.setQueryData(['my-subscription'], {
+            data: { success: true, data: { subscription: shaped } },
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       } catch (error) {
         setStatus('error');
         setMessage(
@@ -34,7 +68,7 @@ const SubscriptionCallbackPage = () => {
     };
 
     verify();
-  }, [reference]);
+  }, [reference, queryClient]);
 
   return (
     <div className="min-h-screen bg-pearl-50 flex items-center justify-center px-4">

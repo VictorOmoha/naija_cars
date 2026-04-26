@@ -3,6 +3,7 @@ const { body, query, validationResult } = require('express-validator');
 const { authenticate } = require('../middleware/auth');
 const prisma = require('../lib/prisma');
 const paystackService = require('../services/paystackService');
+const { sendSubscriptionEmail } = require('../lib/emailService');
 const PLANS = require('../config/subscriptionPlans');
 
 const router = express.Router();
@@ -249,6 +250,21 @@ router.get(
         return newSub;
       });
 
+      // Send subscription confirmation email (non-blocking)
+      const userRecord = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { email: true, profile: { select: { firstName: true } } },
+      });
+      if (userRecord) {
+        sendSubscriptionEmail(userRecord.email, {
+          firstName: userRecord.profile?.firstName,
+          planName: plan.name,
+          amount: subscription.amountPaid,
+          endDate: subscription.endDate,
+          listingsLimit: subscription.listingsLimit,
+        }).catch((err) => console.error('Failed to send subscription email:', err.message));
+      }
+
       res.json({
         success: true,
         message: 'Subscription activated successfully!',
@@ -333,6 +349,21 @@ router.post('/webhook', async (req, res, next) => {
             },
           });
         });
+
+        // Send confirmation email (non-blocking)
+        const userRecord = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, profile: { select: { firstName: true } } },
+        });
+        if (userRecord) {
+          sendSubscriptionEmail(userRecord.email, {
+            firstName: userRecord.profile?.firstName,
+            planName: plan.name,
+            amount: event.data.amount / 100,
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            listingsLimit: plan.listingsLimit,
+          }).catch((err) => console.error('Failed to send subscription email:', err.message));
+        }
       }
     }
 

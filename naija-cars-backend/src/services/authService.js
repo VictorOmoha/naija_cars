@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
-const { sendOTPEmail, sendPasswordResetEmail } = require('../lib/emailService');
+const { sendOTPEmail, sendPasswordResetEmail, sendWelcomeEmail } = require('../lib/emailService');
 
 class AuthService {
   /**
@@ -58,6 +58,14 @@ class AuthService {
 
     // Remove sensitive data
     delete user.passwordHash;
+
+    // Send welcome email (non-blocking — don't fail registration if email fails)
+    sendWelcomeEmail(user.email, {
+      firstName: user.profile?.firstName,
+      userType: user.userType,
+    }).catch((err) => {
+      console.error('Failed to send welcome email:', err.message);
+    });
 
     // Generate tokens so user can immediately verify OTP
     const accessToken = this.generateAccessToken(user);

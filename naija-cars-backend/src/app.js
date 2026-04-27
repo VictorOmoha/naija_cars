@@ -8,17 +8,12 @@ const cookieParser = require('cookie-parser');
 
 const app = express();
 
-// Security middleware
-app.use(helmet({
-  // User-uploaded fallback media is served from the API domain and embedded
-  // by the web app domain, so static images must be loadable cross-origin.
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
-}));
-
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   process.env.CLIENT_URL,
@@ -26,12 +21,16 @@ const allowedOrigins = [
   'https://naijacars.online'
 ].filter(Boolean);
 
-app.use(cors({
+const normalizeOrigin = (origin) => origin?.replace(/\/$/, '');
+
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (allowedOrigins.map(normalizeOrigin).includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -40,6 +39,16 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
+// Security middleware
+app.use(helmet({
+  // User-uploaded fallback media is served from the API domain and embedded
+  // by the web app domain, so static images must be loadable cross-origin.
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 // Rate limiting - general API limiter

@@ -96,6 +96,21 @@ export default function ProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
 
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+      addToast('Please choose a JPEG, PNG, or WebP image.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > maxSize) {
+      addToast('Profile photo must be 5MB or smaller.', 'error');
+      e.target.value = '';
+      return;
+    }
+
     // Show local preview immediately
     const reader = new FileReader();
     reader.onloadend = () => setAvatarPreview(reader.result);

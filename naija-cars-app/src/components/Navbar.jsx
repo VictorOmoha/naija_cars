@@ -321,15 +321,29 @@ const Navbar = () => {
             </motion.button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="xl:hidden flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </motion.button>
+          {/* Mobile Actions */}
+          <div className="xl:hidden flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              onClick={() => setIsListCarOpen(true)}
+              className="inline-flex h-12 items-center justify-center gap-2 px-3 sm:px-4 bg-naija-500 text-white
+                       text-sm font-semibold rounded-xl shadow-sm hover:bg-naija-600 transition-colors"
+              aria-label="List your car"
+            >
+              <Car className="w-4 h-4" />
+              <span>List</span>
+              <span className="hidden sm:inline">Your Car</span>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </motion.button>
+          </div>
         </div>
 
         {/* Mobile Menu */}

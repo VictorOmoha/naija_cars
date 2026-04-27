@@ -9,7 +9,11 @@ const cookieParser = require('cookie-parser');
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  // User-uploaded fallback media is served from the API domain and embedded
+  // by the web app domain, so static images must be loadable cross-origin.
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 // CORS configuration
 const allowedOrigins = [

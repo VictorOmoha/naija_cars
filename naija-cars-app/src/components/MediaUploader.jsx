@@ -66,7 +66,7 @@ export default function MediaUploader({ listingId, initialMedia = [], onUploadCo
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload media. Please try again.');
+      alert(error.response?.data?.error?.message || 'Failed to upload media. Please try again.');
     } finally {
       setUploading(false);
       setUploadProgress(0);

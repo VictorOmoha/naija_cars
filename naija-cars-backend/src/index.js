@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const app = require('./app');
 const prisma = require('./lib/prisma');
+const cloudinary = require('./config/cloudinary');
 
 const PORT = process.env.PORT || 5000;
 
@@ -24,12 +25,7 @@ async function startServer() {
     }
 
     // Validate Cloudinary credentials
-    const cloudinaryConfigured =
-      process.env.CLOUDINARY_CLOUD_NAME &&
-      process.env.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name' &&
-      process.env.CLOUDINARY_API_KEY &&
-      process.env.CLOUDINARY_API_KEY !== 'your-api-key';
-    if (cloudinaryConfigured) {
+    if (cloudinary.isConfigured()) {
       console.log('✅ Cloudinary configured — media uploads enabled');
     } else {
       console.warn('⚠️  Cloudinary NOT configured — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in environment. Profile and listing photo uploads will fall back to local disk (not persistent on Render).');

@@ -105,7 +105,7 @@ router.post('/upload',
         return res.status(500).json({
           success: false,
           error: {
-            message: 'All file uploads failed. Please check Cloudinary configuration and try again.',
+            message: 'All file uploads failed. Please check media storage configuration and try again.',
             failed: failedUploads
           }
         });

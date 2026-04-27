@@ -1,10 +1,59 @@
 const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const cloudinary = require('../config/cloudinary');
 const prisma = require('../lib/prisma');
 
 class MediaService {
+  getPublicBaseUrl() {
+    const baseUrl = process.env.SERVER_URL
+      || process.env.RENDER_EXTERNAL_URL
+      || `http://localhost:${process.env.PORT || 5000}`;
+
+    return baseUrl.replace(/\/$/, '');
+  }
+
+  getPublicPath(relativeUrl) {
+    const cleanRelativeUrl = relativeUrl.replace(/^\/+/, '');
+    return path.join(__dirname, '../../public', cleanRelativeUrl);
+  }
+
+  saveLocalMedia(buffer, relativeDir, extension) {
+    const safeExtension = extension.replace(/^\./, '') || 'bin';
+    const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${safeExtension}`;
+    const relativeUrl = `${relativeDir.replace(/^\/+|\/+$/g, '')}/${filename}`;
+    const absolutePath = this.getPublicPath(relativeUrl);
+
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, buffer);
+
+    return {
+      url: `${this.getPublicBaseUrl()}/${relativeUrl}`,
+      relativeUrl: `/${relativeUrl}`,
+      absolutePath,
+      size: buffer.length
+    };
+  }
+
+  getVideoExtension(file) {
+    const originalExtension = path.extname(file.originalname || '').replace(/^\./, '').toLowerCase();
+
+    if (originalExtension) {
+      return originalExtension;
+    }
+
+    const extensionsByMimeType = {
+      'video/mp4': 'mp4',
+      'video/quicktime': 'mov',
+      'video/x-msvideo': 'avi'
+    };
+
+    return extensionsByMimeType[file.mimetype] || 'mp4';
+  }
+
   /**
-   * Upload image to Cloudinary with compression
+   * Upload image to configured storage with compression
    */
   async uploadImage(file, listingId, displayOrder = 0) {
     try {
@@ -28,24 +77,45 @@ class MediaService {
         .jpeg({ quality: 80 })
         .toBuffer();
 
-      // Upload to Cloudinary
-      const mainUpload = await this.uploadToCloudinary(
-        compressedBuffer,
-        `naija-cars/listings/${listingId}`
-      );
+      let url;
+      let thumbnailUrl;
 
-      const thumbnailUpload = await this.uploadToCloudinary(
-        thumbnailBuffer,
-        `naija-cars/thumbnails/${listingId}`
-      );
+      if (cloudinary.isConfigured()) {
+        const mainUpload = await this.uploadToCloudinary(
+          compressedBuffer,
+          `naija-cars/listings/${listingId}`
+        );
+
+        const thumbnailUpload = await this.uploadToCloudinary(
+          thumbnailBuffer,
+          `naija-cars/thumbnails/${listingId}`
+        );
+
+        url = mainUpload.secure_url;
+        thumbnailUrl = thumbnailUpload.secure_url;
+      } else {
+        const localImage = this.saveLocalMedia(
+          compressedBuffer,
+          `uploads/listings/${listingId}`,
+          'jpg'
+        );
+        const localThumbnail = this.saveLocalMedia(
+          thumbnailBuffer,
+          `uploads/thumbnails/${listingId}`,
+          'jpg'
+        );
+
+        url = localImage.url;
+        thumbnailUrl = localThumbnail.url;
+      }
 
       // Save to database
       const media = await prisma.media.create({
         data: {
           listingId,
           mediaType: 'PHOTO',
-          url: mainUpload.secure_url,
-          thumbnailUrl: thumbnailUpload.secure_url,
+          url,
+          thumbnailUrl,
           displayOrder,
           fileSize: compressedBuffer.length
         }
@@ -59,25 +129,36 @@ class MediaService {
   }
 
   /**
-   * Upload video to Cloudinary
+   * Upload video to configured storage
    */
   async uploadVideo(file, listingId, displayOrder = 0) {
     try {
       // Validate video duration (max 45 seconds)
       // Note: For production, use ffmpeg to check duration
 
-      // Upload video to Cloudinary
-      const videoUpload = await this.uploadToCloudinary(
-        file.buffer,
-        `naija-cars/videos/${listingId}`,
-        'video'
-      );
+      let url;
+      let thumbnailUrl = null;
 
-      // Generate thumbnail from video
-      const thumbnailUrl = videoUpload.secure_url.replace(
-        /\.(mp4|mov|avi)$/,
-        '.jpg'
-      );
+      if (cloudinary.isConfigured()) {
+        const videoUpload = await this.uploadToCloudinary(
+          file.buffer,
+          `naija-cars/videos/${listingId}`,
+          'video'
+        );
+
+        url = videoUpload.secure_url;
+        thumbnailUrl = videoUpload.secure_url.replace(
+          /\.(mp4|mov|avi)$/,
+          '.jpg'
+        );
+      } else {
+        const localVideo = this.saveLocalMedia(
+          file.buffer,
+          `uploads/videos/${listingId}`,
+          this.getVideoExtension(file)
+        );
+        url = localVideo.url;
+      }
 
       // Save to database
       const media = await prisma.media.create({
@@ -122,7 +203,7 @@ class MediaService {
   }
 
   /**
-   * Delete media from Cloudinary and database
+   * Delete media from configured storage and database
    */
   async deleteMedia(mediaId) {
     try {
@@ -134,17 +215,25 @@ class MediaService {
         throw new Error('Media not found');
       }
 
-      // Extract public ID from Cloudinary URL
-      const publicId = this.extractPublicId(media.url);
-      const thumbnailPublicId = media.thumbnailUrl ? this.extractPublicId(media.thumbnailUrl) : null;
+      if (this.isLocalMediaUrl(media.url)) {
+        this.deleteLocalMedia(media.url);
 
-      // Delete from Cloudinary
-      await cloudinary.uploader.destroy(publicId, {
-        resource_type: media.mediaType === 'VIDEO' ? 'video' : 'image'
-      });
+        if (media.thumbnailUrl) {
+          this.deleteLocalMedia(media.thumbnailUrl);
+        }
+      } else {
+        // Extract public ID from Cloudinary URL
+        const publicId = this.extractPublicId(media.url);
+        const thumbnailPublicId = media.thumbnailUrl ? this.extractPublicId(media.thumbnailUrl) : null;
 
-      if (thumbnailPublicId) {
-        await cloudinary.uploader.destroy(thumbnailPublicId);
+        // Delete from Cloudinary
+        await cloudinary.uploader.destroy(publicId, {
+          resource_type: media.mediaType === 'VIDEO' ? 'video' : 'image'
+        });
+
+        if (thumbnailPublicId) {
+          await cloudinary.uploader.destroy(thumbnailPublicId);
+        }
       }
 
       // Delete from database
@@ -167,6 +256,35 @@ class MediaService {
     const filename = parts[parts.length - 1];
     const publicId = parts.slice(-3).join('/').replace(/\.[^/.]+$/, '');
     return publicId;
+  }
+
+  isLocalMediaUrl(url) {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.pathname.startsWith('/uploads/');
+    } catch (error) {
+      return typeof url === 'string' && url.startsWith('/uploads/');
+    }
+  }
+
+  deleteLocalMedia(url) {
+    try {
+      let pathname = url;
+
+      try {
+        pathname = new URL(url).pathname;
+      } catch (error) {
+        // Keep relative local URLs as-is.
+      }
+
+      const absolutePath = this.getPublicPath(pathname);
+
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    } catch (error) {
+      console.warn('Unable to delete local media file:', error.message);
+    }
   }
 
   /**

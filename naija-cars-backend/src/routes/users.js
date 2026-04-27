@@ -8,14 +8,7 @@ const cloudinary = require('../config/cloudinary');
 const { authenticate } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
 
-// Detect whether real Cloudinary credentials have been provided
-const CLOUDINARY_CONFIGURED =
-  process.env.CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name' &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_KEY !== 'your-api-key';
-
-if (!CLOUDINARY_CONFIGURED) {
+if (!cloudinary.isConfigured()) {
   console.warn(
     '[avatar] Cloudinary credentials not set — avatar uploads will be saved to local disk (dev mode).'
   );
@@ -150,7 +143,7 @@ router.post('/me/avatar',
 
       let avatarUrl;
 
-      if (CLOUDINARY_CONFIGURED) {
+      if (cloudinary.isConfigured()) {
         // --- Upload to Cloudinary ---
         avatarUrl = await new Promise((resolve, reject) => {
           cloudinary.uploader.upload_stream(

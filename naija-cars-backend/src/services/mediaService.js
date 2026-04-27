@@ -36,6 +36,10 @@ class MediaService {
     };
   }
 
+  bufferToDataUrl(buffer, mimeType = 'image/jpeg') {
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
+
   getVideoExtension(file) {
     const originalExtension = path.extname(file.originalname || '').replace(/^\./, '').toLowerCase();
 
@@ -77,37 +81,8 @@ class MediaService {
         .jpeg({ quality: 80 })
         .toBuffer();
 
-      let url;
-      let thumbnailUrl;
-
-      if (cloudinary.isConfigured()) {
-        const mainUpload = await this.uploadToCloudinary(
-          compressedBuffer,
-          `naija-cars/listings/${listingId}`
-        );
-
-        const thumbnailUpload = await this.uploadToCloudinary(
-          thumbnailBuffer,
-          `naija-cars/thumbnails/${listingId}`
-        );
-
-        url = mainUpload.secure_url;
-        thumbnailUrl = thumbnailUpload.secure_url;
-      } else {
-        const localImage = this.saveLocalMedia(
-          compressedBuffer,
-          `uploads/listings/${listingId}`,
-          'jpg'
-        );
-        const localThumbnail = this.saveLocalMedia(
-          thumbnailBuffer,
-          `uploads/thumbnails/${listingId}`,
-          'jpg'
-        );
-
-        url = localImage.url;
-        thumbnailUrl = localThumbnail.url;
-      }
+      const url = this.bufferToDataUrl(compressedBuffer);
+      const thumbnailUrl = this.bufferToDataUrl(thumbnailBuffer);
 
       // Save to database
       const media = await prisma.media.create({
@@ -215,7 +190,10 @@ class MediaService {
         throw new Error('Media not found');
       }
 
-      if (this.isLocalMediaUrl(media.url)) {
+      if (this.isDataUrl(media.url)) {
+        // Image data URLs are stored directly in the database; deleting the row
+        // below is enough.
+      } else if (this.isLocalMediaUrl(media.url)) {
         this.deleteLocalMedia(media.url);
 
         if (media.thumbnailUrl) {
@@ -265,6 +243,10 @@ class MediaService {
     } catch (error) {
       return typeof url === 'string' && url.startsWith('/uploads/');
     }
+  }
+
+  isDataUrl(url) {
+    return typeof url === 'string' && url.startsWith('data:');
   }
 
   deleteLocalMedia(url) {

@@ -31,9 +31,9 @@ async function startServer() {
   try {
     // Validate Cloudinary credentials
     if (cloudinary.isConfigured()) {
-      console.log('✅ Cloudinary configured — media uploads enabled');
+      console.log('✅ Cloudinary configured — video uploads enabled');
     } else {
-      console.warn('⚠️  Cloudinary NOT configured — set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in environment. Profile and listing photo uploads will fall back to local disk (not persistent on Render).');
+      console.warn('⚠️  Cloudinary NOT configured — listing videos will fall back to local disk (not persistent on Render). Profile and listing photos are stored in the database.');
     }
 
     // Create HTTP server

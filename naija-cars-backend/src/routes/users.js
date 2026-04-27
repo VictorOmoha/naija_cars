@@ -145,7 +145,7 @@ const authenticateAvatarUpload = async (req, res, next) => {
       }
     }
 
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     if (refreshToken) {
       try {
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);

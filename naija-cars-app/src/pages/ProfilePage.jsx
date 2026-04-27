@@ -59,27 +59,67 @@ const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-const uploadAvatarData = async (imageData) => {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    throw new Error('Your session has expired. Please sign in again to update your photo.');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/users/me/avatar-data`, {
+const postAvatarData = async (imageData, token) => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  return fetch(`${API_BASE_URL}/users/me/avatar-data`, {
     method: 'POST',
     credentials: 'include',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ imageData })
+    body: JSON.stringify({
+      imageData,
+      ...(refreshToken ? { refreshToken } : {})
+    })
+  });
+};
+
+const parseJsonResponse = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
+const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken })
   });
 
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch {
-    // Keep the status-based message below when the API cannot return JSON.
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) return null;
+
+  const nextToken = payload?.data?.accessToken;
+  const nextRefreshToken = payload?.data?.refreshToken;
+  if (nextToken) localStorage.setItem('accessToken', nextToken);
+  if (nextRefreshToken) localStorage.setItem('refreshToken', nextRefreshToken);
+
+  return nextToken;
+};
+
+const uploadAvatarData = async (imageData) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('Your session has expired. Please sign in again to update your photo.');
+  }
+
+  let response = await postAvatarData(imageData, token);
+  let payload = await parseJsonResponse(response);
+
+  if (response.status === 401) {
+    const nextToken = await refreshAccessToken();
+    if (nextToken) {
+      response = await postAvatarData(imageData, nextToken);
+      payload = await parseJsonResponse(response);
+    }
   }
 
   if (!response.ok) {
@@ -211,9 +251,12 @@ export default function ProfilePage() {
       addToast('Profile photo updated!', 'success');
     } catch (err) {
       addToast(
-        err.response?.data?.error?.message || 'Failed to upload photo',
+        err.response?.data?.error?.message || err.message || 'Failed to upload photo',
         'error'
       );
+      if (err.message?.toLowerCase().includes('sign in')) {
+        setIsSignInOpen(true);
+      }
       setAvatarPreview(null);  // revert preview on failure
     } finally {
       setAvatarUploading(false);

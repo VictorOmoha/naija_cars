@@ -70,7 +70,8 @@ router.post('/register',
             isVerified: user.isVerified,
             profile: user.profile
           },
-          accessToken
+          accessToken,
+          refreshToken
         }
       });
     } catch (error) {
@@ -121,7 +122,8 @@ router.post('/login',
         message: 'Login successful',
         data: {
           user,
-          accessToken
+          accessToken,
+          refreshToken
         }
       });
     } catch (error) {
@@ -153,7 +155,8 @@ router.post('/refresh', async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        accessToken
+        accessToken,
+        refreshToken
       }
     });
   } catch (error) {

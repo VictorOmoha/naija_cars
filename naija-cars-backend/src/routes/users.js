@@ -1,11 +1,8 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const sharp = require('sharp');
 const prisma = require('../lib/prisma');
-const cloudinary = require('../config/cloudinary');
 const { authenticate } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
 
@@ -20,66 +17,13 @@ const listingSellerSelect = {
   profile: true
 };
 
-if (!cloudinary.isConfigured()) {
-  console.warn(
-    '[avatar] Cloudinary credentials not set — avatar uploads will be saved to local disk (dev mode).'
-  );
-}
-
-const getPublicBaseUrl = () => {
-  const baseUrl = process.env.SERVER_URL
-    || process.env.RENDER_EXTERNAL_URL
-    || `http://localhost:${process.env.PORT || 5000}`;
-
-  return baseUrl.replace(/\/$/, '');
-};
-
-const saveAvatarToLocalDisk = (userId, buffer) => {
-  const avatarsDir = path.join(__dirname, '../../public/avatars');
-  if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
-
-  const filename = `${userId}.jpg`;
-  fs.writeFileSync(path.join(avatarsDir, filename), buffer);
-
-  return `${getPublicBaseUrl()}/avatars/${filename}`;
-};
-
-const uploadAvatarToCloudinary = (userId, buffer) => new Promise((resolve, reject) => {
-  const timeout = setTimeout(() => {
-    reject(new Error('Cloudinary avatar upload timed out'));
-  }, 12000);
-
-  cloudinary.uploader.upload_stream(
-    { folder: `naija-cars/avatars/${userId}`, resource_type: 'image' },
-    (err, result) => {
-      clearTimeout(timeout);
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(result.secure_url);
-    }
-  ).end(buffer);
-});
-
 const persistAvatar = async (userId, inputBuffer) => {
   const compressedBuffer = await sharp(inputBuffer)
     .resize(400, 400, { fit: 'cover' })
     .jpeg({ quality: 85 })
     .toBuffer();
 
-  let avatarUrl;
-
-  if (cloudinary.isConfigured()) {
-    try {
-      avatarUrl = await uploadAvatarToCloudinary(userId, compressedBuffer);
-    } catch (error) {
-      console.error('Cloudinary avatar upload failed, using local fallback:', error.message);
-      avatarUrl = saveAvatarToLocalDisk(userId, compressedBuffer);
-    }
-  } else {
-    avatarUrl = saveAvatarToLocalDisk(userId, compressedBuffer);
-  }
+  const avatarUrl = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
 
   await prisma.userProfile.upsert({
     where: { userId },

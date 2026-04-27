@@ -199,9 +199,6 @@ export default function ProfilePage() {
     // Upload to server right away — no need to click Save Changes
     setAvatarUploading(true);
     try {
-      const refreshedUser = await authAPI.getMe();
-      updateUser(refreshedUser.data.data.user);
-
       const uploadFile = await compressAvatarImage(file);
       const imageData = await readFileAsDataUrl(uploadFile);
 

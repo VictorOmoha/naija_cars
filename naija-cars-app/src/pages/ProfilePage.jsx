@@ -11,6 +11,47 @@ import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
 import api, { authAPI } from '../services/api';
 
+const compressAvatarImage = (file) => new Promise((resolve, reject) => {
+  const imageUrl = URL.createObjectURL(file);
+  const image = new Image();
+
+  image.onload = () => {
+    try {
+      const size = 400;
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+      const sourceX = Math.max((image.naturalWidth - sourceSize) / 2, 0);
+      const sourceY = Math.max((image.naturalHeight - sourceSize) / 2, 0);
+
+      canvas.width = size;
+      canvas.height = size;
+      context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(imageUrl);
+
+        if (!blob) {
+          reject(new Error('Unable to prepare image for upload'));
+          return;
+        }
+
+        resolve(new File([blob], 'profile-avatar.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.82);
+    } catch (error) {
+      URL.revokeObjectURL(imageUrl);
+      reject(error);
+    }
+  };
+
+  image.onerror = () => {
+    URL.revokeObjectURL(imageUrl);
+    reject(new Error('Unable to read selected image'));
+  };
+
+  image.src = imageUrl;
+});
+
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
   const { addToast, setIsSignInOpen } = useApp();
@@ -118,16 +159,18 @@ export default function ProfilePage() {
       return;
     }
 
-    // Show local preview immediately
-    const reader = new FileReader();
-    reader.onloadend = () => setAvatarPreview(reader.result);
-    reader.readAsDataURL(file);
-
     // Upload to server right away — no need to click Save Changes
     setAvatarUploading(true);
     try {
+      const uploadFile = await compressAvatarImage(file);
+
+      // Show local preview immediately after the image is normalized.
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result);
+      reader.readAsDataURL(uploadFile);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
       const { data } = await api.post('/users/me/avatar', formData);
       // Sync the returned user object (with new avatarUrl) into the store
       updateUser(data.data.user);

@@ -25,6 +25,42 @@ if (!cloudinary.isConfigured()) {
   );
 }
 
+const getPublicBaseUrl = () => {
+  const baseUrl = process.env.SERVER_URL
+    || process.env.RENDER_EXTERNAL_URL
+    || `http://localhost:${process.env.PORT || 5000}`;
+
+  return baseUrl.replace(/\/$/, '');
+};
+
+const saveAvatarToLocalDisk = (userId, buffer) => {
+  const avatarsDir = path.join(__dirname, '../../public/avatars');
+  if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
+
+  const filename = `${userId}.jpg`;
+  fs.writeFileSync(path.join(avatarsDir, filename), buffer);
+
+  return `${getPublicBaseUrl()}/avatars/${filename}`;
+};
+
+const uploadAvatarToCloudinary = (userId, buffer) => new Promise((resolve, reject) => {
+  const timeout = setTimeout(() => {
+    reject(new Error('Cloudinary avatar upload timed out'));
+  }, 12000);
+
+  cloudinary.uploader.upload_stream(
+    { folder: `naija-cars/avatars/${userId}`, resource_type: 'image' },
+    (err, result) => {
+      clearTimeout(timeout);
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(result.secure_url);
+    }
+  ).end(buffer);
+});
+
 const router = express.Router();
 
 /**
@@ -153,25 +189,14 @@ router.post('/me/avatar',
       let avatarUrl;
 
       if (cloudinary.isConfigured()) {
-        // --- Upload to Cloudinary ---
-        avatarUrl = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            { folder: `naija-cars/avatars/${req.user.id}`, resource_type: 'image' },
-            (err, result) => (err ? reject(err) : resolve(result.secure_url))
-          ).end(compressedBuffer);
-        });
+        try {
+          avatarUrl = await uploadAvatarToCloudinary(req.user.id, compressedBuffer);
+        } catch (error) {
+          console.error('Cloudinary avatar upload failed, using local fallback:', error.message);
+          avatarUrl = saveAvatarToLocalDisk(req.user.id, compressedBuffer);
+        }
       } else {
-        // --- Local disk fallback (development) ---
-        const avatarsDir = path.join(__dirname, '../../public/avatars');
-        if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
-
-        const filename = `${req.user.id}.jpg`;
-        fs.writeFileSync(path.join(avatarsDir, filename), compressedBuffer);
-
-        const baseUrl = process.env.SERVER_URL
-          || process.env.RENDER_EXTERNAL_URL
-          || `http://localhost:${process.env.PORT || 5000}`;
-        avatarUrl = `${baseUrl}/avatars/${filename}`;
+        avatarUrl = saveAvatarToLocalDisk(req.user.id, compressedBuffer);
       }
 
       // Persist URL in UserProfile — upsert in case the profile row is missing

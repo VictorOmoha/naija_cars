@@ -63,6 +63,27 @@ const uploadAvatarToCloudinary = (userId, buffer) => new Promise((resolve, rejec
 
 const router = express.Router();
 
+const setAvatarCorsHeaders = (req, res, next) => {
+  const origin = req.headers.origin || 'https://www.naijacars.online';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req.headers['access-control-request-headers'] || 'Authorization,Content-Type'
+  );
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Vary', 'Origin');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+};
+
+router.options('/me/avatar', setAvatarCorsHeaders);
+
 /**
  * @route   GET /api/users/me/favorites
  * @desc    Get user's favorite listings
@@ -154,6 +175,7 @@ router.get('/me/listings', authenticate, async (req, res, next) => {
  * @access  Private
  */
 router.post('/me/avatar',
+  setAvatarCorsHeaders,
   authenticate,
   uploadSingle,
   async (req, res, next) => {

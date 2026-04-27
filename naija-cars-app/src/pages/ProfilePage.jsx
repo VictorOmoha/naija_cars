@@ -67,7 +67,7 @@ const uploadAvatarData = async (imageData) => {
 
   const response = await fetch(`${API_BASE_URL}/users/me/avatar-data`, {
     method: 'POST',
-    credentials: 'omit',
+    credentials: 'include',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'

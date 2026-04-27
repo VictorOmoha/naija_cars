@@ -8,6 +8,17 @@ const cloudinary = require('../config/cloudinary');
 const { authenticate } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
 
+const listingSellerSelect = {
+  id: true,
+  email: true,
+  userType: true,
+  isVerified: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+  profile: true
+};
+
 if (!cloudinary.isConfigured()) {
   console.warn(
     '[avatar] Cloudinary credentials not set — avatar uploads will be saved to local disk (dev mode).'
@@ -33,9 +44,7 @@ router.get('/me/favorites', authenticate, async (req, res, next) => {
               take: 1
             },
             seller: {
-              include: {
-                profile: true
-              }
+              select: listingSellerSelect
             }
           }
         }
@@ -407,9 +416,7 @@ router.get('/:id/listings', async (req, res, next) => {
             take: 1
           },
           seller: {
-            include: {
-              profile: true
-            }
+            select: listingSellerSelect
           }
         },
         skip,

@@ -6,6 +6,35 @@ const { requireActiveSubscription } = require('../middleware/subscription');
 
 const router = express.Router();
 
+const sellerProfileSelect = {
+  id: true,
+  userId: true,
+  firstName: true,
+  lastName: true,
+  avatarUrl: true,
+  about: true,
+  city: true,
+  state: true,
+  businessName: true,
+  businessLogoUrl: true,
+  verificationBadge: true,
+  createdAt: true,
+  updatedAt: true
+};
+
+const publicSellerSelect = {
+  id: true,
+  email: true,
+  userType: true,
+  isVerified: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+  profile: {
+    select: sellerProfileSelect
+  }
+};
+
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
@@ -72,15 +101,7 @@ router.get('/', async (req, res, next) => {
             take: 1
           },
           seller: {
-            include: {
-              profile: {
-                select: {
-                  businessName: true,
-                  businessLogoUrl: true,
-                  verificationBadge: true
-                }
-              }
-            }
+            select: publicSellerSelect
           }
         },
         skip,
@@ -125,9 +146,7 @@ router.get('/:id', async (req, res, next) => {
           orderBy: { displayOrder: 'asc' }
         },
         seller: {
-          include: {
-            profile: true
-          }
+          select: publicSellerSelect
         }
       }
     });
@@ -226,9 +245,7 @@ router.post('/',
           },
           include: {
             seller: {
-              include: {
-                profile: true
-              }
+              select: publicSellerSelect
             }
           }
         });
@@ -330,7 +347,7 @@ router.put('/:id',
       include: {
         media: true,
         seller: {
-          include: { profile: true }
+          select: publicSellerSelect
         }
       }
     });

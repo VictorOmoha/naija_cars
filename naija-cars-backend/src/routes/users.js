@@ -61,6 +61,40 @@ const uploadAvatarToCloudinary = (userId, buffer) => new Promise((resolve, rejec
   ).end(buffer);
 });
 
+const persistAvatar = async (userId, inputBuffer) => {
+  const compressedBuffer = await sharp(inputBuffer)
+    .resize(400, 400, { fit: 'cover' })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  let avatarUrl;
+
+  if (cloudinary.isConfigured()) {
+    try {
+      avatarUrl = await uploadAvatarToCloudinary(userId, compressedBuffer);
+    } catch (error) {
+      console.error('Cloudinary avatar upload failed, using local fallback:', error.message);
+      avatarUrl = saveAvatarToLocalDisk(userId, compressedBuffer);
+    }
+  } else {
+    avatarUrl = saveAvatarToLocalDisk(userId, compressedBuffer);
+  }
+
+  await prisma.userProfile.upsert({
+    where: { userId },
+    update: { avatarUrl },
+    create: { userId, avatarUrl }
+  });
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true }
+  });
+  delete user.passwordHash;
+
+  return { avatarUrl, user };
+};
+
 const router = express.Router();
 
 const setAvatarCorsHeaders = (req, res, next) => {
@@ -83,6 +117,53 @@ const setAvatarCorsHeaders = (req, res, next) => {
 };
 
 router.options('/me/avatar', setAvatarCorsHeaders);
+
+/**
+ * @route   POST /api/users/me/avatar-data
+ * @desc    Upload / replace profile avatar image from a compressed data URL
+ * @access  Private
+ */
+router.post('/me/avatar-data',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const { imageData } = req.body;
+
+      if (!imageData || typeof imageData !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'No image data provided' }
+        });
+      }
+
+      const match = imageData.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Invalid image data. Please choose a JPEG, PNG, or WebP image.' }
+        });
+      }
+
+      const imageBuffer = Buffer.from(match[2], 'base64');
+      if (imageBuffer.length > 2 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Prepared profile photo is too large. Please choose a smaller image.' }
+        });
+      }
+
+      const { avatarUrl, user } = await persistAvatar(req.user.id, imageBuffer);
+
+      res.json({
+        success: true,
+        message: 'Avatar updated successfully',
+        data: { avatarUrl, user }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @route   GET /api/users/me/favorites
@@ -202,38 +283,7 @@ router.post('/me/avatar',
         });
       }
 
-      // Compress & square-crop to 400×400 JPEG
-      const compressedBuffer = await sharp(req.file.buffer)
-        .resize(400, 400, { fit: 'cover' })
-        .jpeg({ quality: 85 })
-        .toBuffer();
-
-      let avatarUrl;
-
-      if (cloudinary.isConfigured()) {
-        try {
-          avatarUrl = await uploadAvatarToCloudinary(req.user.id, compressedBuffer);
-        } catch (error) {
-          console.error('Cloudinary avatar upload failed, using local fallback:', error.message);
-          avatarUrl = saveAvatarToLocalDisk(req.user.id, compressedBuffer);
-        }
-      } else {
-        avatarUrl = saveAvatarToLocalDisk(req.user.id, compressedBuffer);
-      }
-
-      // Persist URL in UserProfile — upsert in case the profile row is missing
-      await prisma.userProfile.upsert({
-        where: { userId: req.user.id },
-        update: { avatarUrl },
-        create: { userId: req.user.id, avatarUrl }
-      });
-
-      // Return fresh user object so the frontend can update its store
-      const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { profile: true }
-      });
-      delete user.passwordHash;
+      const { avatarUrl, user } = await persistAvatar(req.user.id, req.file.buffer);
 
       res.json({
         success: true,

@@ -172,9 +172,14 @@ export default function ProfilePage() {
       reader.onloadend = () => setAvatarPreview(reader.result);
       reader.readAsDataURL(uploadFile);
 
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      const { data } = await api.post('/users/me/avatar', formData);
+      const { data } = await api.post('/users/me/avatar-data', {
+        imageData: await new Promise((resolve, reject) => {
+          const dataReader = new FileReader();
+          dataReader.onloadend = () => resolve(dataReader.result);
+          dataReader.onerror = () => reject(new Error('Unable to prepare image for upload'));
+          dataReader.readAsDataURL(uploadFile);
+        })
+      });
       // Sync the returned user object (with new avatarUrl) into the store
       updateUser(data.data.user);
       addToast('Profile photo updated!', 'success');

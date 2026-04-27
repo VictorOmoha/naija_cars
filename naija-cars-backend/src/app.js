@@ -22,6 +22,31 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const normalizeOrigin = (origin) => origin?.replace(/\/$/, '');
+const normalizedAllowedOrigins = allowedOrigins.map(normalizeOrigin);
+const isAllowedOrigin = (origin) => normalizedAllowedOrigins.includes(normalizeOrigin(origin));
+
+// Set CORS headers before any middleware can short-circuit a request.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      req.headers['access-control-request-headers'] || 'Content-Type,Authorization'
+    );
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -30,7 +55,7 @@ const corsOptions = {
 
     const normalizedOrigin = normalizeOrigin(origin);
 
-    if (allowedOrigins.map(normalizeOrigin).includes(normalizedOrigin)) {
+    if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

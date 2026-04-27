@@ -117,6 +117,7 @@ const setAvatarCorsHeaders = (req, res, next) => {
 };
 
 router.options('/me/avatar', setAvatarCorsHeaders);
+router.options('/me/avatar-data', setAvatarCorsHeaders);
 
 /**
  * @route   POST /api/users/me/avatar-data
@@ -124,6 +125,7 @@ router.options('/me/avatar', setAvatarCorsHeaders);
  * @access  Private
  */
 router.post('/me/avatar-data',
+  setAvatarCorsHeaders,
   authenticate,
   async (req, res, next) => {
     try {

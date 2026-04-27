@@ -8,9 +8,8 @@ const cloudinary = require('./config/cloudinary');
 
 const PORT = process.env.PORT || 5000;
 
-async function startServer() {
+async function initializeDatabase() {
   try {
-    // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
 
@@ -23,7 +22,13 @@ async function startServer() {
     if (patched.count > 0) {
       console.log(`✅ Auto-verified ${patched.count} existing user(s)`);
     }
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+  }
+}
 
+async function startServer() {
+  try {
     // Validate Cloudinary credentials
     if (cloudinary.isConfigured()) {
       console.log('✅ Cloudinary configured — media uploads enabled');
@@ -121,6 +126,8 @@ async function startServer() {
       console.log(`💬 Socket.IO initialized`);
     });
 
+    initializeDatabase();
+
     // Graceful shutdown handlers
     const gracefulShutdown = async (signal) => {
       console.log(`\n${signal} received. Starting graceful shutdown...`);
@@ -150,7 +157,6 @@ async function startServer() {
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);
-    await prisma.$disconnect();
     process.exit(1);
   }
 }

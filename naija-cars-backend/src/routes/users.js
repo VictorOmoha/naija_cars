@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const sharp = require('sharp');
 const prisma = require('../lib/prisma');
@@ -97,6 +98,73 @@ const persistAvatar = async (userId, inputBuffer) => {
 
 const router = express.Router();
 
+const attachAuthenticatedUser = async (userId, req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true }
+  });
+
+  if (!user) {
+    res.status(401).json({
+      success: false,
+      error: { message: 'User not found' }
+    });
+    return false;
+  }
+
+  if (!user.isActive) {
+    res.status(403).json({
+      success: false,
+      error: { message: 'Account has been deactivated' }
+    });
+    return false;
+  }
+
+  req.user = {
+    id: user.id,
+    email: user.email,
+    userType: user.userType,
+    isVerified: user.isVerified,
+    profile: user.profile
+  };
+
+  return true;
+};
+
+const authenticateAvatarUpload = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET);
+        if (await attachAuthenticatedUser(decoded.id, req, res)) return next();
+        return;
+      } catch {
+        // Stale clients may hold an expired access token. Fall back to the
+        // httpOnly refresh cookie for avatar upload only.
+      }
+    }
+
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        if (await attachAuthenticatedUser(decoded.id, req, res)) return next();
+        return;
+      } catch {
+        // Return the standard auth error below.
+      }
+    }
+
+    return res.status(401).json({
+      success: false,
+      error: { message: 'Please sign in again to update your profile photo.' }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const setAvatarCorsHeaders = (req, res, next) => {
   const origin = req.headers.origin || 'https://www.naijacars.online';
   res.setHeader('Access-Control-Allow-Origin', origin);
@@ -126,7 +194,7 @@ router.options('/me/avatar-data', setAvatarCorsHeaders);
  */
 router.post('/me/avatar-data',
   setAvatarCorsHeaders,
-  authenticate,
+  authenticateAvatarUpload,
   async (req, res, next) => {
     try {
       const { imageData } = req.body;
@@ -259,7 +327,7 @@ router.get('/me/listings', authenticate, async (req, res, next) => {
  */
 router.post('/me/avatar',
   setAvatarCorsHeaders,
-  authenticate,
+  authenticateAvatarUpload,
   uploadSingle,
   async (req, res, next) => {
     try {

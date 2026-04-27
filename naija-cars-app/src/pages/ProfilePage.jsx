@@ -13,7 +13,7 @@ import api, { authAPI } from '../services/api';
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
-  const { addToast } = useApp();
+  const { addToast, setIsSignInOpen } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
@@ -95,6 +95,13 @@ export default function ProfilePage() {
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (!localStorage.getItem('accessToken')) {
+      addToast('Your session has expired. Please sign in again to update your photo.', 'error');
+      setIsSignInOpen(true);
+      e.target.value = '';
+      return;
+    }
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     const maxSize = 5 * 1024 * 1024;

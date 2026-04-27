@@ -54,7 +54,7 @@ export default function ProfilePage() {
     setNotifSaving(false);
   };
 
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
     defaultValues: {
       firstName: user?.profile?.firstName || '',
       lastName: user?.profile?.lastName || '',
@@ -417,6 +417,7 @@ export default function ProfilePage() {
                           <input
                             {...register('email')}
                             type="email"
+                            autoComplete="username"
                             disabled
                             className="w-full pl-12 pr-4 py-3.5 border border-transparent bg-pearl-100 text-charcoal-700 rounded-xl"
                             placeholder="Email address"
@@ -551,6 +552,7 @@ export default function ProfilePage() {
                             type={showPassword ? 'text' : 'password'}
                             value={passwordData.current}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, current: e.target.value }))}
+                            autoComplete="current-password"
                             className="w-full pl-12 pr-12 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter current password"
                           />
@@ -573,6 +575,7 @@ export default function ProfilePage() {
                             type="password"
                             value={passwordData.newPass}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, newPass: e.target.value }))}
+                            autoComplete="new-password"
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter new password"
                           />
@@ -588,6 +591,7 @@ export default function ProfilePage() {
                             type="password"
                             value={passwordData.confirm}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))}
+                            autoComplete="new-password"
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Confirm new password"
                           />

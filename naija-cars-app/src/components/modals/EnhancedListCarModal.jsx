@@ -12,7 +12,7 @@ import { nigerianStates, carMakes } from '../../data/cars';
 export default function EnhancedListCarModal() {
   const navigate = useNavigate();
   const { isListCarOpen, setIsListCarOpen, setIsSignInOpen, addToast } = useApp();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdListingId, setCreatedListingId] = useState(null);
@@ -93,8 +93,6 @@ export default function EnhancedListCarModal() {
   const handleMediaUploadComplete = (media) => {
     setUploadedMedia([...uploadedMedia, ...media]);
   };
-
-  const totalSteps = 3;
 
   // Show authentication prompt for non-authenticated users
   if (!isAuthenticated && isListCarOpen) {

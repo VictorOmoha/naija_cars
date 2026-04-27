@@ -55,7 +55,11 @@ export default function AdminSettings() {
   useEffect(() => {
     const saved = localStorage.getItem('adminSettings');
     if (saved) {
-      try { setSettings(JSON.parse(saved)); } catch {}
+      try {
+        setSettings(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem('adminSettings');
+      }
     }
   }, []);
 

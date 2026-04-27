@@ -21,7 +21,6 @@ export default function FavoritesPage() {
 
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('recent');
-  const [showFilters, setShowFilters] = useState(false);
   const [compareList, setCompareList] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [priceAlerts, setPriceAlerts] = useState({});

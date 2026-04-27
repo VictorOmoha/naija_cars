@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Check, Crown, Zap, Rocket, Loader2 } from 'lucide-react';
@@ -15,7 +14,6 @@ const planColorClasses = {
 };
 
 const PricingPage = () => {
-  const navigate = useNavigate();
   const { addToast, openAuthModal } = useApp();
   const { isAuthenticated } = useAuthStore();
   const [loadingPlan, setLoadingPlan] = useState(null);

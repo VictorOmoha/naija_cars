@@ -33,7 +33,7 @@ export default function BookingPage() {
     inspection: false,
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, formState: { errors } } = useForm({
     defaultValues: {
       firstName: user?.profile?.firstName || '',
       lastName: user?.profile?.lastName || '',
@@ -97,7 +97,7 @@ export default function BookingPage() {
     setIsProcessing(true);
     try {
       // Initiate booking/order via API
-      const response = await api.post('/bookings', {
+      await api.post('/bookings', {
         listingId: id,
         bookingType,
         rentalDays: bookingType === 'rental' ? rentalDays : undefined,

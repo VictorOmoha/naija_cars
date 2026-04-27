@@ -45,7 +45,7 @@ const conditionOptions = [
 ];
 
 export default function AdminListings() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -224,15 +224,8 @@ export default function AdminListings() {
       setTotalPages(response.data.data.totalPages || 1);
     } catch (error) {
       console.error('Error fetching listings:', error);
-      // Mock data for development
-      setListings([
-        { id: '1', make: 'Toyota', model: 'Camry', year: 2020, price: 15500000, status: 'PENDING', listingType: 'SALE', condition: 'FOREIGN_USED', locationState: 'Lagos', locationCity: 'Victoria Island', viewsCount: 145, isFeatured: false, createdAt: new Date().toISOString(), seller: { profile: { firstName: 'John', lastName: 'Doe', businessName: 'AutoKing Motors' } }, media: [{ url: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400' }] },
-        { id: '2', make: 'Honda', model: 'Accord', year: 2019, price: 12000000, status: 'ACTIVE', listingType: 'SALE', condition: 'NIGERIAN_USED', locationState: 'Abuja', locationCity: 'Wuse', viewsCount: 89, isFeatured: true, createdAt: new Date().toISOString(), seller: { profile: { firstName: 'Jane', lastName: 'Smith' } }, media: [{ url: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=400' }] },
-        { id: '3', make: 'Mercedes-Benz', model: 'C300', year: 2021, price: 28000000, status: 'PENDING', listingType: 'SALE', condition: 'BRAND_NEW', locationState: 'Lagos', locationCity: 'Lekki', viewsCount: 203, isFeatured: false, createdAt: new Date().toISOString(), seller: { profile: { firstName: 'Mike', lastName: 'Johnson', businessName: 'Elite Motors' } }, media: [{ url: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400' }] },
-        { id: '4', make: 'Lexus', model: 'RX 350', year: 2018, price: 22000000, status: 'ACTIVE', listingType: 'RENT', condition: 'FOREIGN_USED', locationState: 'Port Harcourt', locationCity: 'GRA', viewsCount: 167, isFeatured: true, createdAt: new Date().toISOString(), seller: { profile: { firstName: 'Sarah', lastName: 'Williams', businessName: 'Premium Rentals' } }, media: [{ url: 'https://images.unsplash.com/photo-1551501474-8e082e451939?w=400' }] },
-        { id: '5', make: 'BMW', model: 'X5', year: 2020, price: 35000000, status: 'SOLD', listingType: 'SALE', condition: 'FOREIGN_USED', locationState: 'Lagos', locationCity: 'Ikoyi', viewsCount: 312, isFeatured: false, createdAt: new Date().toISOString(), seller: { profile: { firstName: 'David', lastName: 'Brown', businessName: 'AutoKing Motors' } }, media: [{ url: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400' }] },
-      ]);
-      setTotalPages(5);
+      setListings([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }

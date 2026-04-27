@@ -42,7 +42,6 @@ const CarsPage = () => {
   // (covers footer links, browser back/forward, and direct URL edits)
   useEffect(() => {
     setFilters(filtersFromParams());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
   const [searchQuery, setSearchQuery] = useState('');

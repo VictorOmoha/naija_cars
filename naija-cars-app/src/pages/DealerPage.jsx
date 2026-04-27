@@ -7,15 +7,12 @@ import {
   Calendar, Users, Shield, Award, ExternalLink, Facebook, Instagram, Twitter,
   AlertCircle, ArrowLeft
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 import { usersAPI } from '../services/api';
 import SharePopover from '../components/SharePopover';
 
 export default function DealerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToast } = useApp();
-
   const [dealer, setDealer] = useState(null);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -273,6 +273,7 @@ const AuthModal = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
+                        autoComplete="username"
                         placeholder="your@email.com"
                         required
                         className="w-full pl-12 pr-4 py-3 bg-pearl-50 border border-pearl-200
@@ -293,6 +294,7 @@ const AuthModal = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
+                        autoComplete="current-password"
                         placeholder="Enter your password"
                         required
                         className="w-full pl-12 pr-12 py-3 bg-pearl-50 border border-pearl-200
@@ -366,6 +368,7 @@ const AuthModal = () => {
                         type="email"
                         value={resetEmail}
                         onChange={(e) => setResetEmail(e.target.value)}
+                        autoComplete="username"
                         placeholder="your@email.com"
                         required
                         className="w-full pl-12 pr-4 py-3 bg-pearl-50 border border-pearl-200
@@ -442,6 +445,7 @@ const AuthModal = () => {
                         type={showPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
+                        autoComplete="new-password"
                         placeholder="Min. 8 characters"
                         required
                         className="w-full pl-12 pr-12 py-3 bg-pearl-50 border border-pearl-200
@@ -612,6 +616,7 @@ const AuthModal = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
+                        autoComplete="username"
                         placeholder="your@email.com"
                         required
                         className="w-full pl-12 pr-4 py-3 bg-pearl-50 border border-pearl-200
@@ -652,6 +657,7 @@ const AuthModal = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
+                        autoComplete="new-password"
                         placeholder="Min. 8 characters"
                         required
                         className="w-full pl-12 pr-12 py-3 bg-pearl-50 border border-pearl-200

@@ -7,7 +7,6 @@ import {
   CheckCircle, Info, Calendar, Gauge, Settings2, Fuel, MapPin,
   BarChart3, DollarSign, Clock, Shield, AlertCircle, Sparkles, RefreshCw
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 
 const carMakes = [
   'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai',
@@ -213,7 +212,6 @@ const CONDITION_MAP = {
 };
 
 export default function ValuationPage() {
-  const { addToast } = useApp();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);

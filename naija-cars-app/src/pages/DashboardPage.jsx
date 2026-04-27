@@ -34,16 +34,6 @@ export default function DashboardPage() {
   });
   const subscription = subData?.data?.data?.subscription;
 
-  // Fetch favorites count
-  const { data: favoritesData } = useQuery({
-    queryKey: ['favorites-count'],
-    queryFn: async () => {
-      const response = await api.get('/users/me/favorites');
-      return response.data;
-    },
-    enabled: isAuthenticated,
-  });
-
   // Fetch conversations to derive per-listing message counts
   const { data: conversationsData } = useQuery({
     queryKey: ['conversations'],
@@ -63,8 +53,6 @@ export default function DashboardPage() {
   if (!isAuthenticated) return null;
 
   const listings = listingsData?.data?.listings || [];
-  const favoritesCount = favoritesData?.data?.favorites?.length || 0;
-
   const getStatusStyle = (status) => {
     switch (status) {
       case 'ACTIVE': return 'bg-success-100 text-success-700';
@@ -89,7 +77,6 @@ export default function DashboardPage() {
   // Calculate stats
   const totalListings = listings.length;
   const activeListings = listings.filter(l => l.status === 'ACTIVE').length;
-  const pendingListings = listings.filter(l => l.status === 'PENDING').length;
   const totalViews = listings.reduce((sum, l) => sum + (l.viewsCount || 0), 0);
   const totalFavorites = listings.reduce((sum, l) => sum + (l.favoritesCount || 0), 0);
 

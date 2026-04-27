@@ -69,28 +69,16 @@ export default function AdminDashboard() {
       setRecentUsers(usersRes.data.data || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Use mock data for now
       setStats({
-        totalUsers: 156,
-        activeListings: 89,
-        pendingApproval: 12,
-        totalRevenue: 2450000,
-        userGrowth: 12.5,
-        listingGrowth: 8.3,
+        totalUsers: 0,
+        activeListings: 0,
+        pendingApproval: 0,
+        totalRevenue: 0,
+        userGrowth: 0,
+        listingGrowth: 0,
       });
-      setRecentListings([
-        { id: '1', make: 'Toyota', model: 'Camry', year: 2020, price: 15500000, status: 'PENDING', createdAt: new Date().toISOString() },
-        { id: '2', make: 'Honda', model: 'Accord', year: 2019, price: 12000000, status: 'ACTIVE', createdAt: new Date().toISOString() },
-        { id: '3', make: 'Mercedes-Benz', model: 'C300', year: 2021, price: 28000000, status: 'PENDING', createdAt: new Date().toISOString() },
-        { id: '4', make: 'Lexus', model: 'RX 350', year: 2018, price: 22000000, status: 'ACTIVE', createdAt: new Date().toISOString() },
-        { id: '5', make: 'BMW', model: 'X5', year: 2020, price: 35000000, status: 'PENDING', createdAt: new Date().toISOString() },
-      ]);
-      setRecentUsers([
-        { id: '1', profile: { firstName: 'John', lastName: 'Doe' }, email: 'john@example.com', userType: 'DEALER', createdAt: new Date().toISOString() },
-        { id: '2', profile: { firstName: 'Jane', lastName: 'Smith' }, email: 'jane@example.com', userType: 'INDIVIDUAL_SELLER', createdAt: new Date().toISOString() },
-        { id: '3', profile: { firstName: 'Mike', lastName: 'Johnson' }, email: 'mike@example.com', userType: 'BUYER', createdAt: new Date().toISOString() },
-        { id: '4', profile: { firstName: 'Sarah', lastName: 'Williams' }, email: 'sarah@example.com', userType: 'RENTAL_COMPANY', createdAt: new Date().toISOString() },
-      ]);
+      setRecentListings([]);
+      setRecentUsers([]);
     } finally {
       setLoading(false);
     }
@@ -102,14 +90,6 @@ export default function AdminDashboard() {
       currency: 'NGN',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
-
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-NG', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   const getStatValue = (name) => {

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
-import api, { authAPI } from '../services/api';
+import api, { API_BASE_URL, authAPI } from '../services/api';
 
 const compressAvatarImage = (file) => new Promise((resolve, reject) => {
   const imageUrl = URL.createObjectURL(file);
@@ -51,6 +51,43 @@ const compressAvatarImage = (file) => new Promise((resolve, reject) => {
 
   image.src = imageUrl;
 });
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onloadend = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('Unable to prepare image for upload'));
+  reader.readAsDataURL(file);
+});
+
+const uploadAvatarData = async (imageData) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('Your session has expired. Please sign in again to update your photo.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/me/avatar-data`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ imageData })
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    // Keep the status-based message below when the API cannot return JSON.
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `Failed to upload photo (${response.status})`);
+  }
+
+  return payload;
+};
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
@@ -166,20 +203,12 @@ export default function ProfilePage() {
       updateUser(refreshedUser.data.data.user);
 
       const uploadFile = await compressAvatarImage(file);
+      const imageData = await readFileAsDataUrl(uploadFile);
 
       // Show local preview immediately after the image is normalized.
-      const reader = new FileReader();
-      reader.onloadend = () => setAvatarPreview(reader.result);
-      reader.readAsDataURL(uploadFile);
+      setAvatarPreview(imageData);
 
-      const { data } = await api.post('/users/me/avatar-data', {
-        imageData: await new Promise((resolve, reject) => {
-          const dataReader = new FileReader();
-          dataReader.onloadend = () => resolve(dataReader.result);
-          dataReader.onerror = () => reject(new Error('Unable to prepare image for upload'));
-          dataReader.readAsDataURL(uploadFile);
-        })
-      });
+      const data = await uploadAvatarData(imageData);
       // Sync the returned user object (with new avatarUrl) into the store
       updateUser(data.data.user);
       addToast('Profile photo updated!', 'success');

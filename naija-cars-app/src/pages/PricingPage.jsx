@@ -57,14 +57,14 @@ const PricingPage = () => {
 
   if (plansLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-28">
         <Loader2 className="w-8 h-8 animate-spin text-naija-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-pearl-50 py-12 px-4">
+    <div className="min-h-screen bg-pearl-50 pt-32 pb-12 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

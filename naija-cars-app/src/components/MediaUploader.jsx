@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, X, Image, Video, MoveVertical } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import api from '../services/api';
+import { prepareListingImageData } from '../utils/listingImages';
 
 export default function MediaUploader({ listingId, initialMedia = [], onUploadComplete }) {
   const [files, setFiles] = useState(initialMedia);
@@ -44,21 +45,39 @@ export default function MediaUploader({ listingId, initialMedia = [], onUploadCo
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append('listingId', listingId);
+      const imageFiles = acceptedFiles.filter((file) => file.type.startsWith('image/'));
+      const videoFiles = acceptedFiles.filter((file) => file.type.startsWith('video/'));
+      const uploadedMedia = [];
 
-      acceptedFiles.forEach((file) => {
-        formData.append('files', file);
-      });
+      if (imageFiles.length > 0) {
+        setUploadProgress(20);
+        const images = await prepareListingImageData(imageFiles);
+        const response = await api.post('/media/upload-data', {
+          listingId,
+          images
+        });
+        uploadedMedia.push(...response.data.data.media);
+        setUploadProgress(videoFiles.length > 0 ? 60 : 100);
+      }
 
-      const response = await api.post('/media/upload', formData, {
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(progress);
-        },
-      });
+      if (videoFiles.length > 0) {
+        const formData = new FormData();
+        formData.append('listingId', listingId);
 
-      const uploadedMedia = response.data.data.media;
+        videoFiles.forEach((file) => {
+          formData.append('files', file);
+        });
+
+        const response = await api.post('/media/upload', formData, {
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round((progressEvent.loaded * 40) / progressEvent.total) + 60;
+            setUploadProgress(progress);
+          },
+        });
+
+        uploadedMedia.push(...response.data.data.media);
+      }
+
       setFiles([...files, ...uploadedMedia]);
 
       if (onUploadComplete) {

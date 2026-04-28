@@ -6,6 +6,39 @@ const prisma = require('../lib/prisma');
 
 const router = express.Router();
 
+const parseImageDataUrl = (imageData) => {
+  if (!imageData || typeof imageData !== 'string') {
+    throw new Error('No image data provided');
+  }
+
+  const match = imageData.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    throw new Error('Invalid image data. Please choose a JPEG, PNG, or WebP image.');
+  }
+
+  return Buffer.from(match[2], 'base64');
+};
+
+const verifyListingOwner = async (listingId, userId) => {
+  const listing = await prisma.carListing.findUnique({
+    where: { id: listingId }
+  });
+
+  if (!listing) {
+    const error = new Error('Listing not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (listing.sellerId !== userId) {
+    const error = new Error('You do not have permission to upload media for this listing');
+    error.status = 403;
+    throw error;
+  }
+
+  return listing;
+};
+
 /**
  * @route   POST /api/media/upload
  * @desc    Upload multiple media files for a listing
@@ -34,23 +67,7 @@ router.post('/upload',
       }
 
       // Verify listing ownership
-      const listing = await prisma.carListing.findUnique({
-        where: { id: listingId }
-      });
-
-      if (!listing) {
-        return res.status(404).json({
-          success: false,
-          error: { message: 'Listing not found' }
-        });
-      }
-
-      if (listing.sellerId !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: { message: 'You do not have permission to upload media for this listing' }
-        });
-      }
+      await verifyListingOwner(listingId, req.user.id);
 
       // Check existing media count by type
       const [existingPhotoCount, existingVideoCount] = await Promise.all([
@@ -121,6 +138,72 @@ router.post('/upload',
     }
   }
 );
+
+/**
+ * @route   POST /api/media/upload-data
+ * @desc    Upload listing images from compressed data URLs
+ * @access  Private
+ */
+router.post('/upload-data', authenticate, async (req, res, next) => {
+  try {
+    const { listingId, images } = req.body;
+
+    if (!listingId) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Listing ID is required' }
+      });
+    }
+
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'No images uploaded' }
+      });
+    }
+
+    await verifyListingOwner(listingId, req.user.id);
+
+    const [existingPhotoCount, existingVideoCount] = await Promise.all([
+      prisma.media.count({ where: { listingId, mediaType: 'PHOTO' } }),
+      prisma.media.count({ where: { listingId, mediaType: 'VIDEO' } })
+    ]);
+
+    if (existingPhotoCount + images.length > 20) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Maximum 20 photos allowed. You have ${existingPhotoCount} and are uploading ${images.length}.` }
+      });
+    }
+
+    const uploadedMedia = [];
+    let displayOrder = existingPhotoCount + existingVideoCount;
+
+    for (const image of images) {
+      const imageData = typeof image === 'string' ? image : image?.imageData;
+      const imageBuffer = parseImageDataUrl(imageData);
+
+      if (imageBuffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Prepared listing photo is too large. Please choose a smaller image.' }
+        });
+      }
+
+      const media = await mediaService.uploadImageBuffer(imageBuffer, listingId, displayOrder);
+      uploadedMedia.push(media);
+      displayOrder++;
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `${uploadedMedia.length} photo(s) uploaded successfully`,
+      data: { media: uploadedMedia }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @route   DELETE /api/media/:id

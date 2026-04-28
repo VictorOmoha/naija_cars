@@ -56,13 +56,10 @@ class MediaService {
     return extensionsByMimeType[file.mimetype] || 'mp4';
   }
 
-  /**
-   * Upload image to configured storage with compression
-   */
-  async uploadImage(file, listingId, displayOrder = 0) {
+  async uploadImageBuffer(inputBuffer, listingId, displayOrder = 0) {
     try {
       // Compress image using Sharp
-      const compressedBuffer = await sharp(file.buffer)
+      const compressedBuffer = await sharp(inputBuffer)
         .resize(1200, 900, {
           fit: 'inside',
           withoutEnlargement: true
@@ -74,7 +71,7 @@ class MediaService {
         .toBuffer();
 
       // Create thumbnail
-      const thumbnailBuffer = await sharp(file.buffer)
+      const thumbnailBuffer = await sharp(inputBuffer)
         .resize(400, 300, {
           fit: 'cover'
         })
@@ -101,6 +98,13 @@ class MediaService {
       console.error('Error uploading image:', error);
       throw new Error(error.message || 'Failed to upload image');
     }
+  }
+
+  /**
+   * Upload image to configured storage with compression
+   */
+  async uploadImage(file, listingId, displayOrder = 0) {
+    return this.uploadImageBuffer(file.buffer, listingId, displayOrder);
   }
 
   /**

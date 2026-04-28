@@ -10,6 +10,7 @@ import api, { subscriptionAPI } from '../services/api';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
+import { prepareListingImageData } from '../utils/listingImages';
 
 // Map frontend condition values → backend enum
 const conditionToBackend = {
@@ -183,6 +184,15 @@ const SellCarPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    if (existingImages.length + images.length === 0) {
+      addToast('Please add at least one photo before submitting your listing.', 'error');
+      setCurrentStep(3);
+      setIsSubmitting(false);
+      return;
+    }
+
+    let createdListingId = null;
+
     try {
       const payload = {
         listingType: formData.listingType,
@@ -216,17 +226,16 @@ const SellCarPage = () => {
         // Create new listing
         const response = await api.post('/listings', payload);
         listing = response.data.data.listing;
+        createdListingId = listing.id;
       }
 
       // Upload new images if any were selected
       if (images.length > 0) {
-        const mediaFormData = new FormData();
-        mediaFormData.append('listingId', listing.id);
-        images.forEach((img) => {
-          mediaFormData.append('files', img.file);
+        const preparedImages = await prepareListingImageData(images.map((img) => img.file));
+        await api.post('/media/upload-data', {
+          listingId: listing.id,
+          images: preparedImages
         });
-
-        await api.post('/media/upload', mediaFormData);
       }
 
       addToast(
@@ -235,6 +244,14 @@ const SellCarPage = () => {
       );
       navigate(`/car/${listing.id}`);
     } catch (error) {
+      if (!isEditMode && createdListingId) {
+        try {
+          await api.delete(`/listings/${createdListingId}`);
+        } catch (deleteError) {
+          console.error('Failed to clean up listing after media upload error:', deleteError);
+        }
+      }
+
       const message =
         error.response?.data?.error?.message || `Failed to ${isEditMode ? 'update' : 'submit'} listing. Please try again.`;
       addToast(message, 'error');

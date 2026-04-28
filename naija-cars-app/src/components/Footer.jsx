@@ -54,7 +54,7 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Facebook, href: 'https://facebook.com/naijacars', label: 'Facebook' },
+    { icon: Facebook, href: 'https://www.facebook.com/share/1babsoNYwR/?mibextid=wwXIfr', label: 'Facebook' },
     { icon: Twitter, href: 'https://twitter.com/naijacars', label: 'Twitter' },
     { icon: Instagram, href: 'https://instagram.com/naijacars', label: 'Instagram' },
     { icon: Linkedin, href: 'https://linkedin.com/company/naijacars', label: 'LinkedIn' },

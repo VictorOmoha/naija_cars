@@ -239,8 +239,8 @@ export default function MessagesPage() {
   const messages = messagesData?.data?.messages ?? [];
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-20">
-      <div className="h-[calc(100vh-5rem)] flex overflow-hidden">
+    <div className="min-h-screen bg-pearl-100 pt-32 lg:pt-28">
+      <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-7rem)] flex overflow-hidden">
 
         {/* ── Conversations Sidebar ── */}
         <div className={`${activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-96

@@ -11,7 +11,8 @@ class SocketService {
       return this.socket;
     }
 
-    const SERVER_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const SERVER_URL = import.meta.env.VITE_API_URL?.replace('/api', '')
+      || (import.meta.env.PROD ? 'https://naija-cars-api.onrender.com' : 'http://localhost:5000');
 
     this.socket = io(SERVER_URL, {
       auth: {

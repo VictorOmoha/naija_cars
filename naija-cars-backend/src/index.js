@@ -12,18 +12,9 @@ async function initializeDatabase() {
   try {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
-
-    // One-time migration: auto-verify all existing unverified users
-    // (OTP verification was removed — all users should be verified)
-    const patched = await prisma.user.updateMany({
-      where: { isVerified: false },
-      data: { isVerified: true }
-    });
-    if (patched.count > 0) {
-      console.log(`✅ Auto-verified ${patched.count} existing user(s)`);
-    }
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
+    throw error;
   }
 }
 
@@ -36,21 +27,33 @@ async function startServer() {
       console.warn('⚠️  Cloudinary NOT configured — listing videos will fall back to local disk (not persistent on Render). Profile and listing photos are stored in the database.');
     }
 
+    await initializeDatabase();
+
     // Create HTTP server
     const server = http.createServer(app);
 
     // Initialize Socket.IO with same CORS origins as HTTP
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
       'http://localhost:3000',
+      'http://127.0.0.1:3000',
       process.env.CLIENT_URL,
       'https://www.naijacars.online',
       'https://naijacars.online'
-    ].filter(Boolean);
+    ].filter(Boolean).map((origin) => origin.replace(/\/$/, ''));
 
     const io = new Server(server, {
       cors: {
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+          if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
         credentials: true
       }
     });
@@ -125,9 +128,6 @@ async function startServer() {
       console.log(`🔗 Client URL: ${process.env.CLIENT_URL}`);
       console.log(`💬 Socket.IO initialized`);
     });
-
-    initializeDatabase();
-
     // Graceful shutdown handlers
     const gracefulShutdown = async (signal) => {
       console.log(`\n${signal} received. Starting graceful shutdown...`);

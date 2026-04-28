@@ -121,8 +121,11 @@ router.get('/car/:id', async (req, res) => {
 
   // Social bot: fetch listing data and serve OG HTML
   try {
-    const listing = await prisma.carListing.findUnique({
-      where: { id },
+    const listing = await prisma.carListing.findFirst({
+      where: {
+        id,
+        status: 'ACTIVE'
+      },
       include: {
         media: { orderBy: { displayOrder: 'asc' }, take: 1 },
         seller: { include: { profile: true } },

@@ -41,6 +41,7 @@ export default function CarDetailsPage() {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteSaving, setFavoriteSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data, isLoading, error } = useQuery({
@@ -56,6 +57,27 @@ export default function CarDetailsPage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       addToast('Could not copy link', 'error');
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      setIsSignInOpen(true);
+      return;
+    }
+
+    setFavoriteSaving(true);
+    try {
+      const response = await listingsAPI.toggleFavorite(id);
+      setIsFavorite(response.data.data.isFavorited);
+      addToast(
+        response.data.data.isFavorited ? 'Saved to favourites' : 'Removed from favourites',
+        'success'
+      );
+    } catch (error) {
+      addToast(error.response?.data?.error?.message || 'Failed to update favourite', 'error');
+    } finally {
+      setFavoriteSaving(false);
     }
   };
 
@@ -358,15 +380,16 @@ export default function CarDetailsPage() {
 
                   {/* Save */}
                   <button
-                    onClick={() => setIsFavorite(f => !f)}
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteSaving}
                     className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-medium transition-all ${
                       isFavorite
                         ? 'bg-naija-50 border-naija-400 text-naija-600'
                         : 'border-pearl-300 text-charcoal-600 hover:border-naija-300'
-                    }`}
+                    } disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     <Heart className={`w-5 h-5 ${isFavorite ? 'fill-naija-500 text-naija-500' : ''}`} />
-                    {isFavorite ? 'Saved to Favourites' : 'Save to Favourites'}
+                    {favoriteSaving ? 'Saving...' : isFavorite ? 'Saved to Favourites' : 'Save to Favourites'}
                   </button>
                 </div>
 

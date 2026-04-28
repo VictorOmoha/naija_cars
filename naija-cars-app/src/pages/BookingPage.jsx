@@ -114,11 +114,11 @@ export default function BookingPage() {
         setStep(4);
       }, 2000);
     } catch (error) {
-      // If booking endpoint doesn't exist yet, simulate success anyway for demo
-      setTimeout(() => {
-        setIsProcessing(false);
-        setStep(4);
-      }, 2000);
+      setIsProcessing(false);
+      addToast(
+        error.response?.data?.error?.message || 'Booking checkout is not available yet. Please contact the seller directly.',
+        'error'
+      );
     }
   };
 

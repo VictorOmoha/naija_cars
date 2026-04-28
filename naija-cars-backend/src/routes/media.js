@@ -46,6 +46,7 @@ const verifyListingOwner = async (listingId, userId) => {
  */
 router.post('/upload',
   authenticate,
+  requireVerified,
   uploadMultiple,
   async (req, res, next) => {
     try {
@@ -144,7 +145,7 @@ router.post('/upload',
  * @desc    Upload listing images from compressed data URLs
  * @access  Private
  */
-router.post('/upload-data', authenticate, async (req, res, next) => {
+router.post('/upload-data', authenticate, requireVerified, async (req, res, next) => {
   try {
     const { listingId, images } = req.body;
 

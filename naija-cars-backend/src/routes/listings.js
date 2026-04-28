@@ -35,6 +35,17 @@ const publicSellerSelect = {
   }
 };
 
+const clampPagination = (pageValue, limitValue, maxLimit = 50) => {
+  const page = Math.max(parseInt(pageValue, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(limitValue, 10) || 12, 1), maxLimit);
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit
+  };
+};
+
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
@@ -59,7 +70,7 @@ router.get('/', async (req, res, next) => {
       search
     } = req.query;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pagination = clampPagination(page, limit);
 
     // Build where clause
     const where = {
@@ -104,8 +115,8 @@ router.get('/', async (req, res, next) => {
             select: publicSellerSelect
           }
         },
-        skip,
-        take: parseInt(limit),
+        skip: pagination.skip,
+        take: pagination.limit,
         orderBy: [
           { isFeatured: 'desc' },
           { isBoosted: 'desc' },
@@ -121,9 +132,9 @@ router.get('/', async (req, res, next) => {
         listings,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit))
+          page: pagination.page,
+          limit: pagination.limit,
+          pages: Math.ceil(total / pagination.limit)
         }
       }
     });
@@ -139,8 +150,11 @@ router.get('/', async (req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
-    const listing = await prisma.carListing.findUnique({
-      where: { id: req.params.id },
+    const listing = await prisma.carListing.findFirst({
+      where: {
+        id: req.params.id,
+        status: 'ACTIVE'
+      },
       include: {
         media: {
           orderBy: { displayOrder: 'asc' }
@@ -182,6 +196,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/',
   authenticate,
+  requireVerified,
   requireActiveSubscription,
   [
     body('listingType').isIn(['SALE', 'RENT']),
@@ -425,6 +440,21 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  */
 router.post('/:id/favorite', authenticate, async (req, res, next) => {
   try {
+    const listing = await prisma.carListing.findFirst({
+      where: {
+        id: req.params.id,
+        status: 'ACTIVE'
+      },
+      select: { id: true }
+    });
+
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Listing not found' }
+      });
+    }
+
     const existingFavorite = await prisma.favorite.findUnique({
       where: {
         userId_listingId: {
@@ -436,14 +466,15 @@ router.post('/:id/favorite', authenticate, async (req, res, next) => {
 
     if (existingFavorite) {
       // Remove favorite
-      await prisma.favorite.delete({
-        where: { id: existingFavorite.id }
-      });
-
-      await prisma.carListing.update({
-        where: { id: req.params.id },
-        data: { favoritesCount: { decrement: 1 } }
-      });
+      await prisma.$transaction([
+        prisma.favorite.delete({
+          where: { id: existingFavorite.id }
+        }),
+        prisma.carListing.update({
+          where: { id: req.params.id },
+          data: { favoritesCount: { decrement: 1 } }
+        })
+      ]);
 
       return res.json({
         success: true,
@@ -452,17 +483,18 @@ router.post('/:id/favorite', authenticate, async (req, res, next) => {
       });
     } else {
       // Add favorite
-      await prisma.favorite.create({
-        data: {
-          userId: req.user.id,
-          listingId: req.params.id
-        }
-      });
-
-      await prisma.carListing.update({
-        where: { id: req.params.id },
-        data: { favoritesCount: { increment: 1 } }
-      });
+      await prisma.$transaction([
+        prisma.favorite.create({
+          data: {
+            userId: req.user.id,
+            listingId: req.params.id
+          }
+        }),
+        prisma.carListing.update({
+          where: { id: req.params.id },
+          data: { favoritesCount: { increment: 1 } }
+        })
+      ]);
 
       return res.json({
         success: true,

@@ -144,7 +144,7 @@ class MediaService {
         data: {
           listingId,
           mediaType: 'VIDEO',
-          url: videoUpload.secure_url,
+          url,
           thumbnailUrl,
           displayOrder,
           fileSize: file.size
@@ -280,13 +280,16 @@ class MediaService {
     try {
       // mediaOrders is an array of { id, displayOrder }
       const updatePromises = mediaOrders.map((item) =>
-        prisma.media.update({
-          where: { id: item.id },
+        prisma.media.updateMany({
+          where: { id: item.id, listingId },
           data: { displayOrder: item.displayOrder }
         })
       );
 
-      await Promise.all(updatePromises);
+      const results = await Promise.all(updatePromises);
+      if (results.some((result) => result.count !== 1)) {
+        throw new Error('One or more media items do not belong to this listing');
+      }
 
       return { message: 'Media reordered successfully' };
     } catch (error) {

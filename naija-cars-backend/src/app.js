@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const prisma = require('./lib/prisma');
 
 const app = express();
 
@@ -156,21 +157,27 @@ if (process.env.NODE_ENV === 'development') {
 app.use(compression());
 
 // Health check endpoints
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
-});
+const healthHandler = async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      database: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      database: 'unavailable',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  }
+};
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
-});
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));

@@ -17,9 +17,12 @@ services:
     plan: free
     rootDir: naija-cars-backend
     buildCommand: npm install && npx prisma generate
+    preDeployCommand: npx prisma db push
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
@@ -31,7 +34,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CLIENT_URL
-        sync: false
+        value: https://www.naijacars.online
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -39,7 +42,7 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: SERVER_URL
-        sync: false
+        value: https://naija-cars-api.onrender.com
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
@@ -61,5 +64,7 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
       - key: VITE_API_URL
-        sync: false
+        value: https://naija-cars-api.onrender.com/api

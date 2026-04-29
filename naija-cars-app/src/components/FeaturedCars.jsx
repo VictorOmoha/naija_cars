@@ -49,6 +49,8 @@ function transformToCardShape(listing) {
     },
     type: 'sale',
     images,
+    sellerId: listing.seller?.id,
+    seller: listing.seller,
     verified: listing.seller?.profile?.verificationBadge || false,
     featured: listing.isFeatured || false,
     isFavorited: listing.isFavorited || false,

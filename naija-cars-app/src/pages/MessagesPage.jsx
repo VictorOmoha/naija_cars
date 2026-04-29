@@ -24,6 +24,7 @@ export default function MessagesPage() {
   const messagesEndRef = useRef(null);
 
   const sellerIdParam = searchParams.get('sellerId');
+  const hasValidSellerId = sellerIdParam && !['undefined', 'null'].includes(sellerIdParam);
   const listingIdParam = searchParams.get('listingId');
   const conversationIdParam = searchParams.get('conversationId');
 
@@ -94,6 +95,10 @@ export default function MessagesPage() {
   // --- Handle sellerId/listingId URL params: pre-open conversation ---
   useEffect(() => {
     if (!sellerIdParam || !user?.id || !isAuthenticated) return;
+    if (!hasValidSellerId) {
+      addToast('Seller information is missing for this conversation', 'error');
+      return;
+    }
 
     const conversations = conversationsData?.data?.conversations ?? [];
     const conversationId = [user.id, sellerIdParam].sort().join('_');
@@ -129,7 +134,7 @@ export default function MessagesPage() {
         });
       })
       .catch(() => {});
-  }, [sellerIdParam, listingIdParam, user?.id, isAuthenticated, conversationsData]);
+  }, [sellerIdParam, hasValidSellerId, listingIdParam, user?.id, isAuthenticated, conversationsData, addToast]);
 
   // --- Handle direct conversation links from notifications ---
   useEffect(() => {

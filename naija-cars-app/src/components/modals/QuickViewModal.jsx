@@ -62,8 +62,14 @@ const QuickViewModal = () => {
         addToast('Phone number not available', 'info');
       }
     } else {
+      const sellerId = selectedCar.sellerId || selectedCar.seller?.id;
+      if (!sellerId) {
+        addToast('Seller information is not available for this listing', 'info');
+        return;
+      }
+
       closeQuickView();
-      navigate(`/messages?sellerId=${selectedCar.sellerId || selectedCar.seller?.id}&listingId=${selectedCar.id}`);
+      navigate(`/messages?sellerId=${sellerId}&listingId=${selectedCar.id}`);
     }
   };
 

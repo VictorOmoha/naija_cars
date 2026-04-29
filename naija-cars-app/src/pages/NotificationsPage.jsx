@@ -124,6 +124,29 @@ const filterOptions = [
   { id: 'listing', label: 'Listings', icon: Car },
 ];
 
+const emptyStateContent = {
+  all: {
+    title: 'No notifications',
+    message: 'Message activity, listing updates, and price alerts will appear here.',
+  },
+  unread: {
+    title: 'No unread notifications',
+    message: 'Unread message alerts and account updates will appear here.',
+  },
+  message: {
+    title: 'No message notifications',
+    message: 'When you send or receive messages, conversations will appear here.',
+  },
+  price_drop: {
+    title: 'No price alerts',
+    message: 'Price drops for saved cars will appear here.',
+  },
+  listing: {
+    title: 'No listing notifications',
+    message: 'Listing approvals and updates will appear here.',
+  },
+};
+
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuthStore();
   const { addToast, setUnreadNotificationCount } = useApp();
@@ -212,6 +235,21 @@ export default function NotificationsPage() {
       n.message.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const tabCounts = useMemo(() => ({
+    all: notifications.length,
+    unread: notifications.filter(notification => !notification.read).length,
+    message: notifications.filter(notification => notification.type === 'message').length,
+    price_drop: notifications.filter(notification => notification.type === 'price_drop').length,
+    listing: notifications.filter(notification => notification.type === 'listing').length,
+  }), [notifications]);
+
+  const emptyState = searchQuery
+    ? {
+        title: 'No matching notifications',
+        message: 'Try a different search term.',
+      }
+    : emptyStateContent[activeFilter] || emptyStateContent.all;
 
   const handleMarkAsRead = (id) => {
     const notification = notifications.find(n => n.id === id);
@@ -345,11 +383,11 @@ export default function NotificationsPage() {
                 >
                   <filter.icon className="w-4 h-4" />
                   {filter.label}
-                  {filter.id === 'unread' && unreadCount > 0 && (
+                  {tabCounts[filter.id] > 0 && (
                     <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                      activeFilter === filter.id ? 'bg-white/20' : 'bg-naija-500 text-white'
+                      activeFilter === filter.id ? 'bg-white/20' : 'bg-charcoal-100 text-charcoal-600'
                     }`}>
-                      {unreadCount}
+                      {tabCounts[filter.id] > 99 ? '99+' : tabCounts[filter.id]}
                     </span>
                   )}
                 </button>
@@ -428,10 +466,10 @@ export default function NotificationsPage() {
                   <Bell className="w-10 h-10 text-charcoal-300" />
                 </div>
                 <h3 className="text-xl font-display font-bold text-charcoal-800 mb-2">
-                  No notifications
+                  {emptyState.title}
                 </h3>
                 <p className="text-charcoal-500">
-                  {searchQuery ? 'No results found for your search' : 'Check back later for updates'}
+                  {emptyState.message}
                 </p>
               </motion.div>
             ) : (
@@ -541,26 +579,6 @@ export default function NotificationsPage() {
             )}
           </AnimatePresence>
         </div>
-
-        {/* Empty state for filtered */}
-        {filteredNotifications.length === 0 && searchQuery === '' && activeFilter !== 'all' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-card p-12 text-center"
-          >
-            <Bell className="w-12 h-12 text-charcoal-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-charcoal-800 mb-2">
-              No {activeFilter === 'unread' ? 'unread' : activeFilter} notifications
-            </h3>
-            <button
-              onClick={() => setActiveFilter('all')}
-              className="text-naija-600 font-medium hover:text-naija-700"
-            >
-              View all notifications
-            </button>
-          </motion.div>
-        )}
       </div>
     </div>
   );

@@ -117,7 +117,7 @@ const Footer = () => {
         <div className="grid lg:grid-cols-6 gap-12">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link to="/" className="inline-flex items-center gap-2 mb-6" aria-label="Naija Cars home">
+            <Link to="/" className="inline-flex items-center gap-1.5 mb-6" aria-label="Naija Cars home">
               <span className="relative block h-14 w-16 overflow-hidden">
                 <img
                   src="/logo.png?v=3"
@@ -126,9 +126,9 @@ const Footer = () => {
                   className="absolute left-0 top-0 h-14 w-auto max-w-none object-contain brightness-110 drop-shadow-lg"
                 />
               </span>
-              <span className="flex flex-col leading-none font-display font-black uppercase tracking-wide">
-                <span className="text-naija-500 text-xl">Naija</span>
-                <span className="text-white text-xl">Cars</span>
+              <span className="flex flex-col leading-[0.88] font-display font-black uppercase tracking-normal">
+                <span className="text-naija-500 text-lg">Naija</span>
+                <span className="text-white text-lg">Cars</span>
               </span>
             </Link>
             <p className="text-pearl-300 mb-6 max-w-xs">

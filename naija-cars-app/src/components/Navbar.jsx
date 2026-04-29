@@ -210,6 +210,23 @@ const Navbar = () => {
 
             {isAuthenticated ? (
               <>
+                <Link to="/messages">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
+                    title="Messages"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {unreadNotificationCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-naija-500 text-white
+                                     text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                      </span>
+                    )}
+                  </motion.div>
+                </Link>
+
                 <Link to="/notifications">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
@@ -265,9 +282,17 @@ const Navbar = () => {
                             <User className="w-4 h-4" />
                             My Profile
                           </Link>
-                          <Link to="/messages" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <MessageCircle className="w-4 h-4" />
-                            Messages
+                          <Link to="/messages" className="flex items-center justify-between gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
+                            <span className="flex items-center gap-3">
+                              <MessageCircle className="w-4 h-4" />
+                              Messages
+                            </span>
+                            {unreadNotificationCount > 0 && (
+                              <span className="min-w-[20px] h-5 px-1 bg-naija-500 text-white
+                                             text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                              </span>
+                            )}
                           </Link>
                           <Link to="/favorites" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
                             <Heart className="w-4 h-4" />
@@ -391,11 +416,23 @@ const Navbar = () => {
                     <Link to="/favorites" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
                       Saved Cars
                     </Link>
-                    <Link to="/notifications" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                      Notifications
+                    <Link to="/notifications" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                      <span>Notifications</span>
+                      {unreadNotificationCount > 0 && (
+                        <span className="min-w-[22px] h-5 px-1 bg-red-500 text-white
+                                       text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                        </span>
+                      )}
                     </Link>
-                    <Link to="/messages" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                      Messages
+                    <Link to="/messages" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                      <span>Messages</span>
+                      {unreadNotificationCount > 0 && (
+                        <span className="min-w-[22px] h-5 px-1 bg-naija-500 text-white
+                                       text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                        </span>
+                      )}
                     </Link>
                   </>
                 )}

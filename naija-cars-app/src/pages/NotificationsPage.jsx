@@ -1,52 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Bell, MessageCircle, Heart, Tag, TrendingDown, Car, Shield, Settings,
-  Check, CheckCheck, Trash2, Filter, Search, ChevronRight, Clock, Star,
-  AlertCircle, Info, Gift, CreditCard, BadgeCheck, X
+  Bell, MessageCircle, TrendingDown, Car, Settings,
+  Check, CheckCheck, Trash2, Search, ChevronRight, Clock, Star,
+  AlertCircle, Info, Gift, CreditCard, BadgeCheck
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
+import api from '../services/api';
 
-// Mock notifications data
+// Non-message notification persistence is not implemented yet. Keep the page
+// driven by real unread message data so the badge never lies to users.
 const mockNotifications = [
-  {
-    id: 1,
-    type: 'message',
-    title: 'New Message',
-    message: 'Chinedu from Premium Motors replied to your inquiry about the 2022 Toyota Camry',
-    time: '5 minutes ago',
-    read: false,
-    actionUrl: '/messages',
-    icon: MessageCircle,
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-  },
   {
     id: 2,
     type: 'price_drop',
     title: 'Price Drop Alert!',
     message: '2021 Mercedes-Benz C300 you saved is now ₦3M cheaper!',
     time: '1 hour ago',
-    read: false,
+    read: true,
     actionUrl: '/car/2',
     icon: TrendingDown,
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
     meta: { originalPrice: '₦38M', newPrice: '₦35M' },
-  },
-  {
-    id: 3,
-    type: 'favorite',
-    title: 'Your Listing Got a Like!',
-    message: 'Someone favorited your 2020 Honda Accord listing',
-    time: '2 hours ago',
-    read: false,
-    actionUrl: '/dashboard',
-    icon: Heart,
-    iconBg: 'bg-red-100',
-    iconColor: 'text-red-500',
   },
   {
     id: 4,
@@ -119,6 +98,23 @@ const mockNotifications = [
   },
 ];
 
+const getDisplayName = (otherUser) =>
+  otherUser?.profile?.businessName ||
+  `${otherUser?.profile?.firstName || ''} ${otherUser?.profile?.lastName || ''}`.trim() ||
+  otherUser?.email ||
+  'Someone';
+
+const formatRelativeTime = (dateValue) => {
+  const diffMs = Date.now() - new Date(dateValue).getTime();
+  const minutes = Math.max(Math.floor(diffMs / 60000), 0);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+};
+
 const filterOptions = [
   { id: 'all', label: 'All', icon: Bell },
   { id: 'unread', label: 'Unread', icon: AlertCircle },
@@ -132,11 +128,21 @@ export default function NotificationsPage() {
   const { addToast, setUnreadNotificationCount } = useApp();
   const navigate = useNavigate();
 
-  const [notifications, setNotifications] = useState(mockNotifications);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [dismissedNotifications, setDismissedNotifications] = useState([]);
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  );
+
+  const { data: conversationsData, refetch: refetchConversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => api.get('/messages/conversations').then(r => r.data),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
 
   // Never call navigate() in the render body — use useEffect
   useEffect(() => {
@@ -145,13 +151,49 @@ export default function NotificationsPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Keep the navbar badge in sync with local unread count
-  useEffect(() => {
-    const count = notifications.filter(n => !n.read).length;
-    setUnreadNotificationCount(count);
-  }, [notifications, setUnreadNotificationCount]);
+  const messageNotifications = useMemo(() => {
+    const conversations = conversationsData?.data?.conversations ?? [];
+    return conversations
+      .filter(conversation => (conversation.unreadCount || 0) > 0)
+      .map(conversation => {
+        const senderName = getDisplayName(conversation.otherUser);
+        return {
+          id: `message-${conversation.conversationId}`,
+          type: 'message',
+          title: `${conversation.unreadCount} new message${conversation.unreadCount === 1 ? '' : 's'}`,
+          message: `${senderName}: ${conversation.lastMessage?.messageText || 'Sent you a message'}`,
+          time: formatRelativeTime(conversation.lastMessage?.createdAt),
+          read: false,
+          actionUrl: '/messages',
+          conversationId: conversation.conversationId,
+          icon: MessageCircle,
+          iconBg: 'bg-blue-100',
+          iconColor: 'text-blue-600',
+        };
+      });
+  }, [conversationsData]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const notifications = useMemo(() => [
+    ...messageNotifications,
+    ...mockNotifications,
+  ].filter(notification => !dismissedNotifications.includes(notification.id)), [
+    dismissedNotifications,
+    messageNotifications,
+  ]);
+
+  // Keep the navbar badge in sync with real unread message count.
+  useEffect(() => {
+    const count = messageNotifications.reduce((total, notification) => {
+      const match = notification.title.match(/^(\d+)/);
+      return total + (match ? parseInt(match[1], 10) : 1);
+    }, 0);
+    setUnreadNotificationCount(count);
+  }, [messageNotifications, setUnreadNotificationCount]);
+
+  const unreadCount = messageNotifications.reduce((total, notification) => {
+    const match = notification.title.match(/^(\d+)/);
+    return total + (match ? parseInt(match[1], 10) : 1);
+  }, 0);
 
   const filteredNotifications = notifications.filter(n => {
     const matchesFilter = activeFilter === 'all' ||
@@ -162,23 +204,35 @@ export default function NotificationsPage() {
   });
 
   const handleMarkAsRead = (id) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+    const notification = notifications.find(n => n.id === id);
+    if (notification?.conversationId) {
+      api.put(`/messages/${notification.conversationId}/read`)
+        .then(() => refetchConversations())
+        .catch(() => addToast('Could not mark message as read', 'error'));
+      return;
+    }
+
+    setDismissedNotifications(prev => [...prev, id]);
   };
 
   const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-    addToast('All notifications marked as read', 'success');
+    Promise.all(messageNotifications.map(notification =>
+      api.put(`/messages/${notification.conversationId}/read`)
+    ))
+      .then(() => {
+        refetchConversations();
+        addToast('All message notifications marked as read', 'success');
+      })
+      .catch(() => addToast('Could not mark all messages as read', 'error'));
   };
 
   const handleDelete = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+    setDismissedNotifications(prev => [...prev, id]);
     addToast('Notification deleted', 'success');
   };
 
   const handleDeleteSelected = () => {
-    setNotifications(notifications.filter(n => !selectedNotifications.includes(n.id)));
+    setDismissedNotifications(prev => [...prev, ...selectedNotifications]);
     setSelectedNotifications([]);
     setIsSelecting(false);
     addToast(`${selectedNotifications.length} notifications deleted`, 'success');
@@ -189,6 +243,20 @@ export default function NotificationsPage() {
     if (notification.actionUrl) {
       navigate(notification.actionUrl);
     }
+  };
+
+  const handleEnableBrowserNotifications = async () => {
+    if (typeof Notification === 'undefined') {
+      addToast('Browser notifications are not supported here', 'error');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    addToast(
+      permission === 'granted' ? 'Browser notifications enabled' : 'Browser notifications not enabled',
+      permission === 'granted' ? 'success' : 'error'
+    );
   };
 
   const toggleSelect = (id) => {
@@ -229,8 +297,15 @@ export default function NotificationsPage() {
             </div>
 
             <button
-              onClick={() => navigate('/profile?tab=notifications')}
-              className="p-3 bg-white/20 backdrop-blur-sm rounded-xl text-white hover:bg-white/30 transition-colors"
+              onClick={handleEnableBrowserNotifications}
+              disabled={notificationPermission === 'granted' || notificationPermission === 'unsupported'}
+              className="p-3 bg-white/20 backdrop-blur-sm rounded-xl text-white hover:bg-white/30
+                         transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              title={
+                notificationPermission === 'granted'
+                  ? 'Browser notifications enabled'
+                  : 'Enable browser notifications'
+              }
             >
               <Settings className="w-6 h-6" />
             </button>

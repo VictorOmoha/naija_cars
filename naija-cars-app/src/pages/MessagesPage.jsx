@@ -18,7 +18,7 @@ const QUICK_REPLIES = [
 ];
 
 export default function MessagesPage() {
-  const { user, accessToken, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { addToast } = useApp();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef(null);
@@ -37,14 +37,6 @@ export default function MessagesPage() {
 
   // The "active" conversation is whichever is open
   const activeConversation = selectedConversation || pendingConversation;
-
-  // --- Socket connection ---
-  useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      socketService.connect(accessToken);
-      return () => socketService.disconnect();
-    }
-  }, [isAuthenticated, accessToken]);
 
   // --- Fetch conversations list ---
   const { data: conversationsData, refetch: refetchConversations } = useQuery({
@@ -89,14 +81,14 @@ export default function MessagesPage() {
 
   // --- Socket: receive messages globally while signed in ---
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     socketService.onNewMessage(handleIncomingMessage);
 
     return () => {
       socketService.offNewMessage(handleIncomingMessage);
     };
-  }, [accessToken, handleIncomingMessage, isAuthenticated]);
+  }, [handleIncomingMessage, isAuthenticated]);
 
   // --- Handle sellerId/listingId URL params: pre-open conversation ---
   useEffect(() => {

@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ScrollToTop from './components/ScrollToTop';
+import MessageNotifications from './components/MessageNotifications';
 import AuthModal from './components/modals/AuthModal';
 import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
 import QuickViewModal from './components/modals/QuickViewModal';
@@ -97,6 +98,7 @@ function App() {
 
           {/* Navigation */}
           <Navbar />
+          <MessageNotifications />
 
           {/* Main Content */}
           <main>

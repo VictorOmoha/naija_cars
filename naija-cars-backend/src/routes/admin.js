@@ -890,19 +890,19 @@ router.get('/analytics/overview', async (req, res) => {
 
     // Get daily user registrations for last 30 days
     const usersByDay = await prisma.$queryRaw`
-      SELECT DATE("createdAt") as date, COUNT(*)::int as count
+      SELECT DATE("created_at") as date, COUNT(*)::int as count
       FROM "users"
-      WHERE "createdAt" >= ${thirtyDaysAgo}
-      GROUP BY DATE("createdAt")
+      WHERE "created_at" >= ${thirtyDaysAgo}
+      GROUP BY DATE("created_at")
       ORDER BY date ASC
     `;
 
     // Get daily listings for last 30 days
     const listingsByDay = await prisma.$queryRaw`
-      SELECT DATE("createdAt") as date, COUNT(*)::int as count
+      SELECT DATE("created_at") as date, COUNT(*)::int as count
       FROM "car_listings"
-      WHERE "createdAt" >= ${thirtyDaysAgo}
-      GROUP BY DATE("createdAt")
+      WHERE "created_at" >= ${thirtyDaysAgo}
+      GROUP BY DATE("created_at")
       ORDER BY date ASC
     `;
 

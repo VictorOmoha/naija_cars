@@ -5,6 +5,17 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+const refreshCookieBaseOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'none'
+};
+
+const refreshCookieOptions = {
+  ...refreshCookieBaseOptions,
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+};
+
 /**
  * @route   POST /api/auth/register
  * @desc    Register a new user
@@ -51,12 +62,7 @@ router.post('/register',
 
       // Set refresh token as HTTP-only cookie
       // sameSite: 'none' required for cross-domain (frontend ≠ backend domain)
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
       res.status(201).json({
         success: true,
@@ -110,12 +116,7 @@ router.post('/login',
 
       // Set refresh token as HTTP-only cookie
       // sameSite: 'none' required for cross-domain (frontend ≠ backend domain)
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
       res.json({
         success: true,
@@ -170,7 +171,7 @@ router.post('/refresh', async (req, res, next) => {
  * @access  Public
  */
 router.post('/logout', (req, res) => {
-  res.clearCookie('refreshToken');
+  res.clearCookie('refreshToken', refreshCookieBaseOptions);
   res.json({
     success: true,
     message: 'Logout successful'

@@ -42,6 +42,34 @@ const persistAvatar = async (userId, inputBuffer) => {
 
 const router = express.Router();
 
+const avatarAllowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  process.env.CLIENT_URL,
+  'https://www.naijacars.online',
+  'https://naijacars.online'
+].filter(Boolean);
+
+const normalizeOrigin = (origin) => origin?.replace(/\/$/, '');
+const isAvatarAllowedOrigin = (origin) => (
+  avatarAllowedOrigins.map(normalizeOrigin).includes(normalizeOrigin(origin))
+);
+
+const clampPagination = (pageValue, limitValue, defaultLimit = 20, maxLimit = 50) => {
+  const page = Math.max(parseInt(pageValue, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(limitValue, 10) || defaultLimit, 1), maxLimit);
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit
+  };
+};
+
 const attachAuthenticatedUser = async (userId, req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -110,16 +138,21 @@ const authenticateAvatarUpload = async (req, res, next) => {
 };
 
 const setAvatarCorsHeaders = (req, res, next) => {
-  const origin = req.headers.origin || 'https://www.naijacars.online';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    req.headers['access-control-request-headers'] || 'Authorization,Content-Type'
-  );
-  res.setHeader('Access-Control-Max-Age', '86400');
-  res.setHeader('Vary', 'Origin');
+  const origin = req.headers.origin;
+
+  if (!origin || isAvatarAllowedOrigin(origin)) {
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        req.headers['access-control-request-headers'] || 'Authorization,Content-Type'
+      );
+      res.setHeader('Access-Control-Max-Age', '86400');
+      res.setHeader('Vary', 'Origin');
+    }
+  }
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -223,7 +256,7 @@ router.get('/me/favorites', authenticate, async (req, res, next) => {
 router.get('/me/listings', authenticate, async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status, type } = req.query;
-    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const pagination = clampPagination(page, limit, 20);
 
     const where = {
       sellerId: req.user.id,
@@ -240,8 +273,8 @@ router.get('/me/listings', authenticate, async (req, res, next) => {
             take: 1
           }
         },
-        skip,
-        take: parseInt(limit, 10),
+        skip: pagination.skip,
+        take: pagination.limit,
         orderBy: { createdAt: 'desc' }
       }),
       prisma.carListing.count({ where })
@@ -253,9 +286,9 @@ router.get('/me/listings', authenticate, async (req, res, next) => {
         listings,
         pagination: {
           total,
-          page: parseInt(page, 10),
-          limit: parseInt(limit, 10),
-          pages: Math.ceil(total / parseInt(limit, 10))
+          page: pagination.page,
+          limit: pagination.limit,
+          pages: Math.ceil(total / pagination.limit)
         }
       }
     });
@@ -405,7 +438,7 @@ router.put('/profile',
 router.get('/dealers', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pagination = clampPagination(page, limit, 20);
 
     const where = {
       userType: { in: ['DEALER', 'RENTAL_COMPANY', 'INDIVIDUAL_SELLER'] },
@@ -433,8 +466,8 @@ router.get('/dealers', async (req, res, next) => {
           { userType: 'asc' },   // DEALERs first
           { createdAt: 'desc' }
         ],
-        skip,
-        take: parseInt(limit)
+        skip: pagination.skip,
+        take: pagination.limit
       }),
       prisma.user.count({ where })
     ]);
@@ -448,9 +481,9 @@ router.get('/dealers', async (req, res, next) => {
         dealers: safeUsers,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit))
+          page: pagination.page,
+          limit: pagination.limit,
+          pages: Math.ceil(total / pagination.limit)
         }
       }
     });
@@ -510,7 +543,7 @@ router.get('/:id', async (req, res, next) => {
 router.get('/:id/listings', async (req, res, next) => {
   try {
     const { page = 1, limit = 12, type } = req.query;
-    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const pagination = clampPagination(page, limit, 12);
 
     const where = {
       sellerId: req.params.id,
@@ -530,8 +563,8 @@ router.get('/:id/listings', async (req, res, next) => {
             select: listingSellerSelect
           }
         },
-        skip,
-        take: parseInt(limit, 10),
+        skip: pagination.skip,
+        take: pagination.limit,
         orderBy: { createdAt: 'desc' }
       }),
       prisma.carListing.count({ where })
@@ -543,9 +576,9 @@ router.get('/:id/listings', async (req, res, next) => {
         listings,
         pagination: {
           total,
-          page: parseInt(page, 10),
-          limit: parseInt(limit, 10),
-          pages: Math.ceil(total / parseInt(limit, 10))
+          page: pagination.page,
+          limit: pagination.limit,
+          pages: Math.ceil(total / pagination.limit)
         }
       }
     });

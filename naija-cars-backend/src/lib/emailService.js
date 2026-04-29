@@ -29,7 +29,11 @@ async function sendEmail({ to, subject, html, text }) {
   const t = getTransporter();
 
   if (!t) {
-    // No transporter configured — log to console in dev
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SMTP is not configured');
+    }
+
+    // No transporter configured — log to console in dev only.
     console.log(`\n[EMAIL - DEV FALLBACK]`);
     console.log(`  To: ${to}`);
     console.log(`  Subject: ${subject}`);

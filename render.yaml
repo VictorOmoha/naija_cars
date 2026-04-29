@@ -47,6 +47,18 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
 
   # Frontend Static Site
   - type: web

@@ -193,7 +193,7 @@ model Subscription {
   isActive         Boolean          @default(true) @map("is_active")
   autoRenew        Boolean          @default(true) @map("auto_renew")
   amountPaid       Float            @map("amount_paid")
-  paymentReference String           @map("payment_reference")
+  paymentReference String           @unique @map("payment_reference")
   paystackRef      String?          @map("paystack_ref")
   listingsUsed     Int              @default(0) @map("listings_used")
   listingsLimit    Int              @map("listings_limit")
@@ -204,7 +204,6 @@ model Subscription {
 
   @@index([userId])
   @@index([isActive])
-  @@index([paymentReference])
   @@index([endDate])
   @@map("subscriptions")
 }

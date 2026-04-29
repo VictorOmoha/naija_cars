@@ -46,6 +46,13 @@ const clampPagination = (pageValue, limitValue, maxLimit = 50) => {
   };
 };
 
+const parseOptionalBoolean = (value, fallback) => {
+  if (value === undefined) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.toLowerCase() === 'true';
+  return Boolean(value);
+};
+
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
@@ -235,8 +242,35 @@ router.post('/',
       const isFeatured = req.subscription &&
         (req.subscription.planType === 'PRO' || req.subscription.planType === 'PREMIUM');
 
-      // Create listing + increment subscription usage atomically
+      // Reserve the subscription slot before creating the listing. This keeps
+      // concurrent create requests from exceeding the user's plan limit.
       const listing = await prisma.$transaction(async (tx) => {
+        const now = new Date();
+        const subscriptionWhere = {
+          id: req.subscription.id,
+          userId: req.user.id,
+          isActive: true,
+          endDate: { gt: now },
+          ...(req.subscription.listingsLimit !== -1 && {
+            listingsUsed: { lt: req.subscription.listingsLimit }
+          })
+        };
+
+        const reservation = await tx.subscription.updateMany({
+          where: subscriptionWhere,
+          data: { listingsUsed: { increment: 1 } },
+        });
+
+        if (reservation.count !== 1) {
+          const error = new Error(
+            req.subscription.listingsLimit === -1
+              ? 'Your subscription is no longer active. Please renew your plan to create listings.'
+              : `You have used all ${req.subscription.listingsLimit} listings for this billing period. Upgrade your plan for more listings.`
+          );
+          error.status = 403;
+          throw error;
+        }
+
         const newListing = await tx.carListing.create({
           data: {
             listingType, make, model,
@@ -249,7 +283,7 @@ router.post('/',
             engineSize: engineSize || null,
             condition,
             price: parseFloat(price),
-            negotiable: negotiable !== undefined ? Boolean(negotiable) : true,
+            negotiable: parseOptionalBoolean(negotiable, true),
             locationState, locationCity,
             phone: phone || null,
             whatsapp: whatsapp || null,
@@ -263,12 +297,6 @@ router.post('/',
               select: publicSellerSelect
             }
           }
-        });
-
-        // Increment listings used on subscription
-        await tx.subscription.update({
-          where: { id: req.subscription.id },
-          data: { listingsUsed: { increment: 1 } },
         });
 
         return newListing;
@@ -354,7 +382,7 @@ router.put('/:id',
       updateData.mileage = parseInt(updateData.mileage, 10);
     }
     if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
-    if (updateData.negotiable !== undefined) updateData.negotiable = Boolean(updateData.negotiable);
+    if (updateData.negotiable !== undefined) updateData.negotiable = parseOptionalBoolean(updateData.negotiable, true);
 
     const listing = await prisma.carListing.update({
       where: { id: req.params.id },

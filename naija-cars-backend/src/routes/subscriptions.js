@@ -8,6 +8,8 @@ const PLANS = require('../config/subscriptionPlans');
 
 const router = express.Router();
 
+const isUniqueConstraintError = (error) => error?.code === 'P2002';
+
 /**
  * @route   GET /api/subscriptions/plans
  * @desc    List available subscription plans
@@ -211,44 +213,66 @@ router.get(
         });
       }
 
-      // Create subscription in a transaction
-      const subscription = await prisma.$transaction(async (tx) => {
-        // Deactivate any existing active subscriptions for this user
-        await tx.subscription.updateMany({
-          where: { userId, isActive: true },
-          data: { isActive: false },
-        });
+      let subscription;
+      try {
+        // Create subscription in a transaction. Creating the event first uses
+        // Paystack's unique reference as the idempotency lock.
+        subscription = await prisma.$transaction(async (tx) => {
+          await tx.paystackEvent.create({
+            data: {
+              eventId: reference,
+              eventType: 'transaction.verify',
+              processed: false,
+              payload: JSON.stringify({ planType, amount: txn.amount }),
+            },
+          });
 
-        // Create new subscription (30 days)
-        const newSub = await tx.subscription.create({
-          data: {
-            userId,
-            planType,
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            isActive: true,
-            amountPaid: txn.amount / 100, // kobo to naira
-            paymentReference: reference,
-            paystackRef: txn.reference,
-            listingsUsed: 0,
-            listingsLimit: plan.listingsLimit,
-          },
-        });
+          // Deactivate any existing active subscriptions for this user
+          await tx.subscription.updateMany({
+            where: { userId, isActive: true },
+            data: { isActive: false },
+          });
 
-        // Log event for idempotency
-        await tx.paystackEvent.upsert({
-          where: { eventId: reference },
-          update: { processed: true },
-          create: {
-            eventId: reference,
-            eventType: 'transaction.verify',
-            processed: true,
-            payload: JSON.stringify({ planType, amount: txn.amount }),
-          },
-        });
+          // Create new subscription (30 days)
+          const newSub = await tx.subscription.create({
+            data: {
+              userId,
+              planType,
+              startDate: new Date(),
+              endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              isActive: true,
+              amountPaid: txn.amount / 100, // kobo to naira
+              paymentReference: reference,
+              paystackRef: txn.reference,
+              listingsUsed: 0,
+              listingsLimit: plan.listingsLimit,
+            },
+          });
 
-        return newSub;
-      });
+          await tx.paystackEvent.update({
+            where: { eventId: reference },
+            data: { processed: true },
+          });
+
+          return newSub;
+        });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          const existingSubscription = await prisma.subscription.findUnique({
+            where: { paymentReference: reference },
+          });
+
+          if (existingSubscription) {
+            return res.json({
+              success: true,
+              message: 'Subscription already activated',
+              data: { subscription: existingSubscription },
+            });
+          }
+        }
+
+        throw error;
+      }
 
       // Send subscription confirmation email (non-blocking)
       const userRecord = await prisma.user.findUnique({
@@ -316,6 +340,15 @@ router.post('/webhook', async (req, res, next) => {
         const plan = PLANS[planType];
 
         await prisma.$transaction(async (tx) => {
+          await tx.paystackEvent.create({
+            data: {
+              eventId,
+              eventType: event.event,
+              processed: false,
+              payload: JSON.stringify(event.data),
+            },
+          });
+
           // Deactivate old subscriptions
           await tx.subscription.updateMany({
             where: { userId, isActive: true },
@@ -338,15 +371,9 @@ router.post('/webhook', async (req, res, next) => {
             },
           });
 
-          await tx.paystackEvent.upsert({
+          await tx.paystackEvent.update({
             where: { eventId },
-            update: { processed: true },
-            create: {
-              eventId,
-              eventType: event.event,
-              processed: true,
-              payload: JSON.stringify(event.data),
-            },
+            data: { processed: true },
           });
         });
 

@@ -175,7 +175,9 @@ class MessageService {
    * Get messages for a conversation
    */
   async getConversationMessages(conversationId, userId, page = 1, limit = 50) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(parseInt(page, 10) || 1, 1);
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+    const skip = (safePage - 1) * safeLimit;
 
     // Extract user IDs from conversation ID
     const [user1Id, user2Id] = conversationId.split('_');
@@ -209,7 +211,7 @@ class MessageService {
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limit
+        take: safeLimit
       }),
       prisma.message.count({
         where: { conversationId }
@@ -220,9 +222,9 @@ class MessageService {
       messages: messages.reverse(), // Oldest first
       pagination: {
         total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
+        page: safePage,
+        limit: safeLimit,
+        pages: Math.ceil(total / safeLimit)
       }
     };
   }

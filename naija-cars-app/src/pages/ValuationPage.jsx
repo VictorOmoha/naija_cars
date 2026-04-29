@@ -214,7 +214,7 @@ const CONDITION_MAP = {
 
 export default function ValuationPage() {
   const [searchParams] = useSearchParams();
-  const { setIsListCarOpen } = useApp();
+  const { setIsListCarOpen, addToast } = useApp();
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [valuationResult, setValuationResult] = useState(null);
@@ -288,6 +288,24 @@ export default function ValuationPage() {
     reset();
     setValuationResult(null);
     setStep(1);
+  };
+
+  const handleSaveValuation = () => {
+    if (!valuationResult) return;
+
+    try {
+      const savedValuations = JSON.parse(localStorage.getItem('savedValuations') || '[]');
+      const valuationToSave = {
+        ...valuationResult,
+        id: `${Date.now()}-${valuationResult.make}-${valuationResult.model}`,
+        savedAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem('savedValuations', JSON.stringify([valuationToSave, ...savedValuations]));
+      addToast('Valuation saved. Price alerts are enabled.', 'success');
+    } catch {
+      addToast('Could not save valuation. Please try again.', 'error');
+    }
   };
 
   return (
@@ -755,7 +773,11 @@ export default function ValuationPage() {
                 <div className="bg-white rounded-2xl shadow-card p-6">
                   <h3 className="text-xl font-display font-bold text-charcoal-800 mb-2">Not Selling Yet?</h3>
                   <p className="text-charcoal-500 mb-4">Save this valuation and get price alerts</p>
-                  <button className="w-full py-3 border-2 border-naija-500 text-naija-600 rounded-xl font-medium hover:bg-naija-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={handleSaveValuation}
+                    className="w-full py-3 border-2 border-naija-500 text-naija-600 rounded-xl font-medium hover:bg-naija-50 transition-colors"
+                  >
                     Save Valuation
                   </button>
                 </div>

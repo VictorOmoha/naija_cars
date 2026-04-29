@@ -7,6 +7,7 @@ import {
   CheckCircle, Info, Calendar, Gauge, Settings2, Fuel, MapPin,
   BarChart3, DollarSign, Clock, Shield, AlertCircle, Sparkles, RefreshCw
 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 const carMakes = [
   'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai',
@@ -213,6 +214,7 @@ const CONDITION_MAP = {
 
 export default function ValuationPage() {
   const [searchParams] = useSearchParams();
+  const { setIsListCarOpen } = useApp();
   const [step, setStep] = useState(1);
   const [isCalculating, setIsCalculating] = useState(false);
   const [valuationResult, setValuationResult] = useState(null);
@@ -741,7 +743,11 @@ export default function ValuationPage() {
                 <div className="bg-gradient-to-br from-gold-400 to-gold-500 rounded-2xl p-6 text-charcoal-800">
                   <h3 className="text-xl font-display font-bold mb-2">Ready to Sell?</h3>
                   <p className="mb-4 opacity-80">List your car now and reach thousands of buyers</p>
-                  <button className="w-full py-3 bg-charcoal-800 text-white rounded-xl font-medium hover:bg-charcoal-900 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setIsListCarOpen(true)}
+                    className="w-full py-3 bg-charcoal-800 text-white rounded-xl font-medium hover:bg-charcoal-900 transition-colors"
+                  >
                     List Your Car
                   </button>
                 </div>

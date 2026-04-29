@@ -19,6 +19,7 @@ const QuickViewModal = () => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
+  const [isResolvingSeller, setIsResolvingSeller] = useState(false);
 
   if (!selectedCar) return null;
 
@@ -48,7 +49,17 @@ const QuickViewModal = () => {
     return `₦${price.toLocaleString()}`;
   };
 
-  const handleContact = (method) => {
+  const resolveSellerId = async () => {
+    const sellerId = selectedCar.sellerId || selectedCar.seller?.id;
+    if (sellerId) return sellerId;
+    if (!hasRealId) return null;
+
+    const { data } = await listingsAPI.getById(selectedCar.id);
+    const listing = data?.data?.listing;
+    return listing?.sellerId || listing?.seller?.id || null;
+  };
+
+  const handleContact = async (method) => {
     if (!isAuthenticated) {
       closeQuickView();
       setIsSignInOpen(true);
@@ -62,14 +73,21 @@ const QuickViewModal = () => {
         addToast('Phone number not available', 'info');
       }
     } else {
-      const sellerId = selectedCar.sellerId || selectedCar.seller?.id;
-      if (!sellerId) {
-        addToast('Seller information is not available for this listing', 'info');
-        return;
-      }
+      try {
+        setIsResolvingSeller(true);
+        const sellerId = await resolveSellerId();
+        if (!sellerId) {
+          addToast('Seller information is not available for this listing', 'info');
+          return;
+        }
 
-      closeQuickView();
-      navigate(`/messages?sellerId=${sellerId}&listingId=${selectedCar.id}`);
+        closeQuickView();
+        navigate(`/messages?sellerId=${sellerId}&listingId=${selectedCar.id}`);
+      } catch {
+        addToast('Could not open messages for this listing. Please try again.', 'error');
+      } finally {
+        setIsResolvingSeller(false);
+      }
     }
   };
 
@@ -353,12 +371,13 @@ const QuickViewModal = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleContact('message')}
+                      disabled={isResolvingSeller}
                       className="flex items-center justify-center gap-2 py-3 border-2 border-naija-500
                                text-naija-500 font-semibold rounded-xl hover:bg-naija-500
-                               hover:text-white transition-all"
+                               hover:text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <MessageCircle className="w-5 h-5" />
-                      Message
+                      {isResolvingSeller ? 'Opening...' : 'Message'}
                     </motion.button>
                   </div>
                 </div>

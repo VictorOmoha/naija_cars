@@ -25,6 +25,7 @@ export default function MessagesPage() {
 
   const sellerIdParam = searchParams.get('sellerId');
   const listingIdParam = searchParams.get('listingId');
+  const conversationIdParam = searchParams.get('conversationId');
 
   // selectedConversation = real DB conversation object
   // pendingConversation  = not yet in DB (first message hasn't been sent yet)
@@ -129,6 +130,19 @@ export default function MessagesPage() {
       })
       .catch(() => {});
   }, [sellerIdParam, listingIdParam, user?.id, isAuthenticated, conversationsData]);
+
+  // --- Handle direct conversation links from notifications ---
+  useEffect(() => {
+    if (!conversationIdParam || !isAuthenticated) return;
+
+    const conversations = conversationsData?.data?.conversations ?? [];
+    const existing = conversations.find(c => c.conversationId === conversationIdParam);
+
+    if (existing) {
+      setSelectedConversation(existing);
+      setPendingConversation(null);
+    }
+  }, [conversationIdParam, conversationsData, isAuthenticated]);
 
   // --- Socket: join/leave room + live message events ---
   useEffect(() => {

@@ -105,6 +105,7 @@ const getDisplayName = (otherUser) =>
   'Someone';
 
 const formatRelativeTime = (dateValue) => {
+  if (!dateValue) return 'Recently';
   const diffMs = Date.now() - new Date(dateValue).getTime();
   const minutes = Math.max(Math.floor(diffMs / 60000), 0);
   if (minutes < 1) return 'Just now';
@@ -154,17 +155,21 @@ export default function NotificationsPage() {
   const messageNotifications = useMemo(() => {
     const conversations = conversationsData?.data?.conversations ?? [];
     return conversations
-      .filter(conversation => (conversation.unreadCount || 0) > 0)
+      .filter(conversation => conversation.lastMessage)
       .map(conversation => {
         const senderName = getDisplayName(conversation.otherUser);
+        const unreadCount = conversation.unreadCount || 0;
         return {
           id: `message-${conversation.conversationId}`,
           type: 'message',
-          title: `${conversation.unreadCount} new message${conversation.unreadCount === 1 ? '' : 's'}`,
+          title: unreadCount > 0
+            ? `${unreadCount} new message${unreadCount === 1 ? '' : 's'}`
+            : `Conversation with ${senderName}`,
           message: `${senderName}: ${conversation.lastMessage?.messageText || 'Sent you a message'}`,
           time: formatRelativeTime(conversation.lastMessage?.createdAt),
-          read: false,
-          actionUrl: '/messages',
+          read: unreadCount === 0,
+          unreadCount,
+          actionUrl: `/messages?conversationId=${encodeURIComponent(conversation.conversationId)}`,
           conversationId: conversation.conversationId,
           icon: MessageCircle,
           iconBg: 'bg-blue-100',
@@ -181,19 +186,24 @@ export default function NotificationsPage() {
     messageNotifications,
   ]);
 
+  const unreadMessageNotifications = useMemo(
+    () => messageNotifications.filter(notification => !notification.read),
+    [messageNotifications]
+  );
+
   // Keep the navbar badge in sync with real unread message count.
   useEffect(() => {
-    const count = messageNotifications.reduce((total, notification) => {
-      const match = notification.title.match(/^(\d+)/);
-      return total + (match ? parseInt(match[1], 10) : 1);
-    }, 0);
+    const count = unreadMessageNotifications.reduce(
+      (total, notification) => total + (notification.unreadCount || 0),
+      0
+    );
     setUnreadNotificationCount(count);
-  }, [messageNotifications, setUnreadNotificationCount]);
+  }, [setUnreadNotificationCount, unreadMessageNotifications]);
 
-  const unreadCount = messageNotifications.reduce((total, notification) => {
-    const match = notification.title.match(/^(\d+)/);
-    return total + (match ? parseInt(match[1], 10) : 1);
-  }, 0);
+  const unreadCount = unreadMessageNotifications.reduce(
+    (total, notification) => total + (notification.unreadCount || 0),
+    0
+  );
 
   const filteredNotifications = notifications.filter(n => {
     const matchesFilter = activeFilter === 'all' ||
@@ -216,7 +226,7 @@ export default function NotificationsPage() {
   };
 
   const handleMarkAllAsRead = () => {
-    Promise.all(messageNotifications.map(notification =>
+    Promise.all(unreadMessageNotifications.map(notification =>
       api.put(`/messages/${notification.conversationId}/read`)
     ))
       .then(() => {

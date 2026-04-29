@@ -6,7 +6,7 @@ const SUBSCRIPTION_PLANS = {
     listingsLimit: 5,
     features: [
       '5 car listings per month',
-      'Standard visibility',
+      'Featured placement on active listings',
       'Basic analytics',
     ],
   },

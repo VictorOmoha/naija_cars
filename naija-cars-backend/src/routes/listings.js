@@ -74,6 +74,7 @@ router.get('/', async (req, res, next) => {
       fuelType,
       minYear,
       maxYear,
+      featured,
       search
     } = req.query;
 
@@ -89,6 +90,7 @@ router.get('/', async (req, res, next) => {
       ...(condition && { condition: condition.toUpperCase() }),
       ...(transmission && { transmission }),
       ...(fuelType && { fuelType }),
+      ...(featured !== undefined && { isFeatured: parseOptionalBoolean(featured, true) }),
       ...((minPrice || maxPrice) && {
         price: {
           ...(minPrice && { gte: parseFloat(minPrice) }),
@@ -238,9 +240,9 @@ router.post('/',
         vinNumber, description
       } = req.body;
 
-      // Determine if user's plan allows featured listings
-      const isFeatured = req.subscription &&
-        (req.subscription.planType === 'PRO' || req.subscription.planType === 'PREMIUM');
+      // Paid subscribers receive automatic featured placement for listings
+      // created within their plan allowance.
+      const isFeatured = Boolean(req.subscription);
 
       // Reserve the subscription slot before creating the listing. This keeps
       // concurrent create requests from exceeding the user's plan limit.

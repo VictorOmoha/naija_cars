@@ -64,10 +64,10 @@ const FeaturedCars = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('all');
 
-  // Fetch real active listings from the API (6 newest)
+  // Fetch real paid/featured active listings from the API
   const { data: apiData } = useQuery({
-    queryKey: ['homepage-featured'],
-    queryFn: () => listingsAPI.getAll({ limit: 6, page: 1 }),
+    queryKey: ['homepage-featured', { featured: true }],
+    queryFn: () => listingsAPI.getAll({ limit: 6, page: 1, featured: true }),
     staleTime: 5 * 60 * 1000, // cache for 5 minutes
     select: (res) => res?.data?.data?.listings ?? [],
   });

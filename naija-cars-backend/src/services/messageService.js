@@ -14,6 +14,51 @@ class MessageService {
    * Send a message
    */
   async sendMessage({ senderId, receiverId, listingId, messageText }) {
+    if (senderId === receiverId) {
+      const error = new Error('You cannot send a message to yourself');
+      error.status = 400;
+      throw error;
+    }
+
+    const receiver = await prisma.user.findFirst({
+      where: {
+        id: receiverId,
+        isActive: true
+      },
+      select: { id: true }
+    });
+
+    if (!receiver) {
+      const error = new Error('Message recipient was not found');
+      error.status = 404;
+      throw error;
+    }
+
+    if (listingId) {
+      const listing = await prisma.carListing.findFirst({
+        where: {
+          id: listingId,
+          status: 'ACTIVE'
+        },
+        select: {
+          id: true,
+          sellerId: true
+        }
+      });
+
+      if (!listing) {
+        const error = new Error('Listing was not found');
+        error.status = 404;
+        throw error;
+      }
+
+      if (listing.sellerId !== receiverId) {
+        const error = new Error('This listing does not belong to the selected seller');
+        error.status = 400;
+        throw error;
+      }
+    }
+
     const conversationId = await this.getOrCreateConversation(senderId, receiverId);
 
     const message = await prisma.message.create({

@@ -18,7 +18,6 @@ class SocketService {
       auth: {
         token: accessToken
       },
-      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5
@@ -77,15 +76,15 @@ class SocketService {
     }
   }
 
-  offNewMessage() {
+  offNewMessage(callback) {
     if (this.socket) {
-      this.socket.off('new-message');
+      this.socket.off('new-message', callback);
     }
   }
 
-  offUserTyping() {
+  offUserTyping(callback) {
     if (this.socket) {
-      this.socket.off('user-typing');
+      this.socket.off('user-typing', callback);
     }
   }
 }

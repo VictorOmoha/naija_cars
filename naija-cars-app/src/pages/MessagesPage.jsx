@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MessageCircle, Search, Send, ArrowLeft, Loader2, Car } from 'lucide-react';
@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../stores/authStore';
 import api, { usersAPI } from '../services/api';
 import socketService from '../services/socket';
+import { useApp } from '../context/AppContext';
 
 const QUICK_REPLIES = [
   'Is this still available?',
@@ -18,6 +19,7 @@ const QUICK_REPLIES = [
 
 export default function MessagesPage() {
   const { user, accessToken, isAuthenticated } = useAuthStore();
+  const { addToast } = useApp();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef(null);
 
@@ -59,6 +61,42 @@ export default function MessagesPage() {
       api.get(`/messages/${activeConversation.conversationId}`).then(r => r.data),
     enabled: !!activeConversation && !activeConversation.isPending,
   });
+
+  const getDisplayName = useCallback((otherUser) =>
+    otherUser?.profile?.businessName ||
+    `${otherUser?.profile?.firstName || ''} ${otherUser?.profile?.lastName || ''}`.trim() ||
+    otherUser?.email ||
+    'Unknown', []);
+
+  const handleIncomingMessage = useCallback(({ message }) => {
+    refetchConversations();
+
+    if (message?.conversationId === activeConversation?.conversationId) {
+      refetchMessages();
+      if (message.receiverId === user?.id) {
+        api.put(`/messages/${message.conversationId}/read`)
+          .then(() => refetchConversations())
+          .catch(() => {});
+      }
+      return;
+    }
+
+    if (message?.receiverId === user?.id) {
+      const senderName = getDisplayName(message.sender);
+      addToast(`New message from ${senderName}`, 'info');
+    }
+  }, [activeConversation?.conversationId, addToast, getDisplayName, refetchConversations, refetchMessages, user?.id]);
+
+  // --- Socket: receive messages globally while signed in ---
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) return;
+
+    socketService.onNewMessage(handleIncomingMessage);
+
+    return () => {
+      socketService.offNewMessage(handleIncomingMessage);
+    };
+  }, [accessToken, handleIncomingMessage, isAuthenticated]);
 
   // --- Handle sellerId/listingId URL params: pre-open conversation ---
   useEffect(() => {
@@ -106,28 +144,26 @@ export default function MessagesPage() {
 
     socketService.joinConversation(activeConversation.conversationId);
 
-    socketService.onNewMessage(() => {
-      refetchMessages();
-      refetchConversations();
-    });
-
-    socketService.onUserTyping(({ userId, isTyping }) => {
+    const handleUserTyping = ({ userId, isTyping }) => {
       if (userId !== user?.id) setOtherUserTyping(isTyping);
-    });
+    };
+
+    socketService.onUserTyping(handleUserTyping);
 
     return () => {
       socketService.leaveConversation(activeConversation.conversationId);
-      socketService.offNewMessage();
-      socketService.offUserTyping();
+      socketService.offUserTyping(handleUserTyping);
     };
-  }, [activeConversation?.conversationId]);
+  }, [activeConversation?.conversationId, activeConversation?.isPending, user?.id]);
 
   // --- Mark as read when conversation is opened ---
   useEffect(() => {
     if (activeConversation && !activeConversation.isPending) {
-      api.put(`/messages/${activeConversation.conversationId}/read`).catch(() => {});
+      api.put(`/messages/${activeConversation.conversationId}/read`)
+        .then(() => refetchConversations())
+        .catch(() => {});
     }
-  }, [activeConversation?.conversationId]);
+  }, [activeConversation?.conversationId, activeConversation?.isPending, refetchConversations]);
 
   // --- Auto-scroll to newest message ---
   useEffect(() => {
@@ -172,8 +208,8 @@ export default function MessagesPage() {
         refetchMessages();
         refetchConversations();
       }
-    } catch {
-      // silent — could add toast here
+    } catch (error) {
+      addToast(error.response?.data?.error?.message || 'Message could not be sent', 'error');
     } finally {
       setIsSending(false);
     }
@@ -198,12 +234,6 @@ export default function MessagesPage() {
   };
 
   // --- Helpers ---
-  const getDisplayName = (otherUser) =>
-    otherUser?.profile?.businessName ||
-    `${otherUser?.profile?.firstName || ''} ${otherUser?.profile?.lastName || ''}`.trim() ||
-    otherUser?.email ||
-    'Unknown';
-
   const getAvatar = (otherUser) =>
     otherUser?.profile?.businessLogoUrl || otherUser?.profile?.avatarUrl;
 

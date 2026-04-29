@@ -102,7 +102,7 @@ router.post('/',
       // Emit socket event for real-time delivery
       const io = req.app.get('io');
       if (io) {
-        io.to(receiverId).emit('new-message', {
+        io.to(receiverId).to(req.user.id).to(message.conversationId).emit('new-message', {
           message,
           fraudWarning: fraudCheck.isSuspicious ? fraudCheck.warning : null
         });

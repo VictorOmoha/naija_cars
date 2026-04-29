@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   Shield, Users, Car, Award, Target, Heart, Zap, Globe,
-  CheckCircle, MapPin, Phone, Mail, Linkedin, Twitter
+  CheckCircle, MapPin
 } from 'lucide-react';
 
 const stats = [
@@ -31,41 +31,6 @@ const values = [
     icon: Globe,
     title: 'Nigerian Pride',
     description: 'Built by Nigerians, for Nigerians. We understand the local market and cater to the unique needs of Nigerian car buyers.',
-  },
-];
-
-const team = [
-  {
-    name: 'Oluwaseun Adeyemi',
-    role: 'Founder & CEO',
-    image: 'https://ui-avatars.com/api/?name=Oluwaseun+Adeyemi&background=008753&color=fff&size=200',
-    bio: 'Former automotive executive with 15+ years in the Nigerian car industry.',
-    linkedin: '#',
-    twitter: '#',
-  },
-  {
-    name: 'Chidinma Okonkwo',
-    role: 'Chief Technology Officer',
-    image: 'https://ui-avatars.com/api/?name=Chidinma+Okonkwo&background=FFB81C&color=1A1A1A&size=200',
-    bio: 'Tech veteran who led engineering teams at leading African startups.',
-    linkedin: '#',
-    twitter: '#',
-  },
-  {
-    name: 'Emeka Nwosu',
-    role: 'Head of Operations',
-    image: 'https://ui-avatars.com/api/?name=Emeka+Nwosu&background=10B981&color=fff&size=200',
-    bio: 'Operations expert ensuring smooth transactions across Nigeria.',
-    linkedin: '#',
-    twitter: '#',
-  },
-  {
-    name: 'Fatima Ibrahim',
-    role: 'Head of Customer Experience',
-    image: 'https://ui-avatars.com/api/?name=Fatima+Ibrahim&background=008753&color=fff&size=200',
-    bio: 'Passionate about creating delightful customer journeys.',
-    linkedin: '#',
-    twitter: '#',
   },
 ];
 
@@ -288,55 +253,6 @@ export default function AboutPage() {
               <div className="flex-1" />
             </motion.div>
           ))}
-        </div>
-      </div>
-
-      {/* Team */}
-      <div className="bg-gradient-to-br from-charcoal-800 to-charcoal-900 py-20">
-        <div className="section-container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
-              Meet the Team
-            </h2>
-            <p className="text-pearl-300 max-w-2xl mx-auto">
-              The passionate people behind NaijaCars
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {team.map((member, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-charcoal-700/50 backdrop-blur-sm rounded-2xl p-6 text-center group hover:bg-charcoal-700 transition-colors"
-              >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="w-24 h-24 rounded-2xl mx-auto mb-4 object-cover"
-                />
-                <h3 className="font-display font-bold text-white">{member.name}</h3>
-                <p className="text-naija-400 text-sm font-medium mb-2">{member.role}</p>
-                <p className="text-pearl-400 text-sm mb-4">{member.bio}</p>
-                <div className="flex justify-center gap-3">
-                  <a href={member.linkedin} className="p-2 bg-charcoal-600 text-pearl-300 rounded-lg hover:bg-naija-500 hover:text-white transition-colors">
-                    <Linkedin className="w-4 h-4" />
-                  </a>
-                  <a href={member.twitter} className="p-2 bg-charcoal-600 text-pearl-300 rounded-lg hover:bg-naija-500 hover:text-white transition-colors">
-                    <Twitter className="w-4 h-4" />
-                  </a>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -86,6 +86,9 @@ function AdminRoute({ children }) {
 }
 
 function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
     <ErrorBoundary>
       <AppProvider>
@@ -97,8 +100,12 @@ function App() {
           <div className="texture-overlay" />
 
           {/* Navigation */}
-          <Navbar />
-          <MessageNotifications />
+          {!isAdminRoute && (
+            <>
+              <Navbar />
+              <MessageNotifications />
+            </>
+          )}
 
           {/* Main Content */}
           <main>
@@ -166,7 +173,7 @@ function App() {
           </main>
 
           {/* Footer */}
-          <Footer />
+          {!isAdminRoute && <Footer />}
 
           {/* Modals */}
           <AuthModal />

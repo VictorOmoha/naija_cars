@@ -227,11 +227,12 @@ const Navbar = () => {
                   </motion.div>
                 </Link>
 
-                <Link to="/notifications">
+                <Link to="/notifications?filter=all" aria-label="Open notifications">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
+                    title="Notifications"
                   >
                     <Bell className="w-5 h-5" />
                     {unreadNotificationCount > 0 && (
@@ -416,7 +417,7 @@ const Navbar = () => {
                     <Link to="/favorites" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
                       Saved Cars
                     </Link>
-                    <Link to="/notifications" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                    <Link to="/notifications?filter=all" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
                       <span>Notifications</span>
                       {unreadNotificationCount > 0 && (
                         <span className="min-w-[22px] h-5 px-1 bg-red-500 text-white

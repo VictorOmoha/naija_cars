@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -124,6 +124,8 @@ const filterOptions = [
   { id: 'listing', label: 'Listings', icon: Car },
 ];
 
+const validFilterIds = filterOptions.map(filter => filter.id);
+
 const emptyStateContent = {
   all: {
     title: 'No notifications',
@@ -151,8 +153,12 @@ export default function NotificationsPage() {
   const { isAuthenticated } = useAuthStore();
   const { addToast, setUnreadNotificationCount } = useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeFilter, setActiveFilter] = useState('all');
+  const filterParam = searchParams.get('filter');
+  const [activeFilter, setActiveFilter] = useState(
+    validFilterIds.includes(filterParam) ? filterParam : 'all'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -174,6 +180,10 @@ export default function NotificationsPage() {
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    setActiveFilter(validFilterIds.includes(filterParam) ? filterParam : 'all');
+  }, [filterParam]);
 
   const messageNotifications = useMemo(() => {
     const conversations = conversationsData?.data?.conversations ?? [];
@@ -261,6 +271,11 @@ export default function NotificationsPage() {
     }
 
     setDismissedNotifications(prev => [...prev, id]);
+  };
+
+  const handleFilterChange = (filterId) => {
+    setActiveFilter(filterId);
+    setSearchParams(filterId === 'all' ? {} : { filter: filterId });
   };
 
   const handleMarkAllAsRead = () => {
@@ -374,7 +389,7 @@ export default function NotificationsPage() {
               {filterOptions.map((filter) => (
                 <button
                   key={filter.id}
-                  onClick={() => setActiveFilter(filter.id)}
+                  onClick={() => handleFilterChange(filter.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all whitespace-nowrap ${
                     activeFilter === filter.id
                       ? 'bg-naija-500 text-white'

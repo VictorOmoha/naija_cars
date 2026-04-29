@@ -55,11 +55,15 @@ export default function MessageNotifications() {
         addToast(`New message from ${senderName}`, 'info');
 
         if (document.hidden && window.Notification?.permission === 'granted') {
-          new Notification('New message on Naija Cars', {
+          const browserNotification = new Notification('New message on Naija Cars', {
             body: `${senderName}: ${message.messageText}`,
             icon: '/logo.png?v=3',
             tag: message.conversationId,
           });
+          browserNotification.onclick = () => {
+            window.focus();
+            window.location.href = `/notifications?filter=message`;
+          };
         }
       }
     };

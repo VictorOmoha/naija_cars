@@ -49,6 +49,8 @@ function transformToCardShape(listing) {
     },
     type: 'sale',
     images,
+    phone: listing.phone || listing.seller?.phoneNumber || '',
+    whatsapp: listing.whatsapp || listing.phone || listing.seller?.phoneNumber || '',
     sellerId: listing.seller?.id,
     seller: listing.seller,
     verified: listing.seller?.profile?.verificationBadge || false,
@@ -56,6 +58,7 @@ function transformToCardShape(listing) {
     isFavorited: listing.isFavorited || false,
     dealer: {
       name: listing.seller?.profile?.businessName || 'Private Seller',
+      phone: listing.phone || listing.seller?.phoneNumber || '',
       verified: listing.seller?.profile?.verificationBadge || false,
       rating: 4.5,
     },

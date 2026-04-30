@@ -25,6 +25,7 @@ const sellerProfileSelect = {
 const publicSellerSelect = {
   id: true,
   email: true,
+  phoneNumber: true,
   userType: true,
   isVerified: true,
   isActive: true,

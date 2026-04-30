@@ -17,6 +17,13 @@ const SITE_URL = 'https://naijacars.online';
 // (SPAs can't serve OG tags to bots — they don't run JS)
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
+const getDialablePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) return `234${digits.slice(1)}`;
+  return digits;
+};
+
 // Social share helpers
 function buildShareLinks(car, url) {
   const title = `${car.year} ${car.make} ${car.model}${car.trim ? ' ' + car.trim : ''}`;
@@ -126,6 +133,9 @@ export default function CarDetailsPage() {
   // Bot-friendly share URL → backend serves OG HTML to crawlers, redirects browsers to SPA
   const shareUrl = `${API_BASE}/share/car/${car.id}`;
   const shareLinks = buildShareLinks(car, shareUrl);
+  const sellerPhone = car.phone || car.whatsapp || car.seller?.phoneNumber || '';
+  const dialableSellerPhone = getDialablePhone(sellerPhone);
+  const whatsappPhone = getDialablePhone(car.whatsapp || sellerPhone);
   const mainImage = car.media?.[0]?.url;
 
   const conditionLabel = {
@@ -366,9 +376,19 @@ export default function CarDetailsPage() {
                     Message Seller
                   </button>
 
-                  {car.seller?.phoneNumber && (
+                  {dialableSellerPhone && (
                     <a
-                      href={`https://wa.me/${car.seller.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I'm interested in your ${carTitle} listed on Naija Cars. Is it still available?`)}`}
+                      href={`tel:+${dialableSellerPhone}`}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-white border-2 border-naija-500 text-naija-600 font-semibold rounded-xl hover:bg-naija-50 transition-colors"
+                    >
+                      <Phone className="w-5 h-5" />
+                      Call Seller
+                    </a>
+                  )}
+
+                  {whatsappPhone && (
+                    <a
+                      href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hi, I'm interested in your ${carTitle} listed on Naija Cars. Is it still available?`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#20BD5A] transition-colors"

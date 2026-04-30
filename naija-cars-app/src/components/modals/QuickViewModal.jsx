@@ -13,6 +13,13 @@ import SharePopover from '../SharePopover';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
+const getDialablePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) return `234${digits.slice(1)}`;
+  return digits;
+};
+
 const QuickViewModal = () => {
   const { isQuickViewOpen, selectedCar, closeQuickView, addToast, setIsSignInOpen } = useApp();
   const { isAuthenticated } = useAuthStore();
@@ -58,9 +65,14 @@ const QuickViewModal = () => {
       return;
     }
     if (method === 'phone') {
-      const phone = selectedCar.dealer?.phone || selectedCar.company?.phone || selectedCar.seller?.phoneNumber;
-      if (phone) {
-        window.open(`tel:${phone}`, '_self');
+      const phone = selectedCar.phone
+        || selectedCar.whatsapp
+        || selectedCar.dealer?.phone
+        || selectedCar.company?.phone
+        || selectedCar.seller?.phoneNumber;
+      const dialablePhone = getDialablePhone(phone);
+      if (dialablePhone) {
+        window.location.href = `tel:+${dialablePhone}`;
       } else {
         addToast('Phone number not available', 'info');
       }

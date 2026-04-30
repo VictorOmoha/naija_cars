@@ -11,6 +11,7 @@ import {
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import api from '../services/api';
+import { rentalCars } from '../data/cars';
 
 export default function BookingPage() {
   const { id } = useParams();
@@ -27,13 +28,14 @@ export default function BookingPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
+  const [bookingReference, setBookingReference] = useState('');
   const [addons, setAddons] = useState({
     insurance: false,
     delivery: false,
     inspection: false,
   });
 
-  const { register, formState: { errors } } = useForm({
+  const { register, formState: { errors }, getValues } = useForm({
     defaultValues: {
       firstName: user?.profile?.firstName || '',
       lastName: user?.profile?.lastName || '',
@@ -46,6 +48,28 @@ export default function BookingPage() {
   const { data: listing, isLoading, isError } = useQuery({
     queryKey: ['listing', id],
     queryFn: async () => {
+      const localRental = rentalCars.find((car) => String(car.id) === String(id));
+      if (bookingType === 'rental' && localRental) {
+        return {
+          id: String(localRental.id),
+          make: localRental.make,
+          model: localRental.model,
+          year: localRental.year,
+          trim: localRental.trim,
+          price: localRental.pricePerDay,
+          pricePerDay: localRental.pricePerDay,
+          transmission: localRental.transmission,
+          fuelType: localRental.fuelType,
+          locationCity: localRental.location?.city || '',
+          locationState: localRental.location?.state || '',
+          media: localRental.images?.map((url, index) => ({ url, displayOrder: index })) || [],
+          seller: {
+            profile: { businessName: localRental.company?.name || 'Rental Partner' },
+          },
+          localOnly: true,
+        };
+      }
+
       const response = await api.get(`/listings/${id}`);
       return response.data.data.listing;
     },
@@ -97,18 +121,30 @@ export default function BookingPage() {
     setIsProcessing(true);
     try {
       // Initiate booking/order via API
-      await api.post('/bookings', {
+      const response = await api.post('/bookings', {
         listingId: id,
         bookingType,
         rentalDays: bookingType === 'rental' ? rentalDays : undefined,
         paymentMethod: selectedPayment,
         addons,
+        contactInfo: getValues(),
+        listingSnapshot: listing?.localOnly ? {
+          id: listing.id,
+          make: listing.make,
+          model: listing.model,
+          year: listing.year,
+          trim: listing.trim,
+          pricePerDay: listing.pricePerDay,
+          locationCity: listing.locationCity,
+          locationState: listing.locationState,
+          image: listing.media?.[0]?.url || null,
+          sellerName,
+        } : undefined,
         totalAmount: totalPrice,
         promoCode: promoApplied ? promoCode : undefined,
       });
+      setBookingReference(response.data?.data?.booking?.reference || '');
 
-      // In production, redirect to payment gateway (Paystack/Flutterwave)
-      // For now, simulate success
       setTimeout(() => {
         setIsProcessing(false);
         setStep(4);
@@ -511,7 +547,7 @@ export default function BookingPage() {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-charcoal-500">Reference</span>
-                          <span className="font-medium text-charcoal-800">#NC-{id?.slice(-6).toUpperCase()}</span>
+                          <span className="font-medium text-charcoal-800">{bookingReference || `NC-${String(id).slice(-6).toUpperCase()}`}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-charcoal-500">Total Paid</span>

@@ -185,6 +185,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/listings', require('./routes/listings'));
 app.use('/api/media', require('./routes/media'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/contact', require('./routes/contact'));

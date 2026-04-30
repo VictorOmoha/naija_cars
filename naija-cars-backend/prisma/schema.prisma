@@ -52,6 +52,16 @@ enum VerificationType {
   DOCUMENT
 }
 
+enum BookingType {
+  PURCHASE
+  RENTAL
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -70,6 +80,7 @@ model User {
   subscriptions    Subscription[]
   favorites        Favorite[]
   verifications    Verification[]
+  bookings         Booking[]       @relation("BuyerBookings")
 
   @@index([email])
   @@index([phoneNumber])
@@ -217,6 +228,34 @@ model PaystackEvent {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("paystack_events")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  reference       String        @unique
+  buyerId         String        @map("buyer_id")
+  sellerId        String?       @map("seller_id")
+  listingId       String        @map("listing_id")
+  bookingType     BookingType   @map("booking_type")
+  rentalDays      Int?          @map("rental_days")
+  paymentMethod   String        @map("payment_method")
+  addons          Json?
+  contactInfo     Json?         @map("contact_info")
+  listingSnapshot Json?         @map("listing_snapshot")
+  totalAmount     Float         @map("total_amount")
+  promoCode       String?       @map("promo_code")
+  status          BookingStatus @default(CONFIRMED)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  buyer User @relation("BuyerBookings", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([listingId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bookings")
 }
 
 model Favorite {

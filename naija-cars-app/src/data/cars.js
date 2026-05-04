@@ -261,8 +261,7 @@ export const carMakes = [
 ];
 
 export const stats = {
-  totalListings: 15420,
-  verifiedDealers: 850,
-  happyCustomers: 28500,
-  statesCovered: 36
+  totalListings: 40,
+  verifiedDealers: 12,
+  launchMarkets: 6
 };

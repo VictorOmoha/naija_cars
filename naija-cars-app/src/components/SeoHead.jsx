@@ -25,11 +25,11 @@ export default function SeoHead({
 }) {
   const fullTitle = title
     ? `${title} | Naija Cars`
-    : "Naija Cars - Nigeria's #1 Automotive Marketplace";
+    : "Naija Cars - Verified Cars in Nigeria";
 
   const metaDescription =
     description ||
-    "Buy, sell, or rent verified vehicles across all 36 states. Nigeria's most trusted car marketplace.";
+    "Buy, sell, or rent verified vehicles from trusted sellers across key Nigerian markets.";
 
   const metaImage = image || DEFAULT_IMAGE;
   const metaUrl = url ? `${SITE_URL}${url}` : SITE_URL;

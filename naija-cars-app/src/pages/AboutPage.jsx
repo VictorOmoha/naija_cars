@@ -5,10 +5,10 @@ import {
 } from 'lucide-react';
 
 const stats = [
-  { value: '50K+', label: 'Active Listings', icon: Car },
-  { value: '100K+', label: 'Happy Customers', icon: Users },
-  { value: '500+', label: 'Verified Dealers', icon: Shield },
-  { value: '36', label: 'States Covered', icon: MapPin },
+  { value: '40+', label: 'Listed Vehicles', icon: Car },
+  { value: '12+', label: 'Verified Sellers', icon: Shield },
+  { value: '6', label: 'Launch Markets', icon: MapPin },
+  { value: '3', label: 'Listing Types', icon: Users },
 ];
 
 const values = [
@@ -35,11 +35,10 @@ const values = [
 ];
 
 const milestones = [
-  { year: '2020', title: 'NaijaCars Founded', description: 'Started with a vision to transform car trading in Nigeria' },
-  { year: '2021', title: '10,000 Listings', description: 'Reached our first major milestone with trusted dealers' },
-  { year: '2022', title: 'Launched Nationwide', description: 'Expanded to all 36 states and FCT' },
-  { year: '2023', title: '100K Customers', description: 'Celebrated serving over 100,000 happy customers' },
-  { year: '2024', title: 'AI-Powered Valuation', description: 'Introduced smart car valuation technology' },
+  { year: '2025', title: 'NaijaCars Founded', description: 'Started with a focused marketplace for verified vehicle listings in Nigeria' },
+  { year: '2026', title: 'Private Beta', description: 'Opened onboarding for early sellers, dealers, and rental partners' },
+  { year: '2026', title: 'First Listings Live', description: 'Published the first batch of verified cars across key launch markets' },
+  { year: '2026', title: 'Valuation Tools', description: 'Introduced simple market-value guidance for buyers and sellers' },
 ];
 
 export default function AboutPage() {
@@ -68,7 +67,7 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
-              Nigeria's #1 Car Marketplace
+              Built for Nigeria's car market
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6">
               Driving Nigeria Forward,{' '}
@@ -126,10 +125,10 @@ export default function AboutPage() {
                 NaijaCars was born from a simple frustration: buying a car in Nigeria shouldn't be this hard. The founders, seasoned automotive industry professionals, witnessed firsthand the challenges Nigerians face – from unverified listings to opaque pricing and lack of trust.
               </p>
               <p>
-                In 2020, we set out to build something different. A platform where every car is verified, every seller is vetted, and every transaction is secure. A marketplace that puts Nigerian car buyers first.
+                In 2025, we set out to build something different. A platform where listings are reviewed, sellers are checked, and buyers can compare vehicles with more confidence.
               </p>
               <p>
-                Today, NaijaCars is the largest and most trusted automotive marketplace in Nigeria, connecting hundreds of thousands of buyers with verified dealers and private sellers across all 36 states.
+                Today, NaijaCars is in its early launch stage, onboarding trusted sellers and publishing verified vehicles across key Nigerian markets.
               </p>
             </div>
           </motion.div>

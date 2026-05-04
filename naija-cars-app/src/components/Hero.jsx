@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Search, MapPin, ChevronDown, Car, Key, Sparkles, ArrowRight } from 'lucide-react';
+import { Search, MapPin, ChevronDown, Car, Key, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { nigerianStates, carMakes, stats } from '../data/cars';
 import { useApp } from '../context/AppContext';
 
@@ -73,7 +73,7 @@ const Hero = () => {
                        rounded-full text-naija-700 text-sm font-semibold"
             >
               <Sparkles className="w-4 h-4" />
-              Nigeria's #1 Auto Marketplace
+              Nigeria's trusted auto marketplace
             </motion.div>
 
             {/* Headline */}
@@ -96,7 +96,7 @@ const Hero = () => {
                 transition={{ duration: 0.6, delay: 0.5 }}
                 className="text-xl md:text-2xl text-charcoal-600 max-w-xl leading-relaxed font-body"
               >
-                Buy, sell, or rent <span className="font-bold text-charcoal-800">verified vehicles</span> from trusted dealers in <span className="font-bold text-naija-600">all 36 states</span>.
+                Buy, sell, or rent <span className="font-bold text-charcoal-800">verified vehicles</span> from trusted sellers in <span className="font-bold text-naija-600">key Nigerian markets</span>.
               </motion.p>
             </div>
 
@@ -213,7 +213,7 @@ const Hero = () => {
                 className="btn-primary w-full mt-6 flex items-center justify-center gap-3 text-lg py-5 uppercase tracking-wide"
               >
                 <Search className="w-6 h-6" />
-                Search {formatNumber(stats.totalListings)}+ Vehicles
+                Search {formatNumber(stats.totalListings)}+ Available Vehicles
               </motion.button>
             </motion.div>
 
@@ -225,9 +225,9 @@ const Hero = () => {
               className="flex flex-wrap gap-10 pt-6"
             >
               {[
-                { value: stats.verifiedDealers, label: 'Verified Dealers', sectionId: 'dealers' },
-                { value: stats.happyCustomers, label: 'Happy Customers', sectionId: null },
-                { value: stats.statesCovered, label: 'States Covered', sectionId: null },
+                { value: stats.totalListings, label: 'Listed Vehicles', sectionId: 'featured-cars' },
+                { value: stats.verifiedDealers, label: 'Verified Sellers', sectionId: 'dealers' },
+                { value: stats.launchMarkets, label: 'Launch Markets', sectionId: null },
               ].map((stat, index) => (
                 <motion.button
                   key={index}
@@ -295,29 +295,18 @@ const Hero = () => {
                   </div>
                 </motion.div>
 
-                {/* Floating Card - Rating */}
+                {/* Floating Card - Trust */}
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1.2, duration: 0.5 }}
                   className="absolute -right-4 top-16 bg-white rounded-2xl px-5 py-4 shadow-card-hover border border-pearl-200"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <svg
-                          key={star}
-                          className="w-5 h-5 text-gold-400"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-sm font-semibold text-charcoal-700">4.9</span>
+                  <div className="flex items-center gap-2 text-naija-600">
+                    <ShieldCheck className="w-5 h-5" />
+                    <span className="text-sm font-semibold text-charcoal-700">12+ verified sellers</span>
                   </div>
-                  <div className="text-xs text-charcoal-600 mt-1">28k+ Happy Customers</div>
+                  <div className="text-xs text-charcoal-600 mt-1">Seller checks in progress</div>
                 </motion.div>
 
                 {/* Browse CTA */}

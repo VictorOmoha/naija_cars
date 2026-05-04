@@ -195,7 +195,7 @@ const DealersSection = () => {
                      text-naija-500 font-semibold rounded-2xl transition-all duration-300
                      hover:bg-naija-500 hover:text-white"
           >
-            View All 850+ Dealers
+            View Verified Sellers
             <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
           </motion.button>
         </motion.div>

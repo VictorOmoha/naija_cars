@@ -107,6 +107,7 @@ const CarsPage = () => {
       featured: listing.isFeatured,
       verified: listing.seller?.profile?.verificationBadge || false,
       dealer: listing.seller?.profile?.businessName || 'Private Seller',
+      isPlaceholder: listing.isPlaceholder || false,
     };
   };
 
@@ -570,6 +571,11 @@ const CarsPage = () => {
                           Featured
                         </span>
                       )}
+                      {car.isPlaceholder && (
+                        <span className="px-2 py-1 bg-gray-900/90 text-white text-xs font-medium rounded-full">
+                          Placeholder
+                        </span>
+                      )}
                       <span className={`px-2 py-1 text-white text-xs font-medium rounded-full ${
                         car.condition === 'new' ? 'bg-green-600' :
                         car.condition === 'foreign' ? 'bg-blue-600' : 'bg-orange-600'
@@ -595,6 +601,12 @@ const CarsPage = () => {
 
                   {/* Content */}
                   <div className={`p-4 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                    {car.isPlaceholder && (
+                      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                        Sample listing for preview only. Real listings appear without this notice.
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <Link to={`/car/${car.id}`} className="font-bold text-gray-800 hover:text-green-600 transition-colors">

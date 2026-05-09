@@ -56,6 +56,7 @@ function transformToCardShape(listing) {
     verified: listing.seller?.profile?.verificationBadge || false,
     featured: listing.isFeatured || false,
     isFavorited: listing.isFavorited || false,
+    isPlaceholder: listing.isPlaceholder || false,
     dealer: {
       name: listing.seller?.profile?.businessName || 'Private Seller',
       phone: listing.phone || listing.seller?.phoneNumber || '',

@@ -130,6 +130,7 @@ export default function CarDetailsPage() {
 
   const carTitle = `${car.year} ${car.make} ${car.model}${car.trim ? ' ' + car.trim : ''}`;
   const carPrice = parseFloat(car.price);
+  const isPlaceholder = Boolean(car.isPlaceholder);
   // Bot-friendly share URL → backend serves OG HTML to crawlers, redirects browsers to SPA
   const shareUrl = `${API_BASE}/share/car/${car.id}`;
   const shareLinks = buildShareLinks(car, shareUrl);
@@ -177,6 +178,12 @@ export default function CarDetailsPage() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left: images + details */}
             <div className="lg:col-span-2 space-y-6">
+              {isPlaceholder && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
+                  This is a placeholder listing for preview only. Real listings appear without this notice.
+                </div>
+              )}
+
               {/* Image Gallery */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

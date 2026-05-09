@@ -43,6 +43,7 @@ const QuickViewModal = () => {
   // Determine whether this car has a real DB UUID (contains dashes) so we know
   // whether the share URL / full-details link will actually resolve
   const hasRealId = typeof selectedCar.id === 'string' && selectedCar.id.includes('-');
+  const isPlaceholder = Boolean(selectedCar.isPlaceholder) || typeof selectedCar.id === 'number';
 
   const isSale = selectedCar.type === 'sale';
   const price = isSale ? selectedCar.price : selectedCar.pricePerDay;
@@ -213,6 +214,12 @@ const QuickViewModal = () => {
                     </button>
                   </div>
                 </div>
+
+                {isPlaceholder && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                    Placeholder listing for preview only. Real listings appear without this notice.
+                  </div>
+                )}
 
                 {/* Price */}
                 <div className="flex items-baseline gap-2">

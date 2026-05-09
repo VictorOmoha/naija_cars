@@ -985,6 +985,7 @@ const RentCarsPage = () => {
             }>
               {sortedCars.map((car, index) => {
                 const { rate, label } = getDisplayRate(car);
+                const isPlaceholder = Boolean(car.isPlaceholder) || typeof car.id === 'number';
                 return (
                   <motion.div
                     key={car.id}
@@ -1044,10 +1045,23 @@ const RentCarsPage = () => {
                           </span>
                         </div>
                       )}
+                      {isPlaceholder && (
+                        <div className="absolute top-12 left-3">
+                          <span className="px-3 py-1 bg-gray-900/90 text-white text-sm rounded-full font-medium">
+                            Placeholder
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
                     <div className={`p-5 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                      {isPlaceholder && (
+                        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                          Sample rental for preview only. Real listings appear without this notice.
+                        </div>
+                      )}
+
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h3 className="font-bold text-gray-800 text-lg">{car.name}</h3>

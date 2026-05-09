@@ -54,6 +54,16 @@ const parseOptionalBoolean = (value, fallback) => {
   return Boolean(value);
 };
 
+const isDemoSeedListing = (listing) => {
+  const sellerEmail = listing?.seller?.email || '';
+  return sellerEmail.endsWith('@example.com');
+};
+
+const withPlaceholderFlag = (listing) => ({
+  ...listing,
+  isPlaceholder: isDemoSeedListing(listing)
+});
+
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
@@ -139,7 +149,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        listings,
+        listings: listings.map(withPlaceholderFlag),
         pagination: {
           total,
           page: pagination.page,
@@ -192,7 +202,7 @@ router.get('/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      data: { listing }
+      data: { listing: withPlaceholderFlag(listing) }
     });
   } catch (error) {
     next(error);

@@ -8,6 +8,8 @@ import { useApp } from '../context/AppContext';
 import { listingsAPI } from '../services/api';
 import useAuthStore from '../stores/authStore';
 
+const isPlaceholderCar = (car) => Boolean(car.isPlaceholder) || typeof car.id === 'number';
+
 const CarCard = ({ car, index = 0, variant = 'sale' }) => {
   const { openQuickView, addToast } = useApp();
   const { isAuthenticated } = useAuthStore();
@@ -25,6 +27,7 @@ const CarCard = ({ car, index = 0, variant = 'sale' }) => {
   const isSale = variant === 'sale' || car.type === 'sale';
   const price = isSale ? car.price : car.pricePerDay;
   const priceLabel = isSale ? '' : '/day';
+  const isPlaceholder = isPlaceholderCar(car);
 
   const handleLikeClick = async (e) => {
     e.preventDefault();
@@ -80,6 +83,11 @@ const CarCard = ({ car, index = 0, variant = 'sale' }) => {
             {car.featured && (
               <span className="bg-gold-400 text-charcoal-900 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider">
                 Featured
+              </span>
+            )}
+            {isPlaceholder && (
+              <span className="bg-charcoal-900/85 text-white px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider">
+                Placeholder
               </span>
             )}
           </div>
@@ -169,6 +177,12 @@ const CarCard = ({ car, index = 0, variant = 'sale' }) => {
 
         {/* Content */}
         <div className="p-5">
+          {isPlaceholder && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              Sample listing for preview only. Real listings appear without this notice.
+            </div>
+          )}
+
           {/* Title & Verification */}
           <div className="flex items-start justify-between mb-3">
             <div>

@@ -439,18 +439,19 @@ router.get('/dealers', async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
     const pagination = clampPagination(page, limit, 20);
+    const searchTerm = typeof search === 'string' ? search.trim() : '';
 
     const where = {
       userType: { in: ['DEALER', 'RENTAL_COMPANY', 'INDIVIDUAL_SELLER'] },
       isActive: true,
       listings: { some: { status: 'ACTIVE' } },
-      ...(search && {
+      ...(searchTerm && {
         OR: [
-          { profile: { businessName: { contains: search, mode: 'insensitive' } } },
-          { profile: { firstName: { contains: search, mode: 'insensitive' } } },
-          { profile: { lastName: { contains: search, mode: 'insensitive' } } },
-          { profile: { city: { contains: search, mode: 'insensitive' } } },
-          { profile: { state: { contains: search, mode: 'insensitive' } } }
+          { profile: { is: { businessName: { contains: searchTerm, mode: 'insensitive' } } } },
+          { profile: { is: { firstName: { contains: searchTerm, mode: 'insensitive' } } } },
+          { profile: { is: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
+          { profile: { is: { city: { contains: searchTerm, mode: 'insensitive' } } } },
+          { profile: { is: { state: { contains: searchTerm, mode: 'insensitive' } } } }
         ]
       })
     };

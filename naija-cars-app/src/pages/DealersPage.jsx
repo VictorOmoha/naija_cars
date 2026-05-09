@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -12,13 +12,10 @@ export default function DealersPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Simple debounce on search input
-  const handleSearch = (e) => {
-    const val = e.target.value;
-    setSearch(val);
-    clearTimeout(window._dealerSearchTimer);
-    window._dealerSearchTimer = setTimeout(() => setDebouncedSearch(val), 400);
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dealers', debouncedSearch],
@@ -74,7 +71,7 @@ export default function DealersPage() {
               <input
                 type="text"
                 value={search}
-                onChange={handleSearch}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by dealer name, city, or state..."
                 className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 border border-white/20
                            text-white placeholder-gray-400 focus:outline-none focus:ring-2

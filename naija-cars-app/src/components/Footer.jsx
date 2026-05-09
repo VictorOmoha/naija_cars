@@ -217,23 +217,36 @@ const Footer = () => {
 
       {/* Bottom Bar */}
       <div className="border-t border-charcoal-700 py-6">
-        <div className="section-container flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-pearl-400 text-sm">
-            © {new Date().getFullYear()} Naija Cars. All rights reserved.
+        <div className="section-container flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-pearl-400 text-sm">
+              © {new Date().getFullYear()} Naija Cars. All rights reserved.
+            </div>
+            <div className="flex flex-wrap justify-center gap-6">
+              <Link to="/privacy" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/terms" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/help" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
+                Help Center
+              </Link>
+              <Link to="/contact" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
+                Contact Us
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-6">
-            <Link to="/privacy" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
-              Terms of Service
-            </Link>
-            <Link to="/help" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
-              Help Center
-            </Link>
-            <Link to="/contact" className="text-pearl-300 hover:text-naija-400 text-sm transition-colors">
-              Contact Us
-            </Link>
+          <div className="text-center text-xs text-pearl-500">
+            Powered by{' '}
+            <a
+              href="https://omohasolutions.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-pearl-300 hover:text-naija-400 transition-colors"
+            >
+              Omoha Solutions
+            </a>
           </div>
         </div>
       </div>

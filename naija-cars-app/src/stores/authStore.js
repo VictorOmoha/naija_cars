@@ -89,9 +89,11 @@ const useAuthStore = create(
         try {
           const response = await authAPI.getMe();
           const { user } = response.data.data;
+          const accessToken = localStorage.getItem('accessToken');
 
           set({
             user,
+            accessToken,
             isAuthenticated: true,
             isLoading: false
           });
@@ -158,8 +160,14 @@ const useAuthStore = create(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
+        accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state && !state.accessToken) {
+          state.accessToken = localStorage.getItem('accessToken');
+        }
+      }
     }
   )
 );

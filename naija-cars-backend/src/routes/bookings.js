@@ -23,6 +23,21 @@ const createReference = () => {
   return `NC-${Date.now().toString(36).toUpperCase()}-${suffix}`;
 };
 
+const roundMoney = (amount) => Math.max(0, Math.round(Number(amount || 0) * 100) / 100);
+
+const calculateServerTotal = ({ bookingType, listing, snapshot, rentalDays, addons = {}, promoCode }) => {
+  const days = bookingType === 'rental' ? parseInt(rentalDays || 1, 10) : 1;
+  const listingPrice = Number(listing?.price ?? snapshot?.pricePerDay ?? snapshot?.price ?? 0);
+  const basePrice = bookingType === 'rental' ? listingPrice * days : listingPrice;
+  const insuranceFee = addons.insurance ? (bookingType === 'rental' ? 15000 * days : 500000) : 0;
+  const deliveryFee = addons.delivery ? 50000 : 0;
+  const inspectionFee = addons.inspection ? 75000 : 0;
+  const serviceFee = bookingType === 'rental' ? 5000 : basePrice * 0.01;
+  const promoDiscount = promoCode ? (bookingType === 'rental' ? 20000 : basePrice * 0.05) : 0;
+
+  return roundMoney(basePrice + insuranceFee + deliveryFee + inspectionFee + serviceFee - promoDiscount);
+};
+
 router.post('/', authenticate, createBookingValidation, async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -91,6 +106,16 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
         }
       : listingSnapshot;
 
+    const serverTotal = calculateServerTotal({ bookingType, listing, snapshot, rentalDays, addons, promoCode });
+    const clientTotal = roundMoney(totalAmount);
+
+    if (!serverTotal || Math.abs(clientTotal - serverTotal) > 1) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Booking total could not be verified. Please refresh and try again.' },
+      });
+    }
+
     const booking = await prisma.booking.create({
       data: {
         reference: createReference(),
@@ -103,7 +128,7 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
         addons,
         contactInfo,
         listingSnapshot: snapshot,
-        totalAmount: parseFloat(totalAmount),
+        totalAmount: serverTotal,
         promoCode: promoCode || null,
       },
     });

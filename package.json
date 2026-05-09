@@ -7,7 +7,9 @@
     "dev": "cd naija-cars-backend && npm run dev",
     "build:backend": "cd naija-cars-backend && npm install && npx prisma generate",
     "build:frontend": "cd naija-cars-app && npm install && npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint:frontend": "cd naija-cars-app && npm run lint",
+    "test": "npm run lint:frontend && npm run build:frontend && npm run build:backend",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
   "keywords": ["cars", "marketplace", "nigeria"],
   "author": "Victor Omoha",

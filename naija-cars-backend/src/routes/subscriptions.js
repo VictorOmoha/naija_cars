@@ -394,11 +394,11 @@ router.post('/webhook', async (req, res, next) => {
       }
     }
 
-    // Always return 200 to Paystack
+    // Return 200 only after processing succeeds so Paystack can retry failures.
     res.sendStatus(200);
   } catch (error) {
-    console.error('Webhook error:', error);
-    res.sendStatus(200); // Still return 200 to prevent retries
+    console.error('Webhook error:', error.message);
+    res.sendStatus(500);
   }
 });
 

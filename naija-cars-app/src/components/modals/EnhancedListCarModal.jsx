@@ -133,7 +133,7 @@ export default function EnhancedListCarModal() {
                 List Your Car
               </h2>
               <p className="text-gray-600 mb-8">
-                Sign in to list your car and reach thousands of verified buyers across Nigeria.
+                Sign in to list your car and connect with verified buyers in Nigeria.
               </p>
 
               <div className="space-y-3">

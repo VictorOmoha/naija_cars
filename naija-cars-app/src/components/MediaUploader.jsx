@@ -50,14 +50,15 @@ export default function MediaUploader({ listingId, initialMedia = [], onUploadCo
       const uploadedMedia = [];
 
       if (imageFiles.length > 0) {
-        setUploadProgress(20);
-        const images = await prepareListingImageData(imageFiles);
-        const response = await api.post('/media/upload-data', {
-          listingId,
-          images
-        });
-        uploadedMedia.push(...response.data.data.media);
-        setUploadProgress(videoFiles.length > 0 ? 60 : 100);
+        for (const [index, imageFile] of imageFiles.entries()) {
+          const images = await prepareListingImageData([imageFile]);
+          const response = await api.post('/media/upload-data', {
+            listingId,
+            images
+          });
+          uploadedMedia.push(...response.data.data.media);
+          setUploadProgress(Math.round(((index + 1) / imageFiles.length) * (videoFiles.length > 0 ? 60 : 100)));
+        }
       }
 
       if (videoFiles.length > 0) {

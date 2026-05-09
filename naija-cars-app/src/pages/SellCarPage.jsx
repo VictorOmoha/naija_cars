@@ -85,10 +85,10 @@ const SellCarPage = () => {
   ];
 
   const benefits = [
-    { icon: Users, title: 'Reach Millions', desc: 'Access thousands of verified buyers across Nigeria' },
+    { icon: Users, title: 'Reach Active Buyers', desc: 'Connect with buyers looking for verified cars in Nigeria' },
     { icon: Shield, title: 'Secure Transactions', desc: 'Protected payments and verified buyer contacts' },
     { icon: TrendingUp, title: 'Best Prices', desc: 'Get competitive market rates for your vehicle' },
-    { icon: Clock, title: 'Quick Sales', desc: 'Average selling time of just 14 days' },
+    { icon: Clock, title: 'Easy Follow-up', desc: 'Manage listing interest and buyer messages from your dashboard' },
   ];
 
   // Fetch existing listing data in edit mode
@@ -191,8 +191,6 @@ const SellCarPage = () => {
       return;
     }
 
-    let createdListingId = null;
-
     try {
       const payload = {
         listingType: formData.listingType,
@@ -226,32 +224,40 @@ const SellCarPage = () => {
         // Create new listing
         const response = await api.post('/listings', payload);
         listing = response.data.data.listing;
-        createdListingId = listing.id;
       }
 
       // Upload new images if any were selected
-      if (images.length > 0) {
-        const preparedImages = await prepareListingImageData(images.map((img) => img.file));
-        await api.post('/media/upload-data', {
-          listingId: listing.id,
-          images: preparedImages
-        });
-      }
+      let failedImageUploads = 0;
 
-      addToast(
-        isEditMode ? 'Listing updated successfully!' : 'Your listing is now live!',
-        'success'
-      );
-      navigate(`/car/${listing.id}`);
-    } catch (error) {
-      if (!isEditMode && createdListingId) {
-        try {
-          await api.delete(`/listings/${createdListingId}`);
-        } catch (deleteError) {
-          console.error('Failed to clean up listing after media upload error:', deleteError);
+      if (images.length > 0) {
+        for (const image of images) {
+          try {
+            const preparedImages = await prepareListingImageData([image.file]);
+            await api.post('/media/upload-data', {
+              listingId: listing.id,
+              images: preparedImages
+            });
+          } catch (imageError) {
+            failedImageUploads += 1;
+            console.error('Failed to upload listing image:', imageError);
+          }
         }
       }
 
+      if (failedImageUploads > 0) {
+        addToast(
+          `${isEditMode ? 'Listing updated' : 'Your listing is live'}, but ${failedImageUploads} photo${failedImageUploads === 1 ? '' : 's'} did not upload. You can retry from your dashboard.`,
+          'info'
+        );
+      } else {
+        addToast(
+          isEditMode ? 'Listing updated successfully!' : 'Your listing is now live!',
+          'success'
+        );
+      }
+
+      navigate(`/car/${listing.id}`);
+    } catch (error) {
       const message =
         error.response?.data?.error?.message || `Failed to ${isEditMode ? 'update' : 'submit'} listing. Please try again.`;
       addToast(message, 'error');
@@ -882,7 +888,7 @@ const SellCarPage = () => {
             <p className="text-xl text-gray-300">
               {isEditMode
                 ? 'Make changes to your listing below. Updates are saved immediately.'
-                : 'List your vehicle and reach thousands of verified buyers across Nigeria. Get the best price with our trusted marketplace.'
+                : 'List your vehicle and connect with buyers looking for verified cars in Nigeria. Manage your listing from your dashboard.'
               }
             </p>
           </motion.div>

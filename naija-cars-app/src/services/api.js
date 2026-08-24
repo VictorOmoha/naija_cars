@@ -45,6 +45,26 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// A 401 from one of these endpoints is the endpoint's real response (for
+// example, incorrect login details). Trying to refresh in that situation
+// masks the useful error with "Refresh token not provided".
+const authEndpointsWithoutRefresh = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/refresh'
+];
+
+const canRefreshRequest = (request) => {
+  const requestUrl = request?.url || '';
+  const isPublicAuthRequest = authEndpointsWithoutRefresh.some((endpoint) =>
+    requestUrl.includes(endpoint)
+  );
+
+  return !isPublicAuthRequest && Boolean(localStorage.getItem('accessToken'));
+};
+
 // Response interceptor - Handle token refresh
 api.interceptors.response.use(
   (response) => response,
@@ -52,7 +72,12 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401
+      && originalRequest
+      && !originalRequest._retry
+      && canRefreshRequest(originalRequest)
+    ) {
       if (isRefreshing) {
         // Queue this request until refresh completes
         return new Promise((resolve, reject) => {

@@ -342,7 +342,7 @@ class AuthService {
     });
 
     // Save reset code
-    await prisma.verification.create({
+    const verification = await prisma.verification.create({
       data: {
         userId: user.id,
         verificationType: 'OTP_EMAIL',
@@ -351,8 +351,20 @@ class AuthService {
       }
     });
 
-    // Send password reset email
-    await sendPasswordResetEmail(email, code);
+    // Send the reset code. If delivery fails, remove the unusable code and
+    // return a retryable error instead of leaving the user with a generic 500.
+    try {
+      await sendPasswordResetEmail(email, code);
+    } catch (error) {
+      await prisma.verification.delete({ where: { id: verification.id } }).catch(() => {});
+      console.error('Failed to send password reset email:', error.message);
+
+      const deliveryError = new Error(
+        'We could not send the reset email right now. Please try again shortly.'
+      );
+      deliveryError.status = 503;
+      throw deliveryError;
+    }
 
     return { message: 'If an account with that email exists, a reset code has been sent.' };
   }

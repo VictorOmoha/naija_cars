@@ -5,7 +5,7 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
 
-  // Use SMTP credentials from env if available
+  // Use explicit SMTP credentials when available.
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -14,6 +14,19 @@ function getTransporter() {
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
+      }
+    });
+  } else if (process.env.SENDGRID_API_KEY) {
+    // SendGrid supports SMTP authentication with the literal username
+    // "apikey", allowing existing SendGrid deployments to send mail without
+    // introducing another SDK.
+    transporter = nodemailer.createTransport({
+      host: 'smtp.sendgrid.net',
+      port: 587,
+      secure: false,
+      auth: {
+        user: 'apikey',
+        pass: process.env.SENDGRID_API_KEY
       }
     });
   } else if (process.env.NODE_ENV === 'development') {
@@ -42,8 +55,13 @@ async function sendEmail({ to, subject, html, text }) {
     return;
   }
 
+  const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER;
+  if (!fromEmail || fromEmail === 'apikey') {
+    throw new Error('Email sender is not configured');
+  }
+
   await t.sendMail({
-    from: `"Naija Cars" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+    from: `"Naija Cars" <${fromEmail}>`,
     to,
     subject,
     html,

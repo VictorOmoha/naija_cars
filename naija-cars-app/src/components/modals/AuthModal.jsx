@@ -96,7 +96,7 @@ const AuthModal = () => {
       addToast('Welcome back to Naija Cars!', 'success');
       handleClose();
     } catch (err) {
-      addToast(err?.message || 'Login failed', 'error');
+      addToast(err?.response?.data?.error?.message || 'Login failed', 'error');
     }
   };
 

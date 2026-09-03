@@ -60,7 +60,6 @@ const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
 });
 
 const postAvatarData = async (imageData, token) => {
-  const refreshToken = localStorage.getItem('refreshToken');
   return fetch(`${API_BASE_URL}/users/me/avatar-data`, {
     method: 'POST',
     credentials: 'include',
@@ -68,10 +67,7 @@ const postAvatarData = async (imageData, token) => {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      imageData,
-      ...(refreshToken ? { refreshToken } : {})
-    })
+    body: JSON.stringify({ imageData })
   });
 };
 
@@ -84,23 +80,18 @@ const parseJsonResponse = async (response) => {
 };
 
 const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return null;
-
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken })
+    body: '{}'
   });
 
   const payload = await parseJsonResponse(response);
   if (!response.ok) return null;
 
   const nextToken = payload?.data?.accessToken;
-  const nextRefreshToken = payload?.data?.refreshToken;
   if (nextToken) localStorage.setItem('accessToken', nextToken);
-  if (nextRefreshToken) localStorage.setItem('refreshToken', nextRefreshToken);
 
   return nextToken;
 };

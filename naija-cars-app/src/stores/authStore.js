@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authAPI } from '../services/api';
 
+// Remove refresh tokens left by older releases. Refresh authentication is now
+// handled exclusively by the server-issued HTTP-only cookie.
+localStorage.removeItem('refreshToken');
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -16,11 +20,10 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await authAPI.register(userData);
-          const { user, accessToken, refreshToken } = response.data.data;
+          const { user, accessToken } = response.data.data;
 
           // Store token so OTP verification (which requires auth) works immediately
           localStorage.setItem('accessToken', accessToken);
-          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
           set({
             user,
@@ -43,11 +46,10 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await authAPI.login(credentials);
-          const { user, accessToken, refreshToken } = response.data.data;
+          const { user, accessToken } = response.data.data;
 
           // Store access token
           localStorage.setItem('accessToken', accessToken);
-          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
           set({
             user,
@@ -73,7 +75,6 @@ const useAuthStore = create(
           console.error('Logout error:', error);
         } finally {
           localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
           set({
             user: null,
             accessToken: null,
@@ -174,7 +175,6 @@ const useAuthStore = create(
 
 // Clear auth state when the refresh token expires / becomes invalid
 window.addEventListener('auth:session-expired', () => {
-  localStorage.removeItem('refreshToken');
   useAuthStore.setState({
     user: null,
     accessToken: null,

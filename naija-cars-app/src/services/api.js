@@ -95,16 +95,14 @@ api.interceptors.response.use(
         // Try to refresh the access token
         const { data } = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          { refreshToken: localStorage.getItem('refreshToken') },
+          {},
           { withCredentials: true }
         );
 
         const newToken = data.data.accessToken;
-        const newRefreshToken = data.data.refreshToken;
 
         // Store new access token
         localStorage.setItem('accessToken', newToken);
-        if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
 
         // Process queued requests
         processQueue(null, newToken);
@@ -116,7 +114,6 @@ api.interceptors.response.use(
         // Refresh failed — clear tokens and notify the store to log out
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         window.dispatchEvent(new Event('auth:session-expired'));
         return Promise.reject(refreshError);
       } finally {

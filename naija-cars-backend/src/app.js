@@ -9,6 +9,13 @@ const prisma = require('./lib/prisma');
 
 const app = express();
 
+// Render terminates HTTPS and forwards requests through one trusted proxy.
+// Trust that hop so req.ip and the authentication rate limiters identify the
+// actual client instead of grouping every request under Render's proxy.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',

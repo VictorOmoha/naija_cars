@@ -57,8 +57,45 @@ const postJson = (path, body = {}, headers = {}) => fetch(`${baseUrl}${path}`, {
   body: JSON.stringify(body)
 });
 
-test('production trusts exactly one Render proxy hop', () => {
-  assert.equal(app.get('trust proxy'), 1);
+const clientIp = (remoteAddress, forwardedFor) => {
+  const request = Object.assign(Object.create(app.request), {
+    app,
+    socket: { remoteAddress },
+    headers: { 'x-forwarded-for': forwardedFor }
+  });
+  return request.ip;
+};
+
+test('production resolves the client through Render and Cloudflare', () => {
+  assert.equal(
+    clientIp('10.228.21.118', '198.51.100.25, 172.69.71.199'),
+    '198.51.100.25'
+  );
+});
+
+test('extra private proxy hops do not change the identified client', () => {
+  assert.equal(
+    clientIp('10.228.21.118', '198.51.100.25, 172.69.71.199, 10.0.0.2'),
+    '198.51.100.25'
+  );
+});
+
+test('spoofed forwarding entries before the real client are ignored', () => {
+  assert.equal(
+    clientIp('10.228.21.118', '203.0.113.99, 198.51.100.25, 172.69.71.199'),
+    '198.51.100.25'
+  );
+});
+
+test('an untrusted direct connection cannot supply a client address', () => {
+  assert.equal(clientIp('198.51.100.25', '203.0.113.99'), '198.51.100.25');
+});
+
+test('IPv6 clients are resolved through Cloudflare IPv6 proxies', () => {
+  assert.equal(
+    clientIp('10.228.21.118', '2001:db8::25, 2606:4700::1'),
+    '2001:db8::25'
+  );
 });
 
 test('login sets an HTTP-only refresh cookie without exposing it in JSON', async () => {

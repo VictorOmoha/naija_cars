@@ -5,10 +5,12 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const refreshCookieBaseOptions = {
   httpOnly: true,
-  secure: true,
-  sameSite: 'none'
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax'
 };
 
 const refreshCookieOptions = {
@@ -76,8 +78,7 @@ router.post('/register',
             isVerified: user.isVerified,
             profile: user.profile
           },
-          accessToken,
-          refreshToken
+          accessToken
         }
       });
     } catch (error) {
@@ -123,8 +124,7 @@ router.post('/login',
         message: 'Login successful',
         data: {
           user,
-          accessToken,
-          refreshToken
+          accessToken
         }
       });
     } catch (error) {
@@ -140,7 +140,7 @@ router.post('/login',
  */
 router.post('/refresh', async (req, res, next) => {
   try {
-    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({
@@ -156,8 +156,7 @@ router.post('/refresh', async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        accessToken,
-        refreshToken
+        accessToken
       }
     });
   } catch (error) {

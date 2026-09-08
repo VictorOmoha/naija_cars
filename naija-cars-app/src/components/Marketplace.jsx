@@ -10,6 +10,7 @@ import { formatNaira } from '../utils/format';
 import CarCard from './CarCard';
 import MarketplaceHero from './MarketplaceHero';
 import Dialog from './Dialog';
+import SidebarAd from './SidebarAd';
 
 const PAGE_SIZE = 12;
 const RENT_BUDGETS = [
@@ -123,7 +124,10 @@ export default function Marketplace({ home = false, defaultType = 'SALE' }) {
     <div className={'marketplace-page' + (compareList.length ? ' has-compare' : '')}>
       <MarketplaceHero rental={rental} />
       <div className="marketplace-layout">
-        <aside className="marketplace-sidebar" aria-label="Find a car"><SearchPanel key={params.toString()} {...panelProps} /></aside>
+        <aside className="marketplace-sidebar" aria-label="Find a car">
+          <SearchPanel key={params.toString()} {...panelProps} />
+          {home && <SidebarAd />}
+        </aside>
         <section className="marketplace-results" ref={resultsRef} aria-labelledby="results-heading" aria-busy={isFetching}>
           <div className="market-results-toolbar">
             <div><h2 id="results-heading">{rental ? 'Explore cars for rent' : 'Explore cars for sale'}</h2><p>{home && !activeFilters.length ? 'Discover your next everyday favourite.' : isLoading ? 'Finding cars for you…' : total.toLocaleString() + ' car' + (total === 1 ? '' : 's') + ' to explore'}</p></div>

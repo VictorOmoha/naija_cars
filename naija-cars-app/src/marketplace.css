@@ -51,6 +51,14 @@ button:disabled { cursor: not-allowed; }
 .marketplace-hero-copy > p:last-child { font-size: 18px; color: var(--muted); margin-top: 14px; line-height: 1.5; max-width: 750px; }
 .marketplace-layout { display: grid; grid-template-columns: minmax(290px, 27.5%) minmax(0, 1fr); gap: 32px; padding: 22px 34px 64px; align-items: start; }
 .marketplace-sidebar { min-width: 0; }
+.market-sidebar-ad { margin-top: 28px; min-width: 0; width: 100%; }
+.market-ad-label { color: var(--muted); font-size: 10px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; text-align: center; margin: 0 0 10px; }
+.market-ad-unit { width: 100%; min-height: 250px; text-decoration: none; }
+.market-sidebar-ad:has(.market-ad-unit[data-ad-status="unfilled"]) { visibility: hidden; }
+.market-ad-preview { min-height: 250px; padding: 28px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; text-align: center; border: 1px dashed #ccd9d0; border-radius: 16px; background: #f7f9f5; color: var(--muted); }
+.market-ad-preview-mark { display: grid; place-items: center; width: 42px; height: 34px; border: 1px solid var(--light-border); border-radius: 8px; font-size: 14px; }
+.market-ad-preview p { font-size: 14px; font-weight: 600; color: var(--ink); }
+.market-ad-preview > span:last-child { font-size: 12px; line-height: 1.6; max-width: 190px; }
 .market-search-panel { padding: 26px 23px; border-radius: 16px; background: #f3f6f2; }
 .market-search-panel > h2 { font-size: 32px; line-height: 1.25; font-weight: 700; letter-spacing: -1px; margin-bottom: 22px; }
 .market-type-switch { display: flex; padding: 3px; gap: 4px; border: 1px solid #d6e1d9; border-radius: 12px; }

@@ -72,7 +72,7 @@ function ListingDetails({ car }) {
   return <>
     <SeoHead title={`${title} | ${formatNairaFull(car.price)}${rental ? ' per day' : ''}`} description={`${rental ? 'Rent' : 'Buy'} this ${conditionLabel(car.condition)} ${title} in ${car.locationCity}, ${car.locationState}. See photos and contact the seller on NaijaCars.`} image={media[0]?.url} url={`/car/${car.id}`} type="article" />
     <PageHeader backTo={browseUrl} backLabel={rental ? 'All rental cars' : 'All cars'} eyebrow={rental ? 'Find your next rental' : 'Find your next car'} title={title} description={<><MapPin size={16} />{[car.locationCity, car.locationState].filter(Boolean).join(', ')}<span className="nc-meta-separator">·</span>Ref. NC-{car.id.slice(0, 6).toUpperCase()}</>}>
-      <button className="nc-button nc-button-secondary" onClick={save} disabled={saving} aria-pressed={saved}><Heart size={18} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Saved' : 'Save car'}</button>
+      <button className="nc-button nc-button-secondary nc-save-car" onClick={save} disabled={saving} aria-pressed={saved} aria-busy={saving}><Heart size={18} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Saved' : 'Save car'}</button>
       <button className="nc-button nc-button-secondary" onClick={() => toggleCompare(transformToCardShape(car))} aria-pressed={compareList.some((item) => item.id === car.id)}><GitCompare size={18} />Compare</button>
     </PageHeader>
     <div className="nc-page-width nc-detail-layout">

@@ -1,9 +1,10 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Toast = () => {
   const { toasts, removeToast } = useApp();
+  const reduceMotion = useReducedMotion();
 
   const icons = {
     success: CheckCircle,
@@ -33,8 +34,8 @@ const Toast = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] space-y-3">
-      <AnimatePresence>
+    <div className="nc-toast-stack" role="status" aria-live="polite" aria-atomic="false">
+      <AnimatePresence initial={false}>
         {toasts.map((toast) => {
           const Icon = icons[toast.type] || Info;
           const style = styles[toast.type] || styles.info;
@@ -42,16 +43,18 @@ const Toast = () => {
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 100, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              layout="position"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
               className={`flex items-center gap-3 px-5 py-4 ${style.bg} border ${style.border}
-                        rounded-xl shadow-card-hover min-w-[300px] max-w-md`}
+                        rounded-xl shadow-card-hover w-full`}
             >
               <Icon className={`w-5 h-5 ${style.icon} flex-shrink-0`} />
               <p className={`${style.text} text-sm font-medium flex-1`}>{toast.message}</p>
               <button
+                aria-label="Dismiss notification"
                 onClick={() => removeToast(toast.id)}
                 className={`p-1 hover:bg-white/50 rounded-lg transition-colors ${style.icon}`}
               >

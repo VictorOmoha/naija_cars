@@ -4,7 +4,7 @@ import { ArrowRight, ImageOff, BadgeCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatNairaFull, conditionLabel } from '../utils/format';
 
-const CarCard = ({ car, variant, showCompare = true }) => {
+const CarCard = ({ car, variant, showCompare = true, entranceIndex = 0 }) => {
   const { openQuickView, compareList, toggleCompare } = useApp();
   const [failedImage, setFailedImage] = useState(null);
   const isSale = variant ? variant === 'sale' : car.type !== 'rent';
@@ -16,7 +16,7 @@ const CarCard = ({ car, variant, showCompare = true }) => {
   const location = car.location?.state || car.location?.city || 'Nigeria';
 
   return (
-    <article className={`vehicle-card${selected ? ' is-selected' : ''}`}>
+    <article className={`vehicle-card${selected ? ' is-selected' : ''}`} style={{ '--nc-entrance-delay': `${Math.min(entranceIndex, 5) * 35}ms` }}>
       <Link to={`/car/${car.id}`} className="vehicle-card-link"
         onClick={(event) => { if (isSample) { event.preventDefault(); openQuickView(car); } }}
         aria-label={`View ${title}`}>

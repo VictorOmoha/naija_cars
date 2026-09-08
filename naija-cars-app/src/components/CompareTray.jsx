@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence, motion, useIsPresent, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { X, ArrowRight, ImageOff, BadgeCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -17,6 +18,18 @@ const CAR_ATTRIBUTES = [
 ];
 const titleOf = (car) => car.year + ' ' + car.make + ' ' + car.model;
 
+function TraySurface({ children }) {
+  const present = useIsPresent();
+  const reduceMotion = useReducedMotion();
+  return <motion.section className="nc-compare-tray" aria-label="Selected cars to compare" inert={!present}
+    initial={{ opacity: 0, y: reduceMotion ? 0 : 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+    transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}>
+    {children}
+  </motion.section>;
+}
+
 export default function CompareTray() {
   const { compareList, removeFromCompare, openQuickView } = useApp();
   const [open, setOpen] = useState(false);
@@ -30,11 +43,16 @@ export default function CompareTray() {
   };
   return (
     <>
-      {compareList.length > 0 && <section className="nc-compare-tray" aria-label="Selected cars to compare">
-        <div className="nc-compare-summary"><strong>{compareList.length} of 3 selected</strong><span>Choose at least two cars to compare.</span></div>
-        <div className="nc-compare-picks">{compareList.map((car) => <button key={car.id} onClick={() => remove(car.id)} aria-label={'Remove ' + titleOf(car) + ' from compare'}>{car.make} {car.model}<X size={15} /></button>)}</div>
-        <button className="nc-button" onClick={() => setOpen(true)} disabled={compareList.length < 2}>Compare<span className="nc-compare-count"> {compareList.length} cars</span><ArrowRight size={18} /></button>
-      </section>}
+      <AnimatePresence>
+        {compareList.length > 0 && <TraySurface key="compare-tray">
+          <div className="nc-compare-summary">
+            <strong role="status"><span className="nc-selection-count" key={compareList.length}>{compareList.length}</span> of 3 selected</strong>
+            <span>{compareList.length < 2 ? 'Choose at least two cars to compare.' : 'Ready to find your favourite?'}</span>
+          </div>
+          <div className="nc-compare-picks">{compareList.map((car) => <button key={car.id} onClick={() => remove(car.id)} aria-label={'Remove ' + titleOf(car) + ' from compare'}>{car.make} {car.model}<X size={15} /></button>)}</div>
+          <button className="nc-button" onClick={() => setOpen(true)} disabled={compareList.length < 2}>Compare<span className="nc-compare-count"> {compareList.length} cars</span><ArrowRight size={18} /></button>
+        </TraySurface>}
+      </AnimatePresence>
       <Dialog open={open && compareList.length > 0} onClose={() => setOpen(false)} title={'Compare ' + compareList.length + ' cars'} className="nc-compare-dialog">
         <p className="nc-compare-intro">The details that matter, side by side.</p>
         <div className="nc-compare-scroll" tabIndex={0} role="region" aria-label="Car comparison table, scroll horizontally for more cars">

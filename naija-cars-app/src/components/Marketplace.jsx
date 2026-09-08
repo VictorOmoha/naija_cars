@@ -142,7 +142,7 @@ export default function Marketplace({ home = false, defaultType = 'SALE' }) {
           {isLoading ? <div className="marketplace-grid" aria-label="Loading cars">{[0, 1, 2, 3].map((item) => <div className="market-card-skeleton" key={item}><div /><span /><span /></div>)}</div> : error ? (
             <div className="market-empty"><Car size={40} /><h3>We couldn’t load the cars</h3><p>Please check your connection and try again.</p><button className="nc-button" onClick={() => refetch()}>Try again</button></div>
           ) : cars.length ? (
-            <div className={'marketplace-grid' + (isPlaceholderData ? ' is-updating' : '')}>{cars.map((car) => <CarCard key={car.id} car={car} variant={rental ? 'rent' : 'sale'} />)}</div>
+            <div className={'marketplace-grid' + (isPlaceholderData ? ' is-updating' : '')}>{cars.map((car, index) => <CarCard key={car.id} car={car} entranceIndex={index} variant={rental ? 'rent' : 'sale'} />)}</div>
           ) : (
             <div className="market-empty"><Search size={40} /><h3>No cars match just yet</h3><p>Try another make, a wider budget, or a different location.</p><button className="nc-button nc-button-secondary" onClick={clear}>Clear filters</button></div>
           )}

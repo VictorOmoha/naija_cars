@@ -261,10 +261,6 @@ button:disabled { cursor: not-allowed; }
   .nc-footer-bottom { font-size: 11px; }
   .nc-footer-bottom > span:last-child { width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .vehicle-card, .vehicle-card-photo img, .marketplace-grid, .market-card-skeleton { transition: none; animation: none; }
-  .vehicle-card:hover .vehicle-card-photo img { transform: none; }
-}
 
 
 .nc-compare-tray { position: fixed; bottom: 0; inset-inline: 0; z-index: 45; background: #fff; border-top: 1px solid #cbdacf; box-shadow: 0 -4px 24px #10281f12; display: flex; align-items: center; gap: 24px; padding: 16px 34px; }
@@ -369,7 +365,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 1050px) { .nc-detail-layout { grid-template-columns: minmax(0, 1fr) 315px; gap: 22px; }.nc-page-width { padding-inline: 26px; }.nc-panel { padding: 22px; }.nc-page-header-actions .nc-button { padding-inline: 15px; }.nc-related-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 800px) { .nc-detail-layout { grid-template-columns: 1fr; }.nc-detail-rail { position: static; grid-row: 2; }.nc-gallery-image { height: min(60vw, 440px); min-height: 250px; }.nc-page-title-row { align-items: start; flex-direction: column; }.nc-page-header-actions { width: 100%; }.nc-saved-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .nc-page-width { padding-inline: 20px; }.nc-page-header { padding-block: 20px 26px; }.nc-page-description { font-size: 12px; }.nc-page-header-actions .nc-button { min-height: 44px; font-size: 13px; }.nc-detail-layout { padding-top: 20px; gap: 22px; }.nc-panel { padding: 21px; }.nc-spec-grid { grid-template-columns: 1fr 1fr; }.nc-gallery-thumbnails button { width: 88px; height: 61px; }.nc-gallery-arrow.previous { left: 10px; }.nc-gallery-arrow.next { right: 10px; }.nc-related-grid, .nc-saved-grid { grid-template-columns: 1fr; }.nc-related { padding-bottom: 35px; }.nc-detail-price { font-size: 32px; }.nc-page-banner { padding-block: 28px; }.nc-page-banner h1 { font-size: 30px; }.nc-page-banner p { font-size: 14px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 .nc-support-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 28px; max-width: 1240px; }
 .nc-form { display: grid; gap: 22px; }.nc-form-intro { font-size: 14px; line-height: 1.7; color: var(--muted); margin: 10px 0 28px; }
 .nc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }.nc-form-field { display: flex; flex-direction: column; gap: 9px; font-size: 14px; font-weight: 550; min-width: 0; }

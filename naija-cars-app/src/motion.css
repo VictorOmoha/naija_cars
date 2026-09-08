@@ -1,0 +1,184 @@
+/* Shared motion rhythm. Content stays visible without animation support. */
+:root {
+  --nc-motion-fast: 150ms;
+  --nc-motion-base: 220ms;
+  --nc-motion-enter: 360ms;
+  --nc-ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+.nc-toast-stack {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 100;
+  width: min(400px, calc(100vw - 40px));
+  display: grid;
+  gap: 12px;
+  pointer-events: none;
+}
+.nc-toast-stack > * { pointer-events: auto; }
+body:has(.nc-compare-tray) .nc-toast-stack { bottom: calc(112px + env(safe-area-inset-bottom)); }
+.nc-selection-count { display: inline-block; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Feedback belongs to the control, so no page-wide transforms affect sticky UI. */
+  :is(.nc-button, .nc-action, .btn-primary, .btn-secondary, .nc-icon-button,
+      .market-body-types button, .market-pagination button, .nc-pagination button,
+      .market-active-filters button, .nc-compare-picks button, .nc-help-topics button) {
+    transition: transform var(--nc-motion-fast) var(--nc-ease-out),
+      background-color var(--nc-motion-fast), color var(--nc-motion-fast),
+      border-color var(--nc-motion-fast), box-shadow var(--nc-motion-base);
+  }
+  :is(.nc-button, .nc-action, .btn-primary, .btn-secondary, .nc-icon-button,
+      .market-body-types button, .market-pagination button, .nc-pagination button,
+      .market-active-filters button, .nc-compare-picks button, .nc-help-topics button):not(:disabled):not([aria-disabled="true"]):active {
+    transform: translateY(1px) scale(.98);
+  }
+  :is(.nc-button, .vehicle-card-arrow, .nc-text-link, .nc-back-link) > svg,
+  :is(.nc-saved-button, .market-body-types button) > svg {
+    transition: transform var(--nc-motion-base) var(--nc-ease-out);
+  }
+
+  /* A short entrance on mount; stable card keys avoid replaying when selected. */
+  .vehicle-card {
+    animation: nc-arrive var(--nc-motion-enter) var(--nc-ease-out) var(--nc-entrance-delay, 0ms) backwards;
+    transition: transform var(--nc-motion-base) var(--nc-ease-out),
+      border-color var(--nc-motion-base), box-shadow var(--nc-motion-base);
+  }
+  .vehicle-card-photo img { transition: transform 420ms var(--nc-ease-out); }
+  .vehicle-card-arrow { transition: background-color var(--nc-motion-base), color var(--nc-motion-base); }
+  .vehicle-card:focus-within { border-color: var(--brand-green); }
+  .vehicle-card-link:focus-visible .vehicle-card-arrow { background: var(--brand-green); color: white; }
+  .vehicle-compare input { transition: transform var(--nc-motion-fast) var(--nc-ease-out); }
+  .vehicle-compare input:checked { animation: nc-confirm 280ms var(--nc-ease-out); }
+  .nc-save-car[aria-pressed="true"] > svg { animation: nc-confirm 320ms var(--nc-ease-out); }
+  .nc-selection-count { animation: nc-confirm 280ms var(--nc-ease-out); }
+  .nc-compare-picks button, .market-active-filters button { animation: nc-arrive 220ms var(--nc-ease-out); }
+
+  .marketplace-hero-copy > *, .nc-page-title-row > div:first-child > * {
+    animation: nc-arrive var(--nc-motion-enter) var(--nc-ease-out) backwards;
+  }
+  .marketplace-hero-copy > :nth-child(2), .nc-page-title-row h1 { animation-delay: 40ms; }
+  .marketplace-hero-copy > :nth-child(3), .nc-page-description { animation-delay: 80ms; }
+  .market-empty, .nc-page-state, .nc-success-panel { animation: nc-arrive 260ms var(--nc-ease-out); }
+  .nc-success-panel > svg { animation: nc-confirm 360ms var(--nc-ease-out); }
+
+  /* Focus, tabs, and disclosure feedback also work with a keyboard. */
+  :is(.market-control input, .market-control select, .nc-form-field input,
+      .nc-form-field select, .nc-form-field textarea, .nc-help-search input) {
+    transition: border-color var(--nc-motion-fast), box-shadow var(--nc-motion-fast), background-color var(--nc-motion-fast);
+  }
+  .market-control:focus-within > svg:first-child { color: var(--brand-green); }
+  :is(.market-control input, .market-control select, .nc-form-field input,
+      .nc-form-field select, .nc-form-field textarea, .nc-help-search input):focus {
+    box-shadow: 0 0 0 3px #00875312;
+  }
+  :is(.market-type-switch, .nc-tabs, .nc-profile-nav, .nc-dashboard-tabs) button,
+  .nc-gallery-thumbnails button {
+    transition: background-color var(--nc-motion-base), color var(--nc-motion-base),
+      border-color var(--nc-motion-base), opacity var(--nc-motion-base), box-shadow var(--nc-motion-base);
+  }
+  .market-more-filters summary > svg:last-child,
+  .nc-help-articles summary svg, .nc-account-button > svg:last-child {
+    transition: transform var(--nc-motion-base) var(--nc-ease-out);
+  }
+  .nc-account-button[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+  .market-more-filters[open] .market-extra-fields,
+  .nc-help-articles details[open] p { animation: nc-arrive 220ms var(--nc-ease-out); }
+  .nc-account-menu { transform-origin: top right; animation: nc-arrive 180ms var(--nc-ease-out); }
+  .nc-account-menu :is(a, button), .nc-mobile-menu nav > :is(a, button) {
+    transition: background-color var(--nc-motion-fast), color var(--nc-motion-fast);
+  }
+
+  .nc-desktop-nav a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: var(--brand-green);
+    inset-inline: 0;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform var(--nc-motion-base) var(--nc-ease-out);
+  }
+  .nc-desktop-nav :is(a:hover, a:focus-visible, .is-active)::after { transform: scaleX(1); }
+
+  /* Preserve native dialog focus trapping, Escape, and immediate focus return. */
+  .nc-dialog[open] { animation: nc-dialog-enter 220ms var(--nc-ease-out); }
+  @supports (transition-behavior: allow-discrete) and (overlay: auto) {
+    .nc-dialog {
+      opacity: 0;
+      transform: translateY(10px) scale(.985);
+      transition: opacity 180ms ease-out, transform 220ms var(--nc-ease-out),
+        display 220ms allow-discrete, overlay 220ms allow-discrete;
+    }
+    .nc-dialog[open] { opacity: 1; transform: none; animation: none; }
+    .nc-dialog::backdrop {
+      background: #0e261b00;
+      transition: background-color 180ms ease-out, display 220ms allow-discrete, overlay 220ms allow-discrete;
+    }
+    .nc-dialog[open]::backdrop { background: #0e261b70; }
+    @starting-style {
+      .nc-dialog[open] { opacity: 0; transform: translateY(10px) scale(.985); }
+      .nc-dialog[open]::backdrop { background: #0e261b00; }
+    }
+  }
+
+  /* One travelling highlight feels quieter than pulsing the entire card. */
+  .market-card-skeleton { position: relative; animation: none; }
+  .market-card-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 25%, #ffffff65 50%, transparent 75%);
+    transform: translateX(-100%);
+    animation: nc-shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+/* Hover movement is reserved for precise pointers; touch gets press feedback. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.nc-button, .nc-action, .btn-primary, .btn-secondary):not(:disabled):not([aria-disabled="true"]):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px #0e261b12;
+  }
+  :is(.nc-button, .nc-action, .btn-primary, .btn-secondary):not(:disabled):not([aria-disabled="true"]):active { transform: translateY(1px) scale(.98); }
+  .vehicle-card:hover { transform: translateY(-3px); box-shadow: 0 9px 24px #12312112; }
+  .vehicle-card:hover .vehicle-card-photo img { transform: scale(1.035); }
+  .vehicle-card:hover .vehicle-card-arrow { background: var(--brand-green); color: white; }
+  .vehicle-card:hover .vehicle-card-arrow > svg,
+  :is(.nc-button, .nc-text-link):hover > .lucide-arrow-right { transform: translateX(3px); }
+  .nc-back-link:hover > svg { transform: translateX(-3px); }
+  .nc-saved-button:hover > svg { transform: rotate(-8deg) scale(1.08); }
+  .market-body-types button:hover > svg { transform: translateY(-3px); }
+}
+
+@keyframes nc-arrive {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes nc-confirm {
+  0%, 100% { scale: 1; }
+  45% { scale: 1.16; }
+  75% { scale: .96; }
+}
+@keyframes nc-dialog-enter {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes nc-shimmer { to { transform: translateX(100%); } }
+
+@media (hover: none), (pointer: coarse) {
+  .vehicle-card:hover .vehicle-card-photo img { transform: none; }
+}
+
+/* Stop CSS loops too; MotionConfig handles existing JavaScript animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .vehicle-card:hover .vehicle-card-photo img,
+  :is(.nc-button, .nc-action, .btn-primary, .btn-secondary):active { transform: none; }
+}

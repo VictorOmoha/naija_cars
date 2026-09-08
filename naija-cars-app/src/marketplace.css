@@ -43,9 +43,12 @@ button:disabled { cursor: not-allowed; }
 .nc-skip-link { position: fixed; z-index: 100; top: 8px; left: 8px; padding: 12px 18px; color: white; background: var(--brand-green); border-radius: 8px; transform: translateY(-160%); }
 .nc-skip-link:focus { transform: none; }
 .marketplace-page { max-width: 1536px; margin: auto; }
-.marketplace-hero { position: relative; min-height: 208px; background: #f1f6f2; overflow: hidden; display: flex; align-items: center; }
-.marketplace-hero-image { position: absolute; width: 46%; height: 100%; right: 0; top: 0; object-fit: cover; object-position: center; }
-.marketplace-hero-copy { position: relative; padding: 32px 48px; max-width: 950px; }
+.marketplace-hero { position: relative; min-height: 260px; background: #f1f6f2; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; }
+.marketplace-hero-copy { position: relative; padding: 32px 0 32px 48px; }
+.marketplace-hero-cars { position: relative; min-height: 260px; height: 100%; isolation: isolate; }
+.marketplace-hero-car { position: absolute; height: auto; object-fit: contain; }
+.marketplace-hero-car-back { width: 70%; max-width: 440px; top: -4%; left: -3%; }
+.marketplace-hero-car-front { width: 80%; max-width: 500px; bottom: -12%; right: -3%; }
 .marketplace-hero-copy .marketplace-eyebrow { font-size: 14px; color: #006b4a; font-weight: 650; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
 .marketplace-hero-copy h1 { font-size: clamp(29px, 3.12vw, 44px); font-weight: 750; line-height: 1.16; letter-spacing: -1.6px; }
 .marketplace-hero-copy > p:last-child { font-size: 18px; color: var(--muted); margin-top: 14px; line-height: 1.5; max-width: 750px; }
@@ -184,7 +187,7 @@ button:disabled { cursor: not-allowed; }
   .nc-saved-button { padding-right: 18px; }
   .market-results-toolbar { align-items: flex-start; flex-wrap: wrap; }
   .market-toolbar-controls { margin-top: 1px; }
-  .marketplace-hero-copy { padding-left: 34px; max-width: 770px; }
+  .marketplace-hero-copy { padding-left: 34px; }
   .marketplace-hero-copy > p:last-child { max-width: 630px; font-size: 16px; }
   .marketplace-layout { gap: 24px; padding-left: 28px; padding-right: 28px; grid-template-columns: 300px minmax(0, 1fr); }
   .market-search-panel { padding: 23px 20px; }
@@ -205,7 +208,6 @@ button:disabled { cursor: not-allowed; }
   .vehicle-card-meta { font-size: 12px; }
   .vehicle-card-price { font-size: 19px; }
   .vehicle-card-arrow { width: 34px; height: 34px; }
-  .marketplace-hero-copy { max-width: 680px; }
   .marketplace-hero-copy h1 { max-width: 610px; }
   .marketplace-hero-copy > p:last-child { max-width: 540px; }
 }
@@ -214,9 +216,11 @@ button:disabled { cursor: not-allowed; }
   .nc-desktop-nav, .nc-sign-in, .nc-account { display: none; }
   .nc-menu-button { display: inline-flex; }
   .nc-header-actions { gap: 8px; }
-  .marketplace-hero { min-height: 192px; }
-  .marketplace-hero-image { width: 48%; opacity: .25; }
-  .marketplace-hero-copy { padding: 28px 24px; }
+  .marketplace-hero { min-height: 192px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .marketplace-hero-cars { min-height: 230px; }
+  .marketplace-hero-car-back { width: 95%; top: 0; left: -3%; }
+  .marketplace-hero-car-front { width: 100%; right: 0; bottom: -2%; }
+  .marketplace-hero-copy { padding: 28px 0 28px 24px; }
   .marketplace-hero-copy h1 { font-size: 33px; max-width: 590px; }
   .marketplace-hero-copy > p:last-child { font-size: 15px; max-width: 440px; }
   .marketplace-layout { display: block; padding: 22px 22px 45px; }
@@ -237,7 +241,10 @@ button:disabled { cursor: not-allowed; }
   .nc-logo { font-size: 27px; letter-spacing: -1.2px; }
   .nc-list-button { min-height: 40px; min-width: 96px; padding: 9px 12px; font-size: 12px; border-radius: 9px; }
   .nc-header-actions { gap: 3px; }
-  .marketplace-hero-image { display: none; }
+  .marketplace-hero { grid-template-columns: minmax(0, 1fr); }
+  .marketplace-hero-cars { min-height: 180px; height: 180px; margin: 0 18px 12px; }
+  .marketplace-hero-car-back { width: 68%; top: -2%; left: 0; }
+  .marketplace-hero-car-front { width: 73%; right: -3%; bottom: -8%; }
   .marketplace-hero-copy { padding: 26px 21px; }
   .marketplace-hero-copy .marketplace-eyebrow { font-size: 11px; letter-spacing: 1.4px; }
   .marketplace-hero-copy h1 { font-size: 30px; letter-spacing: -1px; max-width: 360px; }

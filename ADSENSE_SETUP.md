@@ -19,10 +19,21 @@ A responsive Display unit named "NaijaCars — Homepage sidebar" was created wit
 slot ID `1755987643`. Auto ads is off for NaijaCars.
 Payment information and the unrelated existing site were not changed.
 
+Google subsequently verified ownership using the deployed meta tag and accepted
+the review request. The site status is **Getting ready** / **Review requested**.
+Both the root domain and www serve the correct `ads.txt` as plain text (HTTP 200).
+The publisher and slot IDs are saved on the Render frontend, with
+`VITE_ADSENSE_ENABLED=false`; serving remains disabled pending review and consent
+setup. These variables were saved without triggering another build.
+
+Google prompted for a consent message after submission. This is still pending;
+configure a message for NaijaCars before enabling ad serving. The onboarding
+shortcut also changes the default for future sites, so it was not submitted.
+
 ## Activation
 
-1. After deployment, verify ownership in AdSense using the HTML meta tag and
-   request Google's required site review.
+1. Wait for the submitted site review to finish and confirm that NaijaCars is
+   approved for serving ads. Ownership verification is already complete.
 2. Use the existing responsive **Display ad** unit "NaijaCars — Homepage sidebar".
 3. Set these build-time variables on the Render **frontend** static service:
 

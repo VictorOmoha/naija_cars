@@ -5,7 +5,7 @@ import { Shield, ChevronRight, Lock, Eye, Database, UserCheck, Bell, Globe } fro
 
 const highlights = [
   { icon: Lock, title: 'Your Data is Encrypted', desc: '256-bit SSL encryption protects all data' },
-  { icon: Eye, title: 'No Hidden Tracking', desc: 'We only collect what\'s necessary' },
+  { icon: Eye, title: 'Advertising choices', desc: 'Learn how to manage advertising cookies' },
   { icon: UserCheck, title: 'You\'re in Control', desc: 'Manage your data preferences anytime' },
   { icon: Database, title: 'Hosting locations', desc: 'Hosting may be outside Nigeria' },
 ];
@@ -154,6 +154,11 @@ To exercise these rights, contact us at privacy@naijacars.com or through your ac
 • Improving our services
 • Measuring performance
 
+**Advertising:**
+When advertising is enabled, we use Google AdSense. Google and other advertising vendors may use cookies and similar technologies to display and measure ads, prevent fraud, and personalize advertising based on visits to NaijaCars and other websites. This can involve device identifiers, IP addresses, and information about your interaction with ads.
+
+Where a consent message is shown, you can accept, decline, or manage the purposes and partners allowed to use your data. Use the Privacy and cookie settings link provided by Google at the bottom of pages showing this message to revisit your choices or withdraw consent. You can also manage personalized advertising through Google's My Ad Center or participating providers through YourAdChoices using the links below.
+
 **Managing Cookies:**
 You can control cookies through your browser settings. Blocking essential cookies may affect platform functionality.`
   },
@@ -215,14 +220,14 @@ Phone: +234 801 234 5678
 
 We aim to respond to all inquiries within 48 hours.
 
-This Privacy Policy was last updated on January 1, 2024.`
+This Privacy Policy was last updated on September 8, 2026.`
   },
 ];
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-pearl-100">
-      <PageHeader eyebrow="NaijaCars policies" title="Privacy policy" description="Last updated: January 1, 2024" />
+      <PageHeader eyebrow="NaijaCars policies" title="Privacy policy" description="Last updated: September 8, 2026" />
 
       {/* Highlights */}
       <div className="nc-page-width pt-8 mb-8">
@@ -293,6 +298,11 @@ export default function PrivacyPage() {
                       {section.content.split('**').map((part, i) =>
                         i % 2 === 0 ? part : <strong key={i}>{part}</strong>
                       )}
+                      {section.id === 'cookies' && <ul className="mt-4 space-y-2">
+                        <li><a className="text-naija-700 underline" href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">How Google uses information from partner sites</a></li>
+                        <li><a className="text-naija-700 underline" href="https://myadcenter.google.com/" target="_blank" rel="noopener noreferrer">Manage personalized ads with Google My Ad Center</a></li>
+                        <li><a className="text-naija-700 underline" href="https://youradchoices.com/control" target="_blank" rel="noopener noreferrer">Control participating providers through YourAdChoices</a></li>
+                      </ul>}
                     </div>
                   </motion.div>
                 ))}

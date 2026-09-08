@@ -45,6 +45,17 @@ const Footer = () => (
         <span>© {new Date().getFullYear()} NaijaCars</span>
       </div>
     </div>
+    <div className="px-4 pb-4 text-center text-xs text-muted">
+      Powered by{' '}
+      <a
+        href="https://omohasolutions.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-semibold hover:text-brand transition-colors"
+      >
+        Omoha Solutions
+      </a>
+    </div>
   </footer>
 );
 

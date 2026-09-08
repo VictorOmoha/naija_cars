@@ -44,6 +44,11 @@ export default function SeoHead({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={metaDescription} />
       <meta property="og:image" content={metaImage} />
+      <meta property="og:image:secure_url" content={metaImage} />
+      <meta property="og:image:type" content="image/png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content="Naija Cars - Verified Cars Across Nigeria" />
       <meta property="og:url" content={metaUrl} />
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content="Naija Cars" />
@@ -55,6 +60,7 @@ export default function SeoHead({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={metaDescription} />
       <meta name="twitter:image" content={metaImage} />
+      <meta name="twitter:image:alt" content="Naija Cars - Verified Cars Across Nigeria" />
     </Helmet>
   );
 }

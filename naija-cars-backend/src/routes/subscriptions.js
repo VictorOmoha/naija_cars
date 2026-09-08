@@ -414,7 +414,7 @@ router.post('/webhook', async (req, res, next) => {
       }
     }
 
-    // Always return 200 to Paystack
+    // Return 200 only after processing succeeds so Paystack can retry failures.
     res.sendStatus(200);
   } catch (error) {
     if (eventId && isUniqueConstraintError(error)) {
@@ -423,7 +423,7 @@ router.post('/webhook', async (req, res, next) => {
       }).catch(() => null);
       if (processed?.processed) return res.sendStatus(200);
     }
-    console.error('Webhook error:', error);
+    console.error('Webhook error:', error.message);
     // A failed transaction must be retried by Paystack, not acknowledged as delivered.
     res.sendStatus(500);
   }

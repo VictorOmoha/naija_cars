@@ -9,9 +9,15 @@
     "build:frontend": "cd naija-cars-app && npm install && npm run build",
     "test": "npm --prefix naija-cars-backend test && npm --prefix naija-cars-app test",
     "lint": "npm --prefix naija-cars-app run lint",
-    "check": "npm run lint && npm test && npm --prefix naija-cars-app run build"
+    "check": "npm run lint && npm test && npm --prefix naija-cars-app run build",
+    "lint:frontend": "npm run lint",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
-  "keywords": ["cars", "marketplace", "nigeria"],
+  "keywords": [
+    "cars",
+    "marketplace",
+    "nigeria"
+  ],
   "author": "Victor Omoha",
   "license": "ISC"
 }

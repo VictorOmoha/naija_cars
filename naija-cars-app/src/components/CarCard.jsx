@@ -1,139 +1,52 @@
-import { useNavigate } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ImageOff, BadgeCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatNaira, formatKm, monthlyPayment, conditionLabel, waLink } from '../utils/format';
+import { formatNairaFull, conditionLabel } from '../utils/format';
 
-const isPlaceholderCar = (car) => Boolean(car.isPlaceholder) || typeof car.id === 'number';
-
-// Listing card — "1b: Bold Market Energy": 2px ink border, hard offset shadow,
-// VERIFIED pill, compare checkbox, price + monthly line, WhatsApp pill.
-const CarCard = ({ car, variant = 'sale', showCompare = true }) => {
-  const navigate = useNavigate();
-  const { openQuickView, compareList, toggleCompare, addToast } = useApp();
-
-  const isSale = variant === 'sale' || car.type === 'sale';
-  const price = isSale ? car.price : car.pricePerDay;
-  const isPlaceholder = isPlaceholderCar(car);
-  const isCompared = compareList.some((c) => c.id === car.id);
-  const compareFull = compareList.length >= 3 && !isCompared;
-
+const CarCard = ({ car, variant, showCompare = true }) => {
+  const { openQuickView, compareList, toggleCompare } = useApp();
+  const [failedImage, setFailedImage] = useState(null);
+  const isSale = variant ? variant === 'sale' : car.type !== 'rent';
+  const isSample = Boolean(car.isPlaceholder) || typeof car.id === 'number';
+  const selected = compareList.some((item) => item.id === car.id);
+  const compareFull = compareList.length >= 3 && !selected;
   const title = `${car.year} ${car.make} ${car.model}${car.trim ? ` ${car.trim}` : ''}`;
-  const metaParts = [
-    [car.location?.city, car.location?.state].filter(Boolean).join(', '),
-    car.mileage ? formatKm(car.mileage) : null,
-    isSale ? conditionLabel(car.condition) : null,
-  ].filter(Boolean);
-  const monthly = isSale ? monthlyPayment(price) : 0;
-  const whatsappNumber = car.whatsapp || car.phone || car.dealer?.phone || '';
-
-  const handleOpen = () => {
-    if (isPlaceholder) {
-      openQuickView(car);
-    } else {
-      navigate(`/car/${car.id}`);
-    }
-  };
-
-  const handleCompare = (e) => {
-    e.stopPropagation();
-    if (compareFull) {
-      addToast('You can compare up to 3 cars', 'info');
-      return;
-    }
-    toggleCompare(car);
-  };
-
-  const handleWhatsApp = (e) => {
-    e.stopPropagation();
-    if (!whatsappNumber) {
-      handleOpen();
-    }
-  };
+  const image = car.images?.[0];
+  const location = car.location?.state || car.location?.city || 'Nigeria';
 
   return (
-    <div
-      onClick={handleOpen}
-      className={`card-1b card-1b-hover cursor-pointer ${isCompared ? 'card-1b-selected' : ''}`}
-    >
-      {/* Image */}
-      <div className="relative h-40 sm:h-[170px] stripes-1b">
-        {car.images?.[0] ? (
-          <img
-            src={car.images[0]}
-            alt={title}
-            loading="lazy"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[11px] font-mono text-muted">
-            photos coming soon
-          </div>
-        )}
-
-        {car.verified && (
-          <span className="badge-verified absolute top-3 left-3">✓ VERIFIED</span>
-        )}
-        {isPlaceholder && (
-          <span className="absolute bottom-3 left-3 text-[10px] font-black uppercase tracking-[0.05em] bg-ink/85 text-white px-2.5 py-1 rounded-full">
-            Sample
-          </span>
-        )}
-
-        {/* Compare checkbox */}
-        {showCompare && isSale && (
-          <button
-            onClick={handleCompare}
-            title={isCompared ? 'Remove from compare' : 'Tick to compare'}
-            aria-pressed={isCompared}
-            className={`absolute top-2.5 right-2.5 w-[24px] h-[24px] rounded-[7px] flex items-center justify-center transition-colors ${
-              isCompared
-                ? 'bg-brand text-white border-2 border-white'
-                : 'bg-white border-2 border-ink'
-            } ${compareFull ? 'opacity-40 cursor-not-allowed' : ''}`}
-          >
-            {isCompared && <Check className="w-3.5 h-3.5" strokeWidth={4} />}
-          </button>
-        )}
-      </div>
-
-      {/* Body */}
-      <div className="px-3.5 pt-3.5 pb-4">
-        <h3 className="text-[15px] font-extrabold leading-snug">{title}</h3>
-        <p className="text-[11.5px] font-semibold text-muted mt-0.5">
-          {metaParts.join(' · ')}
-        </p>
-
-        <div className="flex items-center justify-between mt-3">
-          <div>
-            <div className="text-[19px] font-black tracking-[-0.02em]">
-              {formatNaira(price)}
-              {!isSale && <span className="text-xs font-bold">/day</span>}
-            </div>
-            {isSale && monthly > 0 && (
-              <div className="text-[11px] font-semibold text-brand">
-                or {formatNaira(monthly)}/mo
-              </div>
-            )}
-          </div>
-
-          {whatsappNumber ? (
-            <a
-              href={waLink(whatsappNumber, `Hi, I'm interested in your ${title} listed on NaijaCars. Is it still available?`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleWhatsApp}
-              className="btn-pill-dark text-xs px-4 py-[11px]"
-            >
-              WhatsApp ↗
-            </a>
+    <article className={`vehicle-card${selected ? ' is-selected' : ''}`}>
+      <Link to={`/car/${car.id}`} className="vehicle-card-link"
+        onClick={(event) => { if (isSample) { event.preventDefault(); openQuickView(car); } }}
+        aria-label={`View ${title}`}>
+        <div className="vehicle-card-photo">
+          {image && failedImage !== image ? (
+            <img src={image} alt={title} loading="lazy" onError={() => setFailedImage(image)} />
           ) : (
-            <button onClick={handleOpen} className="btn-pill-dark text-xs px-4 py-[11px]">
-              View details
-            </button>
+            <div className="vehicle-no-photo"><ImageOff size={28} aria-hidden="true" /><span>Photos coming soon</span></div>
           )}
+          {isSample && <span className="vehicle-sample">Sample listing</span>}
         </div>
-      </div>
-    </div>
+        <div className="vehicle-card-content">
+          <h3>{title}</h3>
+          <p className="vehicle-card-meta">
+            <span>{isSale ? conditionLabel(car.condition).replace('Naija-used', 'Nigerian used') : 'For rent'}</span>
+            <span className="vehicle-meta-dot" aria-hidden="true">·</span><span>{location}</span>
+            {car.verified && <BadgeCheck size={16} aria-label="Verified seller" className="text-brand" />}
+          </p>
+          <div className="vehicle-card-bottom">
+            <p className="vehicle-card-price">{formatNairaFull(isSale ? car.price : (car.pricePerDay ?? car.price))}{!isSale && <span> / day</span>}</p>
+            <span className="vehicle-card-arrow" aria-hidden="true"><ArrowRight size={20} /></span>
+          </div>
+        </div>
+      </Link>
+      {showCompare && isSale && (
+        <label className={`vehicle-compare${compareFull ? ' is-disabled' : ''}`} title={compareFull ? 'Remove a car to compare another (maximum 3)' : `Compare ${title}`}>
+          <input type="checkbox" checked={selected} disabled={compareFull} onChange={() => toggleCompare(car)} aria-label={`Compare ${title}`} />
+        </label>
+      )}
+    </article>
   );
 };
 

@@ -1,6 +1,6 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
@@ -9,7 +9,8 @@ import ScrollToTop from './components/ScrollToTop';
 import CompareTray from './components/CompareTray';
 import MessageNotifications from './components/MessageNotifications';
 import AuthModal from './components/modals/AuthModal';
-import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
+import ListingFormRedirect from './components/ListingFormRedirect';
+import { PageState } from './components/PageLayout';
 import QuickViewModal from './components/modals/QuickViewModal';
 import useAuthStore from './stores/authStore';
 
@@ -59,11 +60,12 @@ function PageLoader() {
 // Protected Route for authenticated users
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
+  const { setIsSignInOpen } = useApp();
 
   if (isLoading) return <PageLoader />;
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <PageState title="Sign in to continue" description="Your place is saved. Sign in to view this page and carry on where you left off."><button className="nc-button" onClick={() => setIsSignInOpen(true)}>Sign in</button><Link className="nc-button nc-button-secondary" to="/cars">Browse cars</Link></PageState>;
   }
 
   return children;
@@ -76,17 +78,23 @@ function AdminRoute({ children }) {
   if (isLoading) return <PageLoader />;
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <ProtectedRoute>{children}</ProtectedRoute>;
   }
 
   if (user?.userType !== 'ADMIN') {
-    return <Navigate to="/" replace />;
+    return <PageState title="Administrator access required" description="This area is available to NaijaCars administrators."><Link to="/dashboard" className="nc-button">Go to your dashboard</Link></PageState>;
   }
 
   return children;
 }
 
 function App() {
+  const checkedSession = useRef(false);
+  useEffect(() => {
+    if (checkedSession.current) return;
+    checkedSession.current = true;
+    if (localStorage.getItem("accessToken")) useAuthStore.getState().getMe().catch(() => {});
+  }, []);
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
 
@@ -97,9 +105,6 @@ function App() {
           {/* Scroll to top on every navigation */}
           <ScrollToTop />
 
-          {/* Premium grain texture overlay */}
-          <div className="texture-overlay" />
-
           {/* Navigation */}
           {!isAdminRoute && (
             <>
@@ -109,7 +114,7 @@ function App() {
           )}
 
           {/* Main Content */}
-          <main>
+          <main id="main-content" tabIndex={-1}>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Core Pages */}
@@ -138,9 +143,9 @@ function App() {
                 >
                   <Route index element={<AdminDashboard />} />
                   <Route path="users" element={<AdminUsers />} />
-                  <Route path="listings" element={<AdminListings />} />
-                  <Route path="listings/pending" element={<AdminListings />} />
-                  <Route path="listings/featured" element={<AdminListings />} />
+                  <Route path="listings" element={<AdminListings key="all" />} />
+                  <Route path="listings/pending" element={<AdminListings key="pending" initialStatus="PENDING" />} />
+                  <Route path="listings/featured" element={<AdminListings key="featured" featuredOnly />} />
                   <Route path="analytics" element={<AdminAnalytics />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
@@ -181,7 +186,7 @@ function App() {
 
           {/* Modals */}
           <AuthModal />
-          <EnhancedListCarModal />
+          <ListingFormRedirect />
           <QuickViewModal />
 
           {/* Toast Notifications */}

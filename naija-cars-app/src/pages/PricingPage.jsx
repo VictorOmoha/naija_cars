@@ -1,3 +1,4 @@
+import { PageState, PageHeader } from '../components/PageLayout';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -18,7 +19,7 @@ const PricingPage = () => {
   const { isAuthenticated } = useAuthStore();
   const [loadingPlan, setLoadingPlan] = useState(null);
 
-  const { data: plansData, isLoading: plansLoading } = useQuery({
+  const { data: plansData, isLoading: plansLoading, error: plansError, refetch: retryPlans } = useQuery({
     queryKey: ['subscription-plans'],
     queryFn: () => subscriptionAPI.getPlans(),
     staleTime: 60 * 60 * 1000,
@@ -55,6 +56,7 @@ const PricingPage = () => {
   const formatPrice = (price) =>
     new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
 
+  if (plansError) return <PageState title="We couldn’t load seller plans"><button className="nc-button" onClick={() => retryPlans()}>Try again</button></PageState>;
   if (plansLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-8">
@@ -64,17 +66,9 @@ const PricingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-pearl-50 pt-10 pb-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-display font-bold text-charcoal-800 mb-4">
-            Choose Your Plan
-          </h1>
-          <p className="text-lg text-charcoal-600 max-w-2xl mx-auto">
-            Subscribe to start listing your cars on NaijaCars. All plans include instant listing activation — no waiting for approval.
-          </p>
-        </div>
+    <div className="min-h-screen bg-paper pb-12">
+      <PageHeader eyebrow="For sellers" title="A plan for your next chapter." description="Choose your listing allowance and start reaching buyers across Nigeria." />
+      <div className="max-w-6xl mx-auto px-5 pt-12">
 
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -90,9 +84,9 @@ const PricingPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`relative bg-white rounded-2xl shadow-lg border-2 p-8 flex flex-col ${
+                className={`relative bg-white rounded-2xl border p-8 flex flex-col ${
                   isPopular
-                    ? 'border-naija-500 ring-2 ring-naija-200'
+                    ? 'border-naija-500 ring-1 ring-naija-200'
                     : 'border-pearl-200'
                 }`}
               >
@@ -141,7 +135,7 @@ const PricingPage = () => {
                       ? 'bg-pearl-200 text-charcoal-500 cursor-default'
                       : isPopular
                         ? 'bg-naija-500 hover:bg-naija-600 text-white shadow-md hover:shadow-lg'
-                        : 'bg-charcoal-800 hover:bg-charcoal-900 text-white'
+                        : 'bg-brand hover:bg-brand-hover text-white'
                   }`}
                 >
                   {loadingPlan === plan.id ? (

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
+import useListing from '../hooks/useListing';
 import {
   Car, MapPin, Clock, Shield, CheckCircle, ArrowRight,
   ChevronLeft, User, Phone, Mail, Lock,
@@ -22,7 +22,7 @@ export default function BookingPage() {
   const bookingType = searchParams.get('type') || 'purchase'; // 'purchase' or 'rental'
 
   const [step, setStep] = useState(1);
-  const [rentalDays, setRentalDays] = useState(3);
+  const [rentalDays, setRentalDays] = useState(() => Math.min(365, Math.max(1, parseInt(searchParams.get('days'), 10) || 3)));
   const selectedPayment = 'arrange_with_seller';
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmedTotal, setConfirmedTotal] = useState(null);
@@ -43,14 +43,7 @@ export default function BookingPage() {
   });
 
   // Fetch real listing data
-  const { data: listing, isLoading, isError } = useQuery({
-    queryKey: ['listing', id],
-    queryFn: async () => {
-      const response = await api.get(`/listings/${id}`);
-      return response.data.data.listing;
-    },
-    enabled: !!id,
-  });
+  const { data: listing, isLoading, isError } = useListing(id);
 
   // Derived values from listing
   const carPrice = listing ? parseFloat(listing.price) : 0;
@@ -126,7 +119,7 @@ export default function BookingPage() {
   if (isError || !listing || listing.listingType !== (bookingType === 'rental' ? 'RENT' : 'SALE')) {
     return (
       <div className="min-h-screen bg-pearl-100 pt-8 flex items-center justify-center">
-        <div className="text-center bg-white rounded-3xl shadow-card p-12 max-w-md">
+        <div className="text-center bg-white rounded-2xl border border-lightborder p-12 max-w-md">
           <Car className="w-16 h-16 text-charcoal-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-charcoal-800 mb-2">Listing Not Found</h2>
           <p className="text-charcoal-500 mb-6">This listing may have been removed or is unavailable.</p>
@@ -142,9 +135,9 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-8 pb-20">
+    <div className="min-h-screen bg-pearl-100 pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 py-8 relative overflow-hidden">
+      <div className="nc-page-banner">
         <div className="absolute inset-0 kente-overlay opacity-10" />
         <div className="section-container relative">
           <button
@@ -155,16 +148,16 @@ export default function BookingPage() {
             Back
           </button>
           <h1 className="text-3xl font-display font-bold text-white">
-            {bookingType === 'rental' ? 'Complete Your Rental' : 'Secure This Vehicle'}
+            {bookingType === 'rental' ? 'Request this rental' : 'Request this car'}
           </h1>
           <p className="text-white/80 mt-1">{carName}</p>
         </div>
       </div>
 
-      <div className="section-container -mt-6 relative z-10">
+      <div className="section-container mt-6 relative z-10">
         {/* Progress Steps */}
         <div className="bg-white rounded-2xl shadow-card p-4 mb-8">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center justify-between max-w-3xl mx-auto">
             {[
               { num: 1, label: 'Details' },
               { num: 2, label: bookingType === 'rental' ? 'Rental Info' : 'Add-ons' },
@@ -201,7 +194,7 @@ export default function BookingPage() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="bg-white rounded-3xl shadow-card overflow-hidden"
+                  className="bg-white rounded-2xl border border-lightborder overflow-hidden"
                 >
                   <div className="p-6 border-b border-pearl-200">
                     <h2 className="text-xl font-display font-bold text-charcoal-800">Contact Information</h2>
@@ -214,7 +207,7 @@ export default function BookingPage() {
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('firstName', { required: 'First name is required' })}
+                            aria-label="First name" {...register('firstName', { required: 'First name is required' })}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter first name"
                           />
@@ -226,7 +219,7 @@ export default function BookingPage() {
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('lastName', { required: 'Last name is required' })}
+                            aria-label="Last name" {...register('lastName', { required: 'Last name is required' })}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="Enter last name"
                           />
@@ -238,7 +231,7 @@ export default function BookingPage() {
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('email', { required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' } })}
+                            aria-label="Email address" {...register('email', { required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' } })}
                             type="email"
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="your@email.com"
@@ -251,7 +244,7 @@ export default function BookingPage() {
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('phone', { required: 'Phone is required', pattern: { value: /^\+?[\d\s()-]{7,20}$/, message: 'Enter a valid phone number' } })}
+                            aria-label="Phone number" {...register('phone', { required: 'Phone is required', pattern: { value: /^\+?[\d\s()-]{7,20}$/, message: 'Enter a valid phone number' } })}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="+234 xxx xxx xxxx"
                           />
@@ -294,21 +287,21 @@ export default function BookingPage() {
                   className="space-y-6"
                 >
                   {bookingType === 'rental' && (
-                    <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-lightborder overflow-hidden">
                       <div className="p-6 border-b border-pearl-200">
                         <h2 className="text-xl font-display font-bold text-charcoal-800">Rental Duration</h2>
                         <p className="text-charcoal-500">Select how many days you need the vehicle</p>
                       </div>
                       <div className="p-6">
                         <div className="flex items-center justify-center gap-6 mb-6">
-                          <button onClick={() => setRentalDays(Math.max(1, rentalDays - 1))} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
+                          <button aria-label="Decrease rental duration" onClick={() => setRentalDays(Math.max(1, rentalDays - 1))} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
                             <Minus className="w-6 h-6" />
                           </button>
                           <div className="text-center">
                             <div className="text-4xl font-bold text-charcoal-800">{rentalDays}</div>
                             <div className="text-charcoal-500">days</div>
                           </div>
-                          <button onClick={() => setRentalDays(Math.min(365, rentalDays + 1))} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
+                          <button aria-label="Increase rental duration" onClick={() => setRentalDays(Math.min(365, rentalDays + 1))} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
                             <Plus className="w-6 h-6" />
                           </button>
                         </div>
@@ -324,16 +317,16 @@ export default function BookingPage() {
                   )}
 
                   {/* Add-ons */}
-                  <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+                  <div className="bg-white rounded-2xl border border-lightborder overflow-hidden">
                     <div className="p-6 border-b border-pearl-200">
                       <h2 className="text-xl font-display font-bold text-charcoal-800">Optional Add-ons</h2>
                       <p className="text-charcoal-500">Enhance your {bookingType === 'rental' ? 'rental' : 'purchase'} experience</p>
                     </div>
                     <div className="p-6 space-y-4">
                       {[
-                        { key: 'insurance', label: 'Full Insurance Coverage', desc: bookingType === 'rental' ? 'Comprehensive coverage during your rental' : 'First year comprehensive insurance', price: bookingType === 'rental' ? '₦15,000/day' : '₦500,000', icon: Shield, color: 'naija' },
-                        { key: 'delivery', label: 'Home Delivery', desc: 'We\'ll deliver the vehicle to your location in Lagos', price: '₦50,000', icon: Truck, color: 'gold' },
-                        ...(bookingType === 'purchase' ? [{ key: 'inspection', label: 'Pre-Purchase Inspection', desc: 'Independent 200-point vehicle inspection report', price: '₦75,000', icon: FileText, color: 'emerald' }] : [])
+                        { key: 'insurance', label: 'Request insurance', desc: bookingType === 'rental' ? 'Subject to provider availability and policy terms' : 'Confirm cover and final terms with the provider', price: bookingType === 'rental' ? '₦15,000/day' : '₦500,000', icon: Shield, color: 'naija' },
+                        { key: 'delivery', label: 'Request delivery', desc: 'Confirm the location, availability and fee with the seller', price: '₦50,000 estimate', icon: Truck, color: 'gold' },
+                        ...(bookingType === 'purchase' ? [{ key: 'inspection', label: 'Request an inspection', desc: 'Ask the seller to arrange an independent inspection', price: '₦75,000', icon: FileText, color: 'emerald' }] : [])
                       ].map((addon) => (
                         <label key={addon.key} className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-colors ${addons[addon.key] ? 'border-naija-500 bg-naija-50' : 'border-pearl-300 hover:border-pearl-400'}`}>
                           <div className="flex items-center gap-4">
@@ -357,7 +350,7 @@ export default function BookingPage() {
                   <div className="flex gap-4">
                     <button onClick={() => setStep(1)} className="flex-1 py-4 border-2 border-pearl-300 text-charcoal-700 font-medium rounded-xl hover:bg-pearl-50 transition-colors">Back</button>
                     <button onClick={() => setStep(3)} className="flex-1 btn-primary py-4 rounded-xl flex items-center justify-center gap-2">
-                      Review Booking <ArrowRight className="w-5 h-5" />
+                      Review request <ArrowRight className="w-5 h-5" />
                     </button>
                   </div>
                 </motion.div>
@@ -372,9 +365,9 @@ export default function BookingPage() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-6"
                 >
-                  <div className="bg-white rounded-3xl shadow-card p-6">
+                  <div className="bg-white rounded-2xl border border-lightborder p-6">
                     <h2 className="text-xl font-display font-bold text-charcoal-800">Review your booking request</h2>
-                    <p className="text-charcoal-500 mt-2">No payment is collected here. Confirm availability, add-ons, and payment arrangements with the seller before paying.</p>
+                    <p className="text-charcoal-500 mt-2">No payment is collected here. Confirm availability, add-ons, and payment arrangements with the seller before paying.</p><dl className="nc-spec-grid mt-6"><div><dt>Contact name</dt><dd>{getValues("firstName")} {getValues("lastName")}</dd></div><div><dt>Email</dt><dd className="break-all normal-case">{getValues("email")}</dd></div><div><dt>Phone</dt><dd>{getValues("phone")}</dd></div></dl>
                   </div>
                   <div className="flex gap-4">
                     <button onClick={() => setStep(2)} className="flex-1 py-4 border-2 border-pearl-300 text-charcoal-700 font-medium rounded-xl hover:bg-pearl-50 transition-colors">Back</button>
@@ -410,7 +403,7 @@ export default function BookingPage() {
                   key="step4"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white rounded-3xl shadow-card overflow-hidden text-center"
+                  className="bg-white rounded-2xl border border-lightborder overflow-hidden text-center"
                 >
                   <div className="p-8">
                     <motion.div
@@ -430,7 +423,7 @@ export default function BookingPage() {
                     </p>
 
                     <div className="bg-pearl-50 rounded-2xl p-6 mb-6 text-left">
-                      <h3 className="font-semibold text-charcoal-800 mb-4">Order Summary</h3>
+                      <h3 className="font-semibold text-charcoal-800 mb-4">Request summary</h3>
                       <div className="flex items-center gap-4 mb-4">
                         {carImage ? (
                           <img src={carImage} alt={carName} className="w-20 h-16 object-cover rounded-lg" />
@@ -461,7 +454,7 @@ export default function BookingPage() {
                     </div>
 
                     <div className="flex gap-4">
-                      <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 border-2 border-naija-500 text-naija-600 font-medium rounded-xl hover:bg-naija-50 transition-colors">
+                      <button onClick={() => navigate('/dashboard')} className="flex-1 py-3 border border-naija-500 text-naija-600 font-medium rounded-xl hover:bg-naija-50 transition-colors">
                         View Dashboard
                       </button>
                       <button onClick={() => navigate('/cars')} className="flex-1 btn-primary py-3 rounded-xl">
@@ -474,15 +467,15 @@ export default function BookingPage() {
             </AnimatePresence>
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* Request summary Sidebar */}
           <div className="lg:col-span-1">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-card overflow-hidden sticky top-28"
+              className="bg-white rounded-2xl border border-lightborder overflow-hidden sticky top-28"
             >
               <div className="p-6 border-b border-pearl-200">
-                <h3 className="text-lg font-display font-bold text-charcoal-800">Order Summary</h3>
+                <h3 className="text-lg font-display font-bold text-charcoal-800">Request summary</h3>
               </div>
               <div className="p-6">
                 {/* Car Info */}
@@ -522,17 +515,17 @@ export default function BookingPage() {
 
                 <div className="border-t border-pearl-200 pt-4 mb-6">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-charcoal-800">Total</span>
+                    <span className="text-lg font-semibold text-charcoal-800">Estimated total</span>
                     <span className="text-2xl font-bold text-naija-600">{formatPrice(confirmedTotal ?? totalPrice)}</span>
                   </div>
                 </div>
 
                 {/* Trust Badges */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Shield className="w-5 h-5 text-naija-500" /><span>Buyer Protection Guarantee</span></div>
-                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><BadgeCheck className="w-5 h-5 text-naija-500" /><span>Verified Vehicle</span></div>
+                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Shield className="w-5 h-5 text-naija-500" /><span>Inspect the vehicle before paying</span></div>
+                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><BadgeCheck className="w-5 h-5 text-naija-500" /><span>Confirm documents with the seller</span></div>
                   <div className="flex items-center gap-3 text-sm text-charcoal-600"><Lock className="w-5 h-5 text-naija-500" /><span>Review details before paying</span></div>
-                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Clock className="w-5 h-5 text-naija-500" /><span>Quick Response Guaranteed</span></div>
+                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Clock className="w-5 h-5 text-naija-500" /><span>Arrange a viewing directly</span></div>
                 </div>
               </div>
             </motion.div>

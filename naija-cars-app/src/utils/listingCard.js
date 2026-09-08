@@ -30,8 +30,8 @@ export function transformToCardShape(listing) {
     year: listing.year,
     trim: listing.trim || '',
     price: parseFloat(listing.price),
-    pricePerDay: listing.pricePerDay ? parseFloat(listing.pricePerDay) : undefined,
-    mileage: listing.mileage || 0,
+    pricePerDay: listing.listingType === 'RENT' ? parseFloat(listing.price) : undefined,
+    mileage: listing.mileage ?? null,
     transmission: listing.transmission,
     fuelType: listing.fuelType,
     condition: conditionMap[listing.condition] || listing.condition?.replace(/_/g, ' '),
@@ -54,7 +54,6 @@ export function transformToCardShape(listing) {
       name: listing.seller?.profile?.businessName || 'Private Seller',
       phone: listing.phone || listing.seller?.phoneNumber || '',
       verified: listing.seller?.profile?.verificationBadge || false,
-      rating: 4.5,
     },
   };
 }

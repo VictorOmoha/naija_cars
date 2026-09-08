@@ -1,52 +1,23 @@
-/**
- * Contact form route
- * POST /api/contact
- *
- * Accepts the contact-page form submission, validates it, and logs it.
- * When an email provider (Nodemailer / SendGrid) is configured, the
- * console.log calls below can be replaced with actual email dispatch.
- */
-
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-
+const rateLimit = require('express-rate-limit');
+const prisma = require('../lib/prisma');
 const router = express.Router();
-
-const contactValidation = [
-  body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
-  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('subject').notEmpty().withMessage('Subject is required'),
-  body('message')
-    .trim()
-    .isLength({ min: 20 })
-    .withMessage('Message must be at least 20 characters'),
-];
-
-router.post('/', contactValidation, (req, res) => {
+router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, error: { message: 'Too many enquiries. Please try again in a few minutes.' } } }));
+router.post('/', [
+  body('firstName').isString().bail().trim().isLength({ min: 1, max: 80 }),
+  body('lastName').isString().bail().trim().isLength({ min: 1, max: 80 }),
+  body('email').isEmail().isLength({ max: 254 }).normalizeEmail(),
+  body('phone').optional({ nullable: true, checkFalsy: true }).isString().bail().isLength({ max: 30 }),
+  body('subject').isString().bail().trim().isLength({ min: 1, max: 150 }),
+  body('message').isString().bail().trim().isLength({ min: 20, max: 5000 }),
+], async (req, res, next) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      error: { message: 'Validation failed', details: errors.array() },
-    });
-  }
-
-  const { firstName, lastName, email, phone, subject, message } = req.body;
-
-  // Log the enquiry — replace with email/CRM integration when ready
-  console.log('[Contact Form]', {
-    from: `${firstName} ${lastName} <${email}>`,
-    phone: phone || 'not provided',
-    subject,
-    message,
-    receivedAt: new Date().toISOString(),
-  });
-
-  return res.status(200).json({
-    success: true,
-    data: { message: "Thank you for reaching out. We'll get back to you within 24 hours." },
-  });
+  if (!errors.isEmpty()) return res.status(400).json({ success: false, error: { message: 'Please check your contact details and enter a message of 20–5,000 characters.', details: errors.array() } });
+  try {
+    const { firstName, lastName, email, phone, subject, message } = req.body;
+    const inquiry = await prisma.contactInquiry.create({ data: { firstName, lastName, email, phone: phone || null, subject, message } });
+    res.status(201).json({ success: true, data: { reference: inquiry.id, message: 'Your enquiry has been saved for our support team.' } });
+  } catch (error) { next(error); }
 });
-
 module.exports = router;

@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   X, Heart, MapPin, Gauge, Fuel, Settings2,
   BadgeCheck, Phone, MessageCircle, ChevronLeft, ChevronRight,
-  Star, Shield, ExternalLink
+  Shield, ExternalLink
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingsAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import SharePopover from '../SharePopover';
+import Dialog from '../Dialog';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
@@ -26,6 +27,8 @@ const QuickViewModal = () => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
+
+  useEffect(() => { setCurrentImage(0); setIsLiked(Boolean(selectedCar?.isFavorited)); }, [selectedCar?.id, selectedCar?.isFavorited]);
 
   if (!selectedCar) return null;
 
@@ -99,25 +102,7 @@ const QuickViewModal = () => {
     : 'Check out this listing on Naija Cars!';
 
   return (
-    <AnimatePresence>
-      {isQuickViewOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4"
-          onClick={closeQuickView}
-        >
-          <div className="absolute inset-0 bg-charcoal-900/60 backdrop-blur-sm" />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-4xl bg-white border border-pearl-200
-                     rounded-3xl shadow-card-hover overflow-hidden max-h-[90vh] overflow-y-auto"
-          >
+    <Dialog open={isQuickViewOpen} onClose={closeQuickView} title="Car details" className="nc-quick-view">
             <div className="grid md:grid-cols-2">
               {/* Left - Image Gallery */}
               <div className="relative h-72 md:h-full min-h-[400px] bg-pearl-100">
@@ -131,6 +116,7 @@ const QuickViewModal = () => {
                 {imageUrls.length > 1 && (
                   <>
                     <button
+                      aria-label="Previous photo"
                       onClick={() => setCurrentImage((prev) =>
                         prev === 0 ? imageUrls.length - 1 : prev - 1
                       )}
@@ -140,6 +126,7 @@ const QuickViewModal = () => {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     <button
+                      aria-label="Next photo"
                       onClick={() => setCurrentImage((prev) =>
                         prev === imageUrls.length - 1 ? 0 : prev + 1
                       )}
@@ -180,6 +167,8 @@ const QuickViewModal = () => {
                   {/* Action buttons — no absolute close button so nothing overlaps */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <motion.button
+                      aria-label={isLiked ? 'Remove from saved cars' : 'Save car'}
+                      aria-pressed={isLiked}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={async () => {
@@ -234,7 +223,7 @@ const QuickViewModal = () => {
                   <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border
                                border-emerald-200 rounded-xl text-emerald-700">
                     <BadgeCheck className="w-5 h-5" />
-                    <span className="font-medium">Verified Listing</span>
+                    <span className="font-medium">Verified seller</span>
                   </div>
                 )}
 
@@ -329,10 +318,6 @@ const QuickViewModal = () => {
                           {selectedCar.dealer?.name || selectedCar.company?.name}
                         </p>
                         <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-gold-500 fill-current" />
-                          <span className="text-sm text-charcoal-500">
-                            {selectedCar.dealer?.rating || selectedCar.company?.rating}
-                          </span>
                           {(selectedCar.dealer?.verified || selectedCar.company?.verified) && (
                             <BadgeCheck className="w-4 h-4 text-emerald-500 ml-1" />
                           )}
@@ -374,7 +359,7 @@ const QuickViewModal = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleContact('message')}
-                      className="flex items-center justify-center gap-2 py-3 border-2 border-naija-500
+                      className="flex items-center justify-center gap-2 py-3 border border-naija-500
                                text-naija-500 font-semibold rounded-xl hover:bg-naija-500
                                hover:text-white transition-all"
                     >
@@ -385,10 +370,7 @@ const QuickViewModal = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </Dialog>
   );
 };
 

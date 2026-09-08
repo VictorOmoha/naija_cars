@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageLayout';
+import PageContents from '../components/PageContents';
 import { motion } from 'framer-motion';
 import { FileText, ChevronRight } from 'lucide-react';
 
@@ -159,28 +161,9 @@ These Terms were last updated on January 1, 2024.`
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-pearl-100">
-      {/* Hero */}
-      <div className="bg-gradient-to-r from-naija-600 to-naija-500 pt-10 pb-16">
-        <div className="section-container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4"
-          >
-            <div className="p-4 bg-white/20 rounded-2xl">
-              <FileText className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-display font-bold text-white">
-                Terms of Service
-              </h1>
-              <p className="text-white/80 mt-1">Last updated: January 1, 2024</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+      <PageHeader eyebrow="NaijaCars policies" title="Terms of service" description="Last updated: January 1, 2024" />
 
-      <div className="section-container py-12">
+      <div className="nc-page-width py-12">
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
           <motion.div
@@ -188,21 +171,7 @@ export default function TermsPage() {
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
-            <div className="bg-white rounded-2xl shadow-card p-4 sticky top-28">
-              <h3 className="font-semibold text-charcoal-800 mb-4 px-2">Quick Navigation</h3>
-              <nav className="space-y-1">
-                {sections.map((section) => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-charcoal-600 hover:bg-naija-50 hover:text-naija-600 rounded-lg transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                    {section.title.replace(/^\d+\.\s*/, '')}
-                  </a>
-                ))}
-              </nav>
-            </div>
+            <PageContents sections={sections} />
           </motion.div>
 
           {/* Content */}
@@ -211,7 +180,7 @@ export default function TermsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="lg:col-span-3"
           >
-            <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+            <div className="nc-panel !p-0">
               <div className="p-6 md:p-8 border-b border-pearl-200">
                 <p className="text-charcoal-600">
                   Welcome to NaijaCars. Please read these Terms of Service carefully before using our platform. By using NaijaCars, you agree to be bound by these terms.
@@ -242,11 +211,11 @@ export default function TermsPage() {
 
             {/* Related Links */}
             <div className="mt-8 grid md:grid-cols-2 gap-4">
-              <a href="/privacy" className="bg-white rounded-2xl shadow-card p-6 hover:shadow-card-hover transition-all">
+              <a href="/privacy" className="bg-white rounded-2xl border border-lightborder p-6 hover:shadow-card-hover transition-all">
                 <h3 className="font-display font-bold text-charcoal-800 mb-2">Privacy Policy</h3>
                 <p className="text-charcoal-500 text-sm">Learn how we collect and use your data</p>
               </a>
-              <a href="/help" className="bg-white rounded-2xl shadow-card p-6 hover:shadow-card-hover transition-all">
+              <a href="/help" className="bg-white rounded-2xl border border-lightborder p-6 hover:shadow-card-hover transition-all">
                 <h3 className="font-display font-bold text-charcoal-800 mb-2">Help Center</h3>
                 <p className="text-charcoal-500 text-sm">Find answers to common questions</p>
               </a>

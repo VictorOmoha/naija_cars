@@ -1,6 +1,6 @@
 export const CAR_MAKES = [
   'Toyota', 'Honda', 'Mercedes-Benz', 'BMW', 'Lexus', 'Ford', 'Hyundai',
-  'Kia', 'Nissan', 'Volkswagen', 'Audi', 'Peugeot', 'Mazda', 'Mitsubishi'
+  'Kia', 'Nissan', 'Volkswagen', 'Audi', 'Peugeot', 'Mazda', 'Mitsubishi', 'Land Rover', 'Range Rover', 'Acura', 'Chevrolet', 'Jeep', 'Porsche', 'Volvo'
 ];
 
 export const BODY_TYPES = [
@@ -8,8 +8,11 @@ export const BODY_TYPES = [
 ];
 
 export const NIGERIAN_STATES = [
-  'Lagos', 'Abuja', 'Kano', 'Rivers', 'Oyo', 'Kaduna', 'Ogun', 'Edo',
-  'Delta', 'Enugu', 'Anambra', 'Imo', 'Katsina', 'Sokoto', 'Borno'
+  'Abia', 'Abuja', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa',
+  'Benue', 'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu',
+  'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi',
+  'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo',
+  'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara'
 ];
 
 export const CAR_FEATURES = [

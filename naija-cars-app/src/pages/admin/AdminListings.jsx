@@ -44,12 +44,13 @@ const conditionOptions = [
   { value: 'NIGERIAN_USED', label: 'Nigerian Used' },
 ];
 
-export default function AdminListings() {
+export default function AdminListings({ initialStatus = '', featuredOnly = false }) {
   const [searchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [statusFilter, setStatusFilter] = useState(initialStatus || searchParams.get('status') || '');
   const [typeFilter, setTypeFilter] = useState('');
   const [conditionFilter, setConditionFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -209,6 +210,7 @@ export default function AdminListings() {
 
   const fetchListings = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const response = await api.get('/admin/listings', {
         params: {
@@ -218,12 +220,14 @@ export default function AdminListings() {
           status: statusFilter,
           listingType: typeFilter,
           condition: conditionFilter,
+          featured: featuredOnly ? 'true' : undefined,
         },
       });
       setListings(response.data.data.listings || []);
       setTotalPages(response.data.data.totalPages || 1);
     } catch (error) {
       console.error('Error fetching listings:', error);
+      setLoadError('Could not load listings. Please try again.');
       setListings([]);
       setTotalPages(1);
     } finally {
@@ -319,9 +323,9 @@ export default function AdminListings() {
   return (
     <div className="space-y-6">
       {/* Header with Title and Add Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-charcoal-800">Listings Management</h1>
+          <h1 className="text-2xl font-display font-bold text-charcoal-800">{featuredOnly ? 'Featured listings' : initialStatus === 'PENDING' ? 'Pending listings' : 'Manage listings'}</h1>
           <p className="text-charcoal-500">Manage all car listings on the platform</p>
         </div>
         <button
@@ -342,8 +346,9 @@ export default function AdminListings() {
             <input
               type="text"
               placeholder="Search by make, model, or seller..."
+              aria-label="Search listings"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500 transition-all"
             />
           </div>
@@ -351,8 +356,9 @@ export default function AdminListings() {
           {/* Filters */}
           <div className="flex flex-wrap gap-3">
             <select
+              aria-label="Listing status"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
               className="px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500 transition-all bg-white"
             >
               {statusOptions.map(option => (
@@ -360,8 +366,9 @@ export default function AdminListings() {
               ))}
             </select>
             <select
+              aria-label="Listing type"
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
               className="px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500 transition-all bg-white"
             >
               {listingTypeOptions.map(option => (
@@ -369,8 +376,9 @@ export default function AdminListings() {
               ))}
             </select>
             <select
+              aria-label="Vehicle condition"
               value={conditionFilter}
-              onChange={(e) => setConditionFilter(e.target.value)}
+              onChange={(e) => { setConditionFilter(e.target.value); setCurrentPage(1); }}
               className="px-4 py-2.5 border border-pearl-200 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-naija-500 transition-all bg-white"
             >
               {conditionOptions.map(option => (
@@ -403,6 +411,7 @@ export default function AdminListings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-pearl-100">
+                  {listings.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-muted">{loadError ? <div role="alert">{loadError}<button className="nc-button nc-button-secondary ml-4" onClick={fetchListings}>Try again</button></div> : 'No listings match these filters.'}</td></tr>}
                   {listings.map((listing) => (
                     <tr key={listing.id} className="hover:bg-pearl-50 transition-colors">
                       <td className="px-6 py-4">
@@ -468,6 +477,7 @@ export default function AdminListings() {
                       </td>
                       <td className="px-6 py-4 text-right relative">
                         <button
+                          aria-label={`Actions for ${listing.year} ${listing.make} ${listing.model}`}
                           onClick={() => setActionDropdown(actionDropdown === listing.id ? null : listing.id)}
                           className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
                         >

@@ -70,7 +70,7 @@ export default function AdminLayout() {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
     const active = item.href ? isActive(item.href, item.exact) : item.children?.some(c => isActive(c.href));
-    const expanded = expandedItems[item.name];
+    const expanded = expandedItems[item.name] ?? active;
 
     if (hasChildren) {
       return (
@@ -104,7 +104,7 @@ export default function AdminLayout() {
                       to={child.href}
                       onClick={() => mobile && setSidebarOpen(false)}
                       className={`block px-4 py-2 rounded-lg text-sm transition-all ${
-                        isActive(child.href)
+                        isActive(child.href, true)
                           ? 'bg-naija-100 text-naija-700 font-medium'
                           : 'text-charcoal-500 hover:bg-pearl-100 hover:text-charcoal-700'
                       }`}
@@ -137,12 +137,12 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-pearl-50">
+    <div className="nc-admin min-h-screen bg-pearl-50">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-pearl-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setSidebarOpen(true)}
+            aria-label="Open admin menu" aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen(true)}
             className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
           >
             <Menu className="w-6 h-6 text-charcoal-700" />
@@ -151,9 +151,9 @@ export default function AdminLayout() {
             <Shield className="w-6 h-6 text-naija-500" />
             <span className="font-display font-bold text-charcoal-800">Admin Portal</span>
           </div>
-          <Link to="/admin" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
+          <Link to="/admin/settings" aria-label="Support inbox" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
             <Bell className="w-6 h-6 text-charcoal-700" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+
           </Link>
         </div>
       </div>
@@ -165,7 +165,7 @@ export default function AdminLayout() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
+            aria-label="Close admin menu" onClick={() => setSidebarOpen(false)}
             className="lg:hidden fixed inset-0 bg-black/50 z-40"
           />
         )}
@@ -173,8 +173,9 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
+        id="admin-sidebar"
         className={`fixed top-0 left-0 bottom-0 w-72 bg-white border-r border-pearl-200 z-50 transform transition-transform lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'
         }`}
       >
         <div className="flex flex-col h-full">
@@ -191,7 +192,7 @@ export default function AdminLayout() {
                 </div>
               </Link>
               <button
-                onClick={() => setSidebarOpen(false)}
+                aria-label="Close admin menu" onClick={() => setSidebarOpen(false)}
                 className="lg:hidden p-2 hover:bg-pearl-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-charcoal-500" />
@@ -230,7 +231,7 @@ export default function AdminLayout() {
                 View Site
               </Link>
               <button
-                onClick={handleLogout}
+                aria-label="Sign out" onClick={handleLogout}
                 className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm"
               >
                 <LogOut className="w-4 h-4" />
@@ -252,9 +253,9 @@ export default function AdminLayout() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/admin" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
+            <Link to="/admin/settings" aria-label="Support inbox" className="p-2 hover:bg-pearl-100 rounded-lg transition-colors relative">
               <Bell className="w-5 h-5 text-charcoal-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+
             </Link>
             <div className="flex items-center gap-3 pl-4 border-l border-pearl-200">
               <div className="text-right">
@@ -274,6 +275,7 @@ export default function AdminLayout() {
 
         {/* Page Content */}
         <div className="p-4 lg:p-8">
+          {['/admin', '/admin/users'].includes(location.pathname) && <h1 className="lg:hidden text-2xl font-bold mb-6">{location.pathname === '/admin' ? 'Dashboard' : 'Manage users'}</h1>}
           <Outlet />
         </div>
       </main>

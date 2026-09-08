@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageLayout';
+import BookingRequests from '../components/BookingRequests';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +16,7 @@ export default function DashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { setIsListCarOpen, addToast } = useApp();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('requests');
 
   // Fetch user's own listings (all statuses)
   const { data: listingsData, refetch } = useQuery({
@@ -55,7 +57,7 @@ export default function DashboardPage() {
   const listings = listingsData?.data?.listings || [];
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-success-100 text-success-700';
+      case 'ACTIVE': return 'bg-emerald-50 text-emerald-700';
       case 'PENDING': return 'bg-gold-100 text-gold-700';
       case 'SOLD': return 'bg-blue-100 text-blue-700';
       case 'RENTED': return 'bg-purple-100 text-purple-700';
@@ -93,32 +95,25 @@ export default function DashboardPage() {
   };
 
   const tabs = [
+    { id: 'requests', label: 'Requests', icon: MessageCircle },
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'listings', label: 'My Listings', icon: Car },
   ];
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-10 pb-20">
-      <div className="container-custom">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-display font-bold text-charcoal-700 mb-2">
-            Dashboard
-          </h1>
-          <p className="text-charcoal-500">
-            Welcome back, {user?.profile?.firstName || user?.email}
-          </p>
-        </div>
+    <div className="min-h-screen bg-paper pb-20">
+      <PageHeader eyebrow="Your activity" title="Dashboard" description={`Welcome back, ${user?.profile?.firstName || user?.email}. Manage your requests and listings here.`} />
+      <div className="nc-page-width pt-8">
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-pearl-200">
+        <div className="nc-dashboard-tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors ${
+                aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3 md:px-6 py-3 border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-naija-500 text-naija-600'
                     : 'border-transparent text-charcoal-500 hover:text-charcoal-700'
@@ -131,6 +126,7 @@ export default function DashboardPage() {
           })}
         </div>
 
+        {activeTab === 'requests' && <BookingRequests />}
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
@@ -187,7 +183,7 @@ export default function DashboardPage() {
                   <div className="p-3 bg-naija-100 rounded-xl">
                     <Car className="w-6 h-6 text-naija-600" />
                   </div>
-                  <span className="text-xs text-success-600 font-medium">Active</span>
+                  <span className="text-xs text-emerald-700 font-medium">Active</span>
                 </div>
                 <div className="text-3xl font-bold text-charcoal-800 mb-1">
                   {activeListings}

@@ -33,3 +33,13 @@ nul
 # Claude settings (optional - remove if you want to share)
 # .claude/
 .claude/
+
+# Isolated local preview database and runtime
+.preview/
+
+# Keep final design evidence; intermediate captures and logs stay local.
+/design-qa/*
+!/design-qa/final-validation.txt
+!/design-qa/site-detail-final-desktop.png
+!/design-qa/site-detail-final-mobile.png
+!/design-qa/site-home-final-desktop.png

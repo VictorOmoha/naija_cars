@@ -171,11 +171,11 @@ export default function AdminPage() {
 
               <div className="bg-white rounded-2xl p-6 shadow-card">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-success-100 rounded-xl">
-                    <Users className="w-6 h-6 text-success-600" />
+                  <div className="p-3 bg-emerald-50 rounded-xl">
+                    <Users className="w-6 h-6 text-emerald-700" />
                   </div>
                   {stats.userGrowth > 0 && (
-                    <span className="text-xs text-success-600 font-medium">+{stats.userGrowth}%</span>
+                    <span className="text-xs text-emerald-700 font-medium">+{stats.userGrowth}%</span>
                   )}
                 </div>
                 <div className="text-3xl font-bold text-charcoal-800 mb-1">{stats.totalUsers ?? 0}</div>
@@ -188,7 +188,7 @@ export default function AdminPage() {
                     <CheckCircle className="w-6 h-6 text-gold-600" />
                   </div>
                   {stats.listingGrowth > 0 && (
-                    <span className="text-xs text-success-600 font-medium">+{stats.listingGrowth}%</span>
+                    <span className="text-xs text-emerald-700 font-medium">+{stats.listingGrowth}%</span>
                   )}
                 </div>
                 <div className="text-3xl font-bold text-charcoal-800 mb-1">{stats.activeListings ?? 0}</div>

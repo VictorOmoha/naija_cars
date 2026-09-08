@@ -305,6 +305,7 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-6 py-4 text-right relative">
                         <button
+                          aria-label={`Actions for ${user.profile?.firstName || 'user'}`}
                           onClick={() => setActionDropdown(actionDropdown === user.id ? null : user.id)}
                           className="p-2 hover:bg-pearl-100 rounded-lg transition-colors"
                         >

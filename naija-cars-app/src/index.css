@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* "1b: Bold Market Energy" tokens */
+  /* NaijaCars premium marketplace tokens */
   --ink: #0E1F17;
   --brand-green: #008753;
   --brand-green-hover: #007145;
@@ -41,7 +41,7 @@ html {
 }
 
 body {
-  font-family: 'Archivo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--paper);
   color: var(--ink);
   overflow-x: hidden;
@@ -76,111 +76,111 @@ body {
 
 /* Component Layer Utilities */
 @layer components {
-  /* ---------- "1b: Bold Market Energy" primitives ---------- */
+  /* ---------- NaijaCars premium marketplace primitives ---------- */
 
   /* Display headlines: 900, UPPERCASE, tight tracking + leading */
-  .display-1b {
-    @apply font-black uppercase;
+  .nc-heading {
+    @apply font-bold;
     letter-spacing: -0.03em;
     line-height: 1;
   }
 
   /* Micro-labels: input labels, tags */
-  .microlabel-1b {
-    @apply font-extrabold uppercase;
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
+  .nc-label {
+    @apply font-semibold;
+    font-size: 12px;
+    letter-spacing: 0.02em;
     color: var(--placeholder);
   }
 
   /* Pill buttons */
-  .btn-pill {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-full font-extrabold
+  .nc-action {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold
            transition-colors duration-150 cursor-pointer select-none;
   }
-  .btn-pill:active { transform: translateY(1px); }
-  .btn-pill-green {
-    @apply btn-pill text-white;
+  .nc-action:active { transform: translateY(1px); }
+  .nc-action-green {
+    @apply nc-action text-white;
     background: var(--brand-green);
   }
-  .btn-pill-green:hover { background: var(--brand-green-hover); }
-  .btn-pill-dark {
-    @apply btn-pill text-white;
+  .nc-action-green:hover { background: var(--brand-green-hover); }
+  .nc-action-dark {
+    @apply nc-action text-white;
     background: var(--ink);
   }
-  .btn-pill-dark:hover { background: #1a2f24; }
-  .btn-pill-amber {
-    @apply btn-pill;
+  .nc-action-dark:hover { background: #1a2f24; }
+  .nc-action-amber {
+    @apply nc-action;
     background: var(--amber);
     color: var(--ink);
   }
-  .btn-pill-amber:hover { background: #e9a92e; }
-  .btn-pill-outline {
-    @apply btn-pill;
-    border: 2px solid var(--ink);
+  .nc-action-amber:hover { background: #e9a92e; }
+  .nc-action-outline {
+    @apply nc-action;
+    border: 1px solid var(--light-border);
     color: var(--ink);
     background: transparent;
   }
-  .btn-pill-outline:hover { background: rgba(14, 31, 23, 0.06); }
+  .nc-action-outline:hover { background: rgba(14, 31, 23, 0.06); }
 
   /* Cards with 2px ink border + hard offset shadow */
-  .card-1b {
+  .nc-surface {
     @apply bg-white overflow-hidden;
-    border: 2px solid var(--ink);
+    border: 1px solid var(--light-border);
     border-radius: 16px;
-    box-shadow: 4px 4px 0 var(--ink);
+    box-shadow: 0 2px 10px #10281f05;
   }
-  .card-1b-lg {
+  .nc-surface-lg {
     @apply bg-white overflow-hidden;
-    border: 2px solid var(--ink);
+    border: 1px solid var(--light-border);
     border-radius: 18px;
-    box-shadow: 5px 5px 0 var(--ink);
+    box-shadow: 0 2px 10px #10281f05;
   }
-  .card-1b-hover {
+  .nc-surface-hover {
     transition: box-shadow 0.15s ease, transform 0.15s ease;
   }
-  .card-1b-hover:hover {
-    box-shadow: 6px 6px 0 var(--ink);
-    transform: translate(-1px, -1px);
+  .nc-surface-hover:hover {
+    box-shadow: 0 4px 18px #10281f0a;
+    transform: translateY(-1px);
   }
-  .card-1b-selected {
+  .nc-surface-selected {
     border-color: var(--brand-green) !important;
-    box-shadow: 4px 4px 0 var(--brand-green) !important;
+    box-shadow: 0 0 0 1px var(--brand-green) !important;
   }
 
   /* Inputs: 2px ink border, 10px radius, bold value */
-  .input-1b {
-    @apply w-full font-bold bg-white;
-    border: 2px solid var(--ink);
+  .nc-input {
+    @apply w-full font-medium bg-white;
+    border: 1px solid var(--light-border);
     border-radius: 10px;
     padding: 13px 15px;
     font-size: 14px;
     color: var(--ink);
   }
-  .input-1b:focus {
+  .nc-input:focus {
     outline: none;
     border-color: var(--brand-green);
   }
-  .input-1b::placeholder { color: var(--placeholder); }
+  .nc-input::placeholder { color: var(--placeholder); }
 
   /* Light-bordered input (inside white panels on colored bg) */
-  .input-1b-light {
-    @apply w-full font-bold bg-white;
-    border: 2px solid var(--light-border);
+  .nc-input-light {
+    @apply w-full font-medium bg-white;
+    border: 1px solid var(--light-border);
     border-radius: 10px;
     padding: 12px 14px;
     font-size: 13.5px;
     color: var(--ink);
   }
-  .input-1b-light:focus {
+  .nc-input-light:focus {
     outline: none;
     border-color: var(--brand-green);
   }
-  .input-1b-light::placeholder { color: var(--placeholder); }
+  .nc-input-light::placeholder { color: var(--placeholder); }
 
   /* Verified pill badge */
   .badge-verified {
-    @apply inline-flex items-center gap-1 rounded-full text-white font-black uppercase;
+    @apply inline-flex items-center gap-1 rounded-full text-white font-bold uppercase;
     background: var(--brand-green);
     font-size: 10.5px;
     letter-spacing: 0.05em;
@@ -188,7 +188,7 @@ body {
   }
 
   /* Ticker strip */
-  .ticker-1b {
+  .nc-ticker {
     background: var(--ink);
     color: var(--mint);
     font-size: 11.5px;
@@ -202,20 +202,20 @@ body {
   }
 
   /* Striped placeholder for missing photos — part of the "1b look" */
-  .stripes-1b {
-    background: repeating-linear-gradient(45deg, #E8E5DC 0 12px, #F0EEE6 12px 24px);
+  .nc-photo-placeholder {
+    background: #edf4ef;
   }
-  .stripes-1b-dark {
-    background: repeating-linear-gradient(45deg, #163526 0 12px, #1B4030 12px 24px);
+  .nc-photo-placeholder-dark {
+    background: #edf4ef;
   }
 
   /* Dual-handle range slider (budget filter) */
-  .range-1b {
+  .nc-range {
     @apply absolute w-full appearance-none bg-transparent pointer-events-none;
     height: 6px;
     top: 0;
   }
-  .range-1b::-webkit-slider-thumb {
+  .nc-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     pointer-events: auto;
@@ -227,7 +227,7 @@ body {
     cursor: pointer;
     margin-top: 0;
   }
-  .range-1b::-moz-range-thumb {
+  .nc-range::-moz-range-thumb {
     pointer-events: auto;
     width: 14px;
     height: 14px;
@@ -468,9 +468,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .ticker-track { animation: none; }
-  .card-1b-hover,
-  .card-1b-hover:hover,
-  .btn-pill:active { transition: none; transform: none; }
+  .nc-surface-hover,
+  .nc-surface-hover:hover,
+  .nc-action:active { transition: none; transform: none; }
   .nc-pop, .nc-pop-2, .nc-up-sub, .nc-up-search,
   .nc-drift-1, .nc-drift-2,
   .hero-car-pop, .hero-car-layer { animation: none; }

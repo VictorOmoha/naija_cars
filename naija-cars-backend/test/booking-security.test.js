@@ -85,3 +85,15 @@ test('purchase and rental add-ons are calculated without arbitrary discounts', (
   }), 10725000);
   assert.equal(calculateBookingTotal(listing, { bookingType: 'rental', rentalDays: 7, addons: { insurance: true, delivery: true } }), 860000);
 });
+
+test('request history only queries the authenticated buyer or seller', async () => {
+  let whereUsed;
+  prisma.booking.findMany = async ({ where, take, skip }) => { whereUsed = where; assert.equal(take, 20); assert.equal(skip, 20); return []; };
+  prisma.booking.count = async ({ where }) => { assert.deepEqual(where, { OR: [{ buyerId }, { sellerId: buyerId }] }); return 0; };
+  const response = await fetch(`${baseUrl}/bookings/me?page=2&buyerId=someone-else`, { headers: { Authorization: `Bearer ${jwt.sign({ id: buyerId }, process.env.JWT_SECRET)}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(whereUsed, { OR: [{ buyerId }, { sellerId: buyerId }] });
+});
+test('request history rejects signed-out users', async () => {
+  assert.equal((await fetch(`${baseUrl}/bookings/me`)).status, 401);
+});

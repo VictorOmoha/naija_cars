@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound, ArrowLeft } from 'lucide-react';
+import Dialog from '../Dialog';
+import { Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound, ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import useAuthStore from '../../stores/authStore';
 import { authAPI } from '../../services/api';
@@ -217,42 +218,15 @@ const AuthModal = () => {
   };
 
   return (
-    <AnimatePresence>
-      {isSignInOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4"
-          onClick={handleClose}
-        >
-          <div className="absolute inset-0 bg-charcoal-900/60 backdrop-blur-sm" />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md bg-white border border-pearl-200
-                     rounded-3xl shadow-card-hover overflow-hidden max-h-[90vh] overflow-y-auto"
-          >
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 p-2 text-charcoal-600 hover:text-charcoal-700
-                       hover:bg-pearl-100 rounded-xl transition-colors z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
+    <Dialog open={isSignInOpen} onClose={handleClose} title="Your NaijaCars account" className="nc-auth-dialog">
             {/* LOGIN MODE */}
             {mode === 'login' && (
               <>
                 <div className="p-8 pb-0 text-center">
                   <h2 className="font-display text-2xl font-semibold text-charcoal-800 mb-2">
-                    Welcome Back
+                    Welcome back
                   </h2>
-                  <p className="text-charcoal-500">Sign in to your Naija Cars account</p>
+                  <p className="text-charcoal-500">Sign in to your NaijaCars account</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="p-8 space-y-5">
@@ -263,14 +237,14 @@ const AuthModal = () => {
                   )}
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
                         type="email"
-                        name="email"
+                        name="email" aria-label="Email address"
                         value={formData.email}
                         onChange={handleChange}
                         autoComplete="username"
@@ -284,14 +258,14 @@ const AuthModal = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Password
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        name="password"
+                        name="password" aria-label="Password"
                         value={formData.password}
                         onChange={handleChange}
                         autoComplete="current-password"
@@ -303,7 +277,7 @@ const AuthModal = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal-400
                                  hover:text-charcoal-600 transition-colors"
                       >
@@ -359,7 +333,7 @@ const AuthModal = () => {
 
                 <form onSubmit={handleForgotPassword} className="p-8 space-y-5">
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Email Address
                     </label>
                     <div className="relative">
@@ -419,7 +393,7 @@ const AuthModal = () => {
 
                 <form onSubmit={handleResetPassword} className="p-8 space-y-5">
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider text-center">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium text-center">
                       Reset Code
                     </label>
                     <input
@@ -436,7 +410,7 @@ const AuthModal = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       New Password
                     </label>
                     <div className="relative">
@@ -454,7 +428,7 @@ const AuthModal = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal-400
                                  hover:text-charcoal-600 transition-colors"
                       >
@@ -572,12 +546,12 @@ const AuthModal = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                      <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                         First Name
                       </label>
                       <input
                         type="text"
-                        name="firstName"
+                        name="firstName" aria-label="First name"
                         value={formData.firstName}
                         onChange={handleChange}
                         placeholder="John"
@@ -588,12 +562,12 @@ const AuthModal = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                      <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                         Last Name
                       </label>
                       <input
                         type="text"
-                        name="lastName"
+                        name="lastName" aria-label="Last name"
                         value={formData.lastName}
                         onChange={handleChange}
                         placeholder="Doe"
@@ -606,14 +580,14 @@ const AuthModal = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
                         type="email"
-                        name="email"
+                        name="email" aria-label="Email address"
                         value={formData.email}
                         onChange={handleChange}
                         autoComplete="username"
@@ -627,14 +601,14 @@ const AuthModal = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Phone Number
                     </label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
                         type="tel"
-                        name="phoneNumber"
+                        name="phoneNumber" aria-label="Phone number"
                         value={formData.phoneNumber}
                         onChange={handleChange}
                         placeholder="+234 800 000 0000"
@@ -647,14 +621,14 @@ const AuthModal = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Password
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        name="password"
+                        name="password" aria-label="Password"
                         value={formData.password}
                         onChange={handleChange}
                         autoComplete="new-password"
@@ -666,7 +640,7 @@ const AuthModal = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal-400
                                  hover:text-charcoal-600 transition-colors"
                       >
@@ -724,7 +698,7 @@ const AuthModal = () => {
                   )}
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium uppercase tracking-wider text-center">
+                    <label className="block text-xs text-charcoal-700 mb-2 font-medium text-center">
                       Verification Code
                     </label>
                     <input
@@ -768,10 +742,7 @@ const AuthModal = () => {
                 </form>
               </>
             )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </Dialog>
   );
 };
 

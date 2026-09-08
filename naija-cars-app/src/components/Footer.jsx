@@ -1,62 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Logo } from './Navbar';
-
-const FOOTER_LINKS = [
-  { name: 'Buy', href: '/cars' },
-  { name: 'Rent', href: '/rent' },
-  { name: 'Sell', href: '/sell' },
-  { name: 'Financing', href: '/pricing' },
-  { name: 'Dealers', href: '/dealers' },
-  { name: 'Support', href: '/help' },
-];
-
-const LEGAL_LINKS = [
-  { name: 'Terms', href: '/terms' },
-  { name: 'Privacy', href: '/privacy' },
-  { name: 'Contact', href: '/contact' },
-];
-
 const Footer = () => (
-  <footer className="border-t-2 border-ink bg-paper">
-    <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-4 md:px-9 py-5 text-[12.5px] font-semibold text-muted">
-      <Link to="/" aria-label="NaijaCars home">
-        <Logo className="text-base" />
-      </Link>
-
-      <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        {FOOTER_LINKS.map((link, i) => (
-          <span key={link.name} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">·</span>}
-            <Link to={link.href} className="hover:text-brand transition-colors">
-              {link.name}
-            </Link>
-          </span>
-        ))}
-      </nav>
-
-      <div className="flex items-center gap-4">
-        <nav className="flex items-center gap-3">
-          {LEGAL_LINKS.map((link) => (
-            <Link key={link.name} to={link.href} className="hover:text-brand transition-colors">
-              {link.name}
-            </Link>
-          ))}
-        </nav>
-        <span>© {new Date().getFullYear()} NaijaCars</span>
-      </div>
+  <footer className="nc-footer">
+    <div className="nc-footer-main">
+      <div><Link to="/" aria-label="NaijaCars home"><Logo /></Link><p>Your next car. Your next chapter.</p></div>
+      <nav aria-label="Marketplace links"><Link to="/cars">Buy a car</Link><Link to="/rent">Rent a car</Link><Link to="/sell">Sell your car</Link><Link to="/dealers">Find a dealer</Link></nav>
+      <nav aria-label="Support links"><Link to="/help">Help centre</Link><Link to="/contact">Contact us</Link><Link to="/valuation">Car valuation</Link><Link to="/pricing">Seller plans</Link></nav>
     </div>
-    <div className="px-4 pb-4 text-center text-xs text-muted">
-      Powered by{' '}
-      <a
-        href="https://omohasolutions.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-semibold hover:text-brand transition-colors"
-      >
-        Omoha Solutions
-      </a>
-    </div>
+    <div className="nc-footer-bottom"><span>© {new Date().getFullYear()} NaijaCars</span><div><Link to="/about">About</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></div><span>Powered by <a href="https://omohasolutions.com" target="_blank" rel="noopener noreferrer">Omoha Solutions</a></span></div>
   </footer>
 );
-
 export default Footer;

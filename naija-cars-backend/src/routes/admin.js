@@ -443,7 +443,8 @@ router.get('/listings', async (req, res) => {
       search = '',
       status = '',
       listingType = '',
-      condition = ''
+      condition = '',
+      featured = ''
     } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -484,6 +485,10 @@ router.get('/listings', async (req, res) => {
 
     if (condition) {
       where.condition = condition;
+    }
+
+    if (featured === 'true') {
+      where.isFeatured = true;
     }
 
     const [listings, total] = await Promise.all([
@@ -1040,5 +1045,7 @@ router.get('/sellers', async (req, res) => {
     });
   }
 });
+
+router.use('/settings', require('./adminSettings'));
 
 module.exports = router;

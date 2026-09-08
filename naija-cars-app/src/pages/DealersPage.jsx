@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
@@ -8,7 +8,6 @@ import {
 import { usersAPI } from '../services/api';
 
 export default function DealersPage() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -42,7 +41,7 @@ export default function DealersPage() {
 
   const getTypeLabel = (userType) => {
     switch (userType) {
-      case 'DEALER': return { label: 'Certified Dealer', color: 'bg-naija-100 text-naija-700' };
+      case 'DEALER': return { label: 'Car dealer', color: 'bg-naija-100 text-naija-700' };
       case 'RENTAL_COMPANY': return { label: 'Rental Company', color: 'bg-blue-100 text-blue-700' };
       default: return { label: 'Private Seller', color: 'bg-pearl-100 text-charcoal-600' };
     }
@@ -51,7 +50,7 @@ export default function DealersPage() {
   return (
     <>
       {/* Hero */}
-      <section className="pt-10 pb-12 bg-gradient-to-br from-gray-800 via-gray-900 to-green-900">
+      <section className="nc-page-banner">
         <div className="section-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -59,17 +58,17 @@ export default function DealersPage() {
             className="max-w-2xl"
           >
             <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-              Verified <span className="text-green-400">Dealers</span>
+              Find a <span className="text-green-400">dealer</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8">
-              Browse trusted car dealers and rental companies across Nigeria.
+              Explore car dealers and rental companies across Nigeria.
             </p>
 
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="text"
+                type="search" aria-label="Search dealers"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by dealer name, city, or state..."
@@ -113,7 +112,7 @@ export default function DealersPage() {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {dealers.map((dealer, i) => {
+              {dealers.map((dealer) => {
                 const name = getDealerName(dealer);
                 const location = getLocation(dealer);
                 const typeInfo = getTypeLabel(dealer.userType);
@@ -122,12 +121,8 @@ export default function DealersPage() {
                 const isVerified = dealer.profile?.verificationBadge;
 
                 return (
-                  <motion.div
-                    key={dealer.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    onClick={() => navigate(`/dealer/${dealer.id}`)}
+                  <Link
+                    key={dealer.id} to={`/dealer/${dealer.id}`}
                     className="bg-white rounded-2xl shadow-card hover:shadow-card-hover
                                border border-pearl-200 cursor-pointer transition-all
                                hover:-translate-y-1 overflow-hidden group"
@@ -178,7 +173,7 @@ export default function DealersPage() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </Link>
                 );
               })}
             </div>

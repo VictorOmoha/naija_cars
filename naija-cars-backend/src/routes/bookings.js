@@ -7,6 +7,18 @@ const { calculateBookingTotal } = require('../services/bookingPricing');
 
 const router = express.Router();
 
+router.get('/me', authenticate, async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const where = { OR: [{ buyerId: req.user.id }, { sellerId: req.user.id }] };
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, skip: (page - 1) * 20 }),
+      prisma.booking.count({ where }),
+    ]);
+    res.json({ success: true, data: { bookings, pagination: { page, total, pages: Math.ceil(total / 20) } } });
+  } catch (error) { next(error); }
+});
+
 const createBookingValidation = [
   body('listingId').isString().bail().notEmpty().withMessage('Listing id is required'),
   body('bookingType').isIn(['purchase', 'rental']).withMessage('Invalid booking type'),

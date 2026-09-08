@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useId, cloneElement } from 'react';
+import { PageState } from '../components/PageLayout';
 import { Car, X, Plus, Loader2, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api, { subscriptionAPI } from '../services/api';
@@ -7,7 +9,7 @@ import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
 import { prepareListingImageData } from '../utils/listingImages';
-import { calculateValuation } from '../utils/valuation';
+import { calculateValuation, carModels } from '../utils/valuation';
 import { formatNaira } from '../utils/format';
 
 // Map frontend condition values → backend enum
@@ -37,12 +39,11 @@ const STEPS = [
   { number: 4, label: 'REVIEW' },
 ];
 
-const Field = ({ label, children, className = '' }) => (
-  <div className={className}>
-    <div className="text-[11px] font-black tracking-[0.08em] uppercase mb-[7px]">{label}</div>
-    {children}
-  </div>
-);
+const Field = ({ label, children, className = '' }) => {
+  const id = useId();
+  const control = ['input', 'select', 'textarea'].includes(children?.type);
+  return <div className={className}><label htmlFor={control ? id : undefined} className="block text-sm font-medium mb-2">{label}</label>{control ? cloneElement(children, { id }) : children}</div>;
+};
 
 const ChipGroup = ({ options, value, onChange }) => (
   <div className="flex gap-2 flex-wrap">
@@ -50,11 +51,12 @@ const ChipGroup = ({ options, value, onChange }) => (
       <button
         key={opt.value}
         type="button"
+        aria-pressed={value === opt.value}
         onClick={() => onChange(opt.value)}
-        className={`text-[13px] rounded-full transition-colors ${
+        className={`text-[13px] rounded-xl transition-colors ${
           value === opt.value
-            ? 'font-extrabold bg-ink text-white px-5 py-[11px]'
-            : 'font-bold border-2 border-ink px-[18px] py-[9px] hover:bg-ink/5'
+            ? 'font-semibold bg-brand text-white px-5 py-[11px]'
+            : 'font-bold border border-lightborder px-[18px] py-[9px] hover:bg-ink/5'
         }`}
       >
         {opt.label}
@@ -66,8 +68,8 @@ const ChipGroup = ({ options, value, onChange }) => (
 const SellCarPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { addToast } = useApp();
-  const { isAuthenticated } = useAuthStore();
+  const { addToast, setIsSignInOpen } = useApp();
+  const { isAuthenticated, user } = useAuthStore();
   const editId = searchParams.get('edit');
   const isEditMode = !!editId;
 
@@ -84,6 +86,8 @@ const SellCarPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [images, setImages] = useState([]);
+  const previewUrls = useRef(new Set());
+  useEffect(() => () => { previewUrls.current.forEach(url => URL.revokeObjectURL(url)); }, []);
   const [existingImages, setExistingImages] = useState([]);
   const [formData, setFormData] = useState({
     make: '',
@@ -110,7 +114,7 @@ const SellCarPage = () => {
 
   // Live instant estimate — recalculates as car details change
   const estimate = useMemo(() => {
-    if (!formData.make || !formData.model || !formData.year) return null;
+    if (!formData.year || !carModels[formData.make]?.includes(formData.model)) return null;
     return calculateValuation({
       make: formData.make,
       model: formData.model,
@@ -149,7 +153,7 @@ const SellCarPage = () => {
           negotiable: listing.negotiable ?? true,
           title: listing.title || `${listing.year} ${listing.make} ${listing.model}`,
           description: listing.description || '',
-          features: [],
+          features: listing.features || [],
           phone: listing.phone || '',
           whatsapp: listing.whatsapp || '',
           locationCity: listing.locationCity || '',
@@ -186,12 +190,22 @@ const SellCarPage = () => {
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
-    const totalAllowed = 10 - existingImages.length;
-    setImages(prev => [...prev, ...newImages].slice(0, totalAllowed));
+    const totalAllowed = 10 - existingImages.length - images.length;
+    const validFiles = files.filter(file => file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024);
+    if (validFiles.length !== files.length) addToast('Choose images smaller than 10 MB.', 'error');
+    if (validFiles.length > totalAllowed) addToast('A listing can contain up to 10 photos.', 'info');
+    const newImages = validFiles.slice(0, totalAllowed).map(file => {
+      const preview = URL.createObjectURL(file);
+      previewUrls.current.add(preview);
+      return { file, preview };
+    });
+    setImages(prev => [...prev, ...newImages]);
+    e.target.value = '';
   };
 
   const removeImage = (index) => {
+    URL.revokeObjectURL(images[index].preview);
+    previewUrls.current.delete(images[index].preview);
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -206,8 +220,24 @@ const SellCarPage = () => {
     }
   };
 
+  const validateStep = (step) => {
+    if (step === 1 && (!formData.make || !formData.model || !formData.year || Number(formData.year) < 1900 || Number(formData.year) > new Date().getFullYear() + 1)) { addToast('Enter a make, model and valid year before continuing.', 'error'); return false; }
+    if (step === 1 && (!formData.locationCity.trim() || !formData.locationState)) { addToast('Enter the city and state where the car is located.', 'error'); return false; }
+    if (step === 1 && formData.mileage && Number(formData.mileage) < 0) { addToast('Mileage cannot be negative.', 'error'); return false; }
+    if (step === 2 && existingImages.length + images.length === 0) { addToast('Add at least one photo before continuing.', 'error'); return false; }
+    if (step === 3 && !(Number(formData.price) > 0)) { addToast('Enter a price greater than zero before continuing.', 'error'); return false; }
+    return true;
+  };
+  const goToStep = (next) => {
+    if (next <= currentStep) return setCurrentStep(next);
+    for (let step = 1; step < next; step++) if (!validateStep(step)) { setCurrentStep(step); return; }
+    setCurrentStep(next);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    for (let step = 1; step <= 3; step++) if (!validateStep(step)) { setCurrentStep(step); return; }
     setIsSubmitting(true);
 
     if (existingImages.length + images.length === 0) {
@@ -238,6 +268,7 @@ const SellCarPage = () => {
         phone: formData.phone || null,
         whatsapp: formData.whatsapp || null,
         description: formData.description,
+        features: formData.features,
       };
 
       let listing;
@@ -284,7 +315,7 @@ const SellCarPage = () => {
     }
   };
 
-  const inputClass = 'input-1b';
+  const inputClass = 'nc-input';
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -303,6 +334,7 @@ const SellCarPage = () => {
               <Field label="Make *">
                 <select name="make" value={formData.make} onChange={handleInputChange} className={inputClass}>
                   <option value="">Select make</option>
+                  {formData.make && !CAR_MAKES.includes(formData.make) && <option value={formData.make}>{formData.make}</option>}
                   {CAR_MAKES.map(make => <option key={make} value={make}>{make}</option>)}
                 </select>
               </Field>
@@ -315,7 +347,7 @@ const SellCarPage = () => {
               <Field label="Year *">
                 <select name="year" value={formData.year} onChange={handleInputChange} className={inputClass}>
                   <option value="">Select year</option>
-                  {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                  {Array.from({ length: new Date().getFullYear() - 1898 }, (_, i) => new Date().getFullYear() + 1 - i).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -388,7 +420,7 @@ const SellCarPage = () => {
                   placeholder="e.g. Lekki, Victoria Island" className={inputClass}
                 />
               </Field>
-              <Field label="Phone *">
+              <Field label="Phone (optional)">
                 <input
                   type="tel" name="phone" value={formData.phone} onChange={handleInputChange}
                   placeholder="0803 000 0000" className={inputClass}
@@ -409,10 +441,11 @@ const SellCarPage = () => {
                     key={feature}
                     type="button"
                     onClick={() => handleFeatureToggle(feature)}
+                    aria-pressed={formData.features.includes(feature)}
                     className={`text-xs rounded-full transition-colors ${
                       formData.features.includes(feature)
-                        ? 'font-extrabold bg-brand text-white px-3.5 py-2'
-                        : 'font-bold border-2 border-lightborder px-3 py-1.5 hover:border-ink'
+                        ? 'font-semibold bg-brand text-white px-3.5 py-2'
+                        : 'font-bold border border-lightborder px-3 py-1.5 hover:border-ink'
                     }`}
                   >
                     {feature}
@@ -432,12 +465,12 @@ const SellCarPage = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {existingImages.map((image, index) => (
-                <div key={`existing-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border-2 border-ink group">
+                <div key={`existing-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border border-lightborder group">
                   <img src={image.url} alt={`Car ${index + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removeExistingImage(index)}
-                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-100 transition-opacity"
                     aria-label="Remove photo"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -449,17 +482,17 @@ const SellCarPage = () => {
               ))}
 
               {images.map((image, index) => (
-                <div key={`new-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border-2 border-ink group">
+                <div key={`new-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border border-lightborder group">
                   <img src={image.preview} alt={`New ${index + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-100 transition-opacity"
                     aria-label="Remove photo"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                  <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black uppercase bg-amber text-ink px-2 py-[3px] rounded-full">
+                  <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold uppercase bg-amber text-ink px-2 py-[3px] rounded-full">
                     New
                   </span>
                 </div>
@@ -475,7 +508,7 @@ const SellCarPage = () => {
             </div>
 
             <div className="border-2 border-amber bg-amber-tint rounded-xl p-4">
-              <h4 className="text-xs font-black uppercase tracking-[0.06em] text-warntext mb-2">Photo tips</h4>
+              <h4 className="text-xs font-bold uppercase tracking-[0.06em] text-warntext mb-2">Photo tips</h4>
               <ul className="text-[12.5px] font-semibold text-warntext space-y-1">
                 <li>• Shoot in good light — golden hour flatters every car</li>
                 <li>• Include exterior ¾ front, interior, dashboard and engine bay</li>
@@ -489,7 +522,7 @@ const SellCarPage = () => {
         return (
           <div className="space-y-4">
             <div className="grid md:grid-cols-2 gap-3.5">
-              <Field label="Asking price (₦) *">
+              <Field label={formData.listingType === 'RENT' ? 'Daily rental price (₦) *' : 'Asking price (₦) *'}>
                 <input
                   type="number" name="price" value={formData.price} onChange={handleInputChange}
                   placeholder="e.g. 18,500,000" className={inputClass}
@@ -513,8 +546,8 @@ const SellCarPage = () => {
 
             {estimate && (
               <div className="border-2 border-amber bg-amber-tint rounded-[14px] px-4 py-3.5 flex items-center justify-between flex-wrap gap-2">
-                <span className="text-[10.5px] font-black tracking-[0.08em] uppercase">Instant estimate</span>
-                <span className="text-[17px] font-black">
+                <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase">Indicative estimate</span>
+                <span className="text-[17px] font-bold">
                   {formatNaira(estimate.lowEstimate)} – {formatNaira(estimate.highEstimate)}
                 </span>
               </div>
@@ -541,26 +574,26 @@ const SellCarPage = () => {
       case 4:
         return (
           <div className="space-y-5">
-            <div className="border-2 border-lightborder rounded-2xl p-5 space-y-4">
+            <div className="border border-lightborder rounded-2xl p-5 space-y-4">
               <div className="flex gap-4 items-start">
                 {(existingImages[0] || images[0]) && (
                   <img
                     src={existingImages[0]?.url || images[0]?.preview}
                     alt="Main"
-                    className="w-32 h-24 object-cover rounded-[10px] border-2 border-ink"
+                    className="w-32 h-24 object-cover rounded-[10px] border border-lightborder"
                   />
                 )}
                 <div>
-                  <h4 className="text-[15px] font-extrabold">
+                  <h4 className="text-[15px] font-semibold">
                     {formData.title || `${formData.year} ${formData.make} ${formData.model}`}
                   </h4>
-                  <p className="text-[22px] font-black tracking-[-0.02em] mt-0.5">
+                  <p className="text-[22px] font-bold tracking-[-0.02em] mt-0.5">
                     ₦{Number(formData.price || 0).toLocaleString()}
                     {formData.negotiable && (
                       <span className="text-xs font-bold text-brand ml-2">slightly negotiable</span>
                     )}
                   </p>
-                  <span className="inline-block mt-1.5 text-[10px] font-black uppercase tracking-[0.05em] bg-greentint text-brand px-2.5 py-1 rounded-full">
+                  <span className="inline-block mt-1.5 text-[10px] font-bold uppercase tracking-[0.05em] bg-greentint text-brand px-2.5 py-1 rounded-full">
                     {formData.listingType === 'RENT' ? 'For rent' : 'For sale'}
                   </span>
                 </div>
@@ -587,7 +620,7 @@ const SellCarPage = () => {
               {formData.features.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {formData.features.map(feature => (
-                    <span key={feature} className="text-[10px] font-extrabold uppercase bg-greentint text-brand px-2.5 py-1 rounded-full">
+                    <span key={feature} className="text-[10px] font-semibold uppercase bg-greentint text-brand px-2.5 py-1 rounded-full">
                       {feature}
                     </span>
                   ))}
@@ -600,13 +633,13 @@ const SellCarPage = () => {
                 <Check className="w-3.5 h-3.5" strokeWidth={3.5} />
               </span>
               <div>
-                <h4 className="text-[13px] font-extrabold text-brand">
+                <h4 className="text-[13px] font-semibold text-brand">
                   {isEditMode ? 'Ready to update' : 'Ready to submit'}
                 </h4>
                 <p className="text-[12.5px] font-semibold text-muted mt-0.5">
                   {isEditMode
                     ? 'Your changes will be saved immediately.'
-                    : 'Your listing will be reviewed within 24 hours and published once approved.'}
+                    : 'Your listing will be published after submission with an active seller plan.'}
                 </p>
               </div>
             </div>
@@ -618,6 +651,8 @@ const SellCarPage = () => {
     }
   };
 
+  if (!isAuthenticated) return <PageState title="Ready to list your car?" description="Sign in to create your listing and manage it from your dashboard."><button className="nc-button" onClick={() => setIsSignInOpen(true)}>Sign in to get started</button><Link className="nc-button nc-button-secondary" to="/pricing">Explore seller plans</Link></PageState>;
+  if (!isEditMode && !user?.isVerified) return <PageState title="Verify your account first" description="Confirm your email address before publishing a listing."><Link className="nc-button" to="/profile">Go to account settings</Link></PageState>;
   if (isLoadingEdit) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center">
@@ -634,13 +669,13 @@ const SellCarPage = () => {
     return (
       <div className="min-h-screen bg-paper pt-12 px-4">
         <div className="max-w-lg mx-auto text-center">
-          <div className="card-1b-lg p-10">
+          <div className="nc-surface-lg p-10">
             <Car className="w-14 h-14 text-brand mx-auto mb-4" />
-            <h1 className="display-1b text-2xl mb-3">Subscription required</h1>
+            <h1 className="nc-heading text-2xl mb-3">Subscription required</h1>
             <p className="text-sm font-semibold text-muted mb-6">
               You need an active subscription to list cars on NaijaCars. Choose a plan that fits your needs.
             </p>
-            <Link to="/pricing" className="btn-pill-green text-sm px-8 py-3.5">
+            <Link to="/pricing" className="nc-action-green text-sm px-8 py-3.5">
               View plans →
             </Link>
           </div>
@@ -653,14 +688,14 @@ const SellCarPage = () => {
     return (
       <div className="min-h-screen bg-paper pt-12 px-4">
         <div className="max-w-lg mx-auto text-center">
-          <div className="card-1b-lg p-10">
+          <div className="nc-surface-lg p-10">
             <Car className="w-14 h-14 text-amber mx-auto mb-4" />
-            <h1 className="display-1b text-2xl mb-3">Listing limit reached</h1>
+            <h1 className="nc-heading text-2xl mb-3">Listing limit reached</h1>
             <p className="text-sm font-semibold text-muted mb-6">
               You've used all {subscription.listingsLimit} listings on your {subscription.planName} plan this month.
               Upgrade for more listings.
             </p>
-            <Link to="/pricing" className="btn-pill-amber text-sm px-8 py-3.5">
+            <Link to="/pricing" className="nc-action-amber text-sm px-8 py-3.5">
               Upgrade plan →
             </Link>
           </div>
@@ -672,18 +707,18 @@ const SellCarPage = () => {
   return (
     <div className="bg-paper text-ink min-h-screen">
       {/* ===== Ink header with step indicator ===== */}
-      <div className="bg-ink text-white px-4 md:px-9 pt-7 md:pt-[34px] pb-6 md:pb-[30px]">
+      <div className="nc-sell-header nc-page-width">
         <div className="flex flex-col lg:flex-row justify-between lg:items-end gap-6">
           <div>
-            <h1 className="display-1b text-2xl md:text-[40px]">
-              {isEditMode ? 'Update your listing.' : 'Sell am fast.'}
+            <h1 className="nc-heading text-2xl md:text-[40px]">
+              {isEditMode ? 'Update your listing.' : 'A great listing starts here.'}
               <br />
-              <span className="text-mint">{isEditMode ? 'Changes save instantly.' : 'Get paid same week.'}</span>
+              <span className="text-mint">{isEditMode ? 'Keep every detail current.' : 'Make your car stand out.'}</span>
             </h1>
             <p className="text-[13px] md:text-sm text-darkmuted mt-3">
               {isEditMode
                 ? 'Edit the details below — your listing stays live while you work'
-                : 'List in ~3 minutes · we screen serious buyers · manage everything from your dashboard'}
+                : 'Add clear photos and honest details. Manage enquiries from your dashboard.'}
             </p>
           </div>
 
@@ -694,16 +729,16 @@ const SellCarPage = () => {
                 {i > 0 && <div className="w-[52px] h-0.5 bg-ink-line mx-2 mb-[18px]" />}
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(step.number)}
+                  onClick={() => goToStep(step.number)}
                   className="flex flex-col items-center gap-1.5"
                 >
                   <span
-                    className={`w-9 h-9 rounded-full text-sm font-black flex items-center justify-center ${
+                    className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
                       currentStep === step.number
                         ? 'bg-amber text-ink'
                         : currentStep > step.number
                           ? 'bg-brand text-white'
-                          : 'border-2 border-ink-line text-placeholdertext'
+                          : 'border border-lightborder text-placeholdertext'
                     }`}
                   >
                     {currentStep > step.number ? <Check className="w-4 h-4" strokeWidth={3.5} /> : step.number}
@@ -711,7 +746,7 @@ const SellCarPage = () => {
                   <span
                     className={`text-[10.5px] tracking-[0.06em] ${
                       currentStep === step.number
-                        ? 'font-extrabold text-amber'
+                        ? 'font-semibold text-amber'
                         : currentStep > step.number
                           ? 'font-bold text-mint'
                           : 'font-bold text-placeholdertext'
@@ -727,7 +762,7 @@ const SellCarPage = () => {
 
         {/* Mobile: step count + progress bar */}
         <div className="md:hidden mt-5">
-          <div className="flex justify-between text-[11px] font-extrabold mb-2">
+          <div className="flex justify-between text-[11px] font-semibold mb-2">
             <span className="uppercase tracking-[0.06em]">{STEPS[currentStep - 1].label}</span>
             <span className="text-placeholdertext">{currentStep}/4</span>
           </div>
@@ -745,10 +780,10 @@ const SellCarPage = () => {
       </div>
 
       {/* ===== Form + rail ===== */}
-      <div className="grid lg:grid-cols-[1fr_380px] gap-[26px] px-4 md:px-9 pt-6 md:pt-8 pb-11">
+      <div className="nc-page-width grid lg:grid-cols-[1fr_320px] gap-[26px] pt-6 md:pt-8 pb-11">
         {/* Form card */}
-        <form onSubmit={handleSubmit} className="card-1b-lg p-5 md:p-[26px] self-start">
-          <h2 className="display-1b text-lg mb-5">
+        <form onSubmit={handleSubmit} className="nc-surface-lg p-5 md:p-[26px] self-start">
+          <h2 className="nc-heading text-lg mb-5">
             {currentStep === 1 && 'Tell us about your car'}
             {currentStep === 2 && 'Add photos'}
             {currentStep === 3 && 'Set your price'}
@@ -762,7 +797,7 @@ const SellCarPage = () => {
               <button
                 type="button"
                 onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-                className="btn-pill-outline text-[13px] px-5 py-2.5"
+                className="nc-action-outline text-[13px] px-5 py-2.5"
               >
                 ← Back
               </button>
@@ -774,17 +809,19 @@ const SellCarPage = () => {
 
             {currentStep < 4 ? (
               <button
+                key="next-step"
                 type="button"
-                onClick={() => setCurrentStep(prev => Math.min(4, prev + 1))}
-                className="btn-pill-green text-sm px-[30px] py-3.5"
+                onClick={(event) => { event.preventDefault(); goToStep(currentStep + 1); }}
+                className="nc-action-green text-sm px-[30px] py-3.5"
               >
                 {currentStep === 1 ? 'Continue to photos →' : currentStep === 2 ? 'Continue to pricing →' : 'Review listing →'}
               </button>
             ) : (
               <button
+                key="submit-listing"
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-pill-green text-sm px-[30px] py-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="nc-action-green text-sm px-[30px] py-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -802,32 +839,32 @@ const SellCarPage = () => {
         {/* Right rail */}
         <div className="flex flex-col gap-4 self-start lg:sticky lg:top-[88px]">
           {/* Instant estimate */}
-          <div className="border-2 border-amber rounded-[18px] bg-amber-tint p-[22px]">
-            <div className="text-[11px] font-black tracking-[0.1em] uppercase mb-2">Instant estimate</div>
+          <div className="border border-lightborder rounded-[15px] bg-greentint p-[22px]">
+            <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-2">Indicative estimate</div>
             {estimate ? (
               <>
-                <div className="text-[27px] font-black tracking-[-0.02em]">
+                <div className="text-[27px] font-bold tracking-[-0.02em]">
                   {formatNaira(estimate.lowEstimate)} – {formatNaira(estimate.highEstimate)}
                 </div>
                 <p className="text-xs font-semibold text-muted mt-1.5 leading-normal">
-                  Based on Nigerian market data for {formData.make} {formData.model} — your asking price is your call.
+                  Based on a general pricing model for {formData.make} {formData.model}. Compare current listings before setting your price.
                 </p>
               </>
             ) : (
               <p className="text-[13px] font-semibold text-muted">
-                Fill in make, model and year to see what your car is worth.
+                Estimates are available for selected models. Compare similar listings to help set your price.
               </p>
             )}
           </div>
 
           {/* What happens next */}
-          <div className="border-2 border-ink rounded-[18px] bg-white p-5">
-            <div className="text-xs font-black tracking-[0.08em] uppercase mb-3.5">What happens next</div>
+          <div className="border border-lightborder rounded-[18px] bg-white p-5">
+            <div className="text-xs font-bold tracking-[0.08em] uppercase mb-3.5">What happens next</div>
             <div className="flex flex-col gap-3 text-[12.5px] font-semibold text-muted leading-normal">
               {[
-                'Your listing is reviewed and goes live within 24 hours',
-                'Serious buyers reach you on WhatsApp or in-app messages',
-                'Track views, offers and messages from your dashboard',
+                'Your listing goes live after submission with an active plan',
+                'Buyers can contact you through your listing',
+                'Track views, requests and messages from your dashboard',
               ].map((line) => (
                 <div key={line} className="flex gap-2.5">
                   <span className="flex-none w-[22px] h-[22px] rounded-full bg-brand text-white flex items-center justify-center">
@@ -837,16 +874,6 @@ const SellCarPage = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Testimonial */}
-          <div className="border-2 border-ink rounded-[18px] bg-ink text-white px-5 py-[18px]">
-            <p className="text-[13px] font-bold leading-relaxed text-herosub">
-              "Listed Tuesday, sold Friday. No wahala at all."
-            </p>
-            <p className="text-[11.5px] font-extrabold text-mint mt-2">
-              — Chinedu O., sold a 2018 RAV4 · Lagos
-            </p>
           </div>
         </div>
       </div>

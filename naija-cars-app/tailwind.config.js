@@ -7,15 +7,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        // "1b: Bold Market Energy" design tokens
+        // Shared premium marketplace design tokens
         ink: {
-          DEFAULT: '#0E1F17',   // primary text, dark surfaces, borders, black buttons
+          DEFAULT: '#10281f',   // primary text, dark surfaces, borders, black buttons
           line: '#3A4A40',      // outlines / connectors on dark surfaces
           pill: '#1E3328',      // chips inside dark compare tray
         },
         brand: {
-          DEFAULT: '#008753',   // primary actions, verified badges, hero bg
-          hover: '#007145',     // darkened ~8% for hover
+          DEFAULT: '#006b4a',   // primary actions, verified badges, hero bg
+          hover: '#00583d',     // darkened ~8% for hover
         },
         amber: {
           DEFAULT: '#F5B840',   // secondary CTAs, highlights, warnings
@@ -24,33 +24,33 @@ export default {
         mint: {
           DEFAULT: '#8FD8B5',   // accent text on dark surfaces
         },
-        paper: '#FCFBF7',       // page background
-        greentint: '#EAF6F0',   // verified-only panel, positive tag bg
-        muted: '#5E6B63',       // secondary/meta text
+        paper: '#fcfdfb',       // page background
+        greentint: '#edf4ef',   // verified-only panel, positive tag bg
+        muted: '#61736b',       // secondary/meta text
         placeholdertext: '#8B948E', // input placeholders, inactive step labels
-        lightborder: '#E5E5DE', // input borders inside white panels
-        hairline: '#F0EEE6',    // card-internal dividers
+        lightborder: '#dce5df', // input borders inside white panels
+        hairline: '#edf1ec',    // card-internal dividers
         warntext: '#B45309',    // inspection warnings
         herosub: '#D6EFE2',     // sub-copy on green hero
         darkmuted: '#AFC4B7',   // sub-copy on ink surfaces
         // Nigerian Pride Color Palette (legacy pages)
         naija: {
-          50: '#E8F5E9',
-          100: '#C8E6C9',
+          50: '#f2f7f3',
+          100: '#e3eee6',
           200: '#A5D6A7',
           300: '#81C784',
           400: '#66BB6A',
-          500: '#008753', // Nigerian Green
-          600: '#00753D',
-          700: '#00632E',
+          500: '#006b4a', // Nigerian Green
+          600: '#00583d',
+          700: '#004c34',
           800: '#00521F',
           900: '#003D15',
         },
         pearl: {
-          50: '#FFFFFF',
-          100: '#FEFEFE',
-          200: '#FAFAFA',
-          300: '#F5F5F5',
+          50: '#fcfdfb',
+          100: '#f2f6f2',
+          200: '#dce5df',
+          300: '#cfdbd2',
           400: '#F0F0F0',
           500: '#EBEBEB', // Off-white/Pearl
           600: '#D6D6D6',
@@ -76,11 +76,11 @@ export default {
           200: '#D6D6D6',
           300: '#C2C2C2',
           400: '#8F8F8F',
-          500: '#1A1A1A',
-          600: '#141414',
-          700: '#0F0F0F',
-          800: '#0A0A0A',
-          900: '#050505',
+          500: '#263f34',
+          600: '#243b31',
+          700: '#173b2c',
+          800: '#10281f',
+          900: '#10281f',
         },
         emerald: {
           50: '#ECFDF5',
@@ -96,19 +96,19 @@ export default {
         },
       },
       fontFamily: {
-        'archivo': ['Archivo', 'system-ui', 'sans-serif'],
-        'display': ['Archivo', 'system-ui', 'sans-serif'],
-        'heading': ['Archivo', 'system-ui', 'sans-serif'],
-        'body': ['Archivo', 'system-ui', 'sans-serif'],
+        'archivo': ['Inter', 'Archivo', 'system-ui', 'sans-serif'],
+        'display': ['Inter', 'Archivo', 'system-ui', 'sans-serif'],
+        'heading': ['Inter', 'Archivo', 'system-ui', 'sans-serif'],
+        'body': ['Inter', 'Archivo', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-naija': 'linear-gradient(135deg, #008753 0%, #00632E 100%)',
+        'gradient-naija': 'linear-gradient(135deg, #006b4a 0%, #00632E 100%)',
         'gradient-gold': 'linear-gradient(135deg, #FFB81C 0%, #CC9216 100%)',
         'gradient-luxury': 'linear-gradient(135deg, #FFB81C 0%, #CC9216 100%)',
         'gradient-emerald': 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-        'gradient-nigeria': 'linear-gradient(180deg, #008753 0%, #008753 50%, #FFFFFF 50%, #FFFFFF 100%)',
-        'gradient-hero': 'linear-gradient(135deg, #008753 0%, #10B981 100%)',
+        'gradient-nigeria': 'linear-gradient(180deg, #006b4a 0%, #006b4a 50%, #FFFFFF 50%, #FFFFFF 100%)',
+        'gradient-hero': 'linear-gradient(135deg, #006b4a 0%, #10B981 100%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out forwards',
@@ -136,11 +136,11 @@ export default {
       },
       boxShadow: {
         // Hard offset shadows — the "1b look" (never soft blurred)
-        'hard': '5px 5px 0 #0E1F17',
-        'hard-sm': '4px 4px 0 #0E1F17',
-        'hard-lg': '6px 6px 0 #0E1F17',
-        'hard-green': '4px 4px 0 #008753',
-        'hard-green-lg': '5px 5px 0 #008753',
+        'hard': '0 2px 12px rgba(16,40,31,0.05)',
+        'hard-sm': '0 2px 12px rgba(16,40,31,0.05)',
+        'hard-lg': '0 2px 12px rgba(16,40,31,0.05)',
+        'hard-green': '0 2px 12px rgba(16,40,31,0.05)',
+        'hard-green-lg': '0 2px 12px rgba(16,40,31,0.05)',
         'warm': '0 4px 20px rgba(0, 135, 83, 0.15)',
         'warm-lg': '0 8px 32px rgba(0, 135, 83, 0.2)',
         'card': '0 2px 8px rgba(0, 0, 0, 0.08)',

@@ -41,7 +41,7 @@ export default function MessagesPage() {
   const activeConversation = selectedConversation || pendingConversation;
 
   // --- Fetch conversations list ---
-  const { data: conversationsData, refetch: refetchConversations } = useQuery({
+  const { data: conversationsData, isLoading: conversationsLoading, isError: conversationsError, refetch: refetchConversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => api.get('/messages/conversations').then(r => r.data),
     enabled: isAuthenticated,
@@ -49,7 +49,7 @@ export default function MessagesPage() {
   });
 
   // --- Fetch messages for active (non-pending) conversation ---
-  const { data: messagesData, refetch: refetchMessages } = useQuery({
+  const { data: messagesData, isLoading: messagesLoading, isError: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', activeConversation?.conversationId],
     queryFn: () =>
       api.get(`/messages/${activeConversation.conversationId}`).then(r => r.data),
@@ -295,6 +295,7 @@ export default function MessagesPage() {
               <input
                 type="text"
                 placeholder="Search conversations..."
+                aria-label="Search conversations"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-pearl-50 border border-pearl-200
@@ -305,10 +306,10 @@ export default function MessagesPage() {
 
           {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {displayedConversations.length === 0 ? (
+            {conversationsError ? <div className="p-6 text-center" role="alert"><p>Unable to load your conversations.</p><button className="nc-button nc-button-secondary mt-4" onClick={() => refetchConversations()}>Try again</button></div> : conversationsLoading ? <p className="p-6 text-muted" role="status">Loading conversations…</p> : displayedConversations.length === 0 ? (
               <div className="p-8 text-center">
                 <MessageCircle className="w-12 h-12 mx-auto mb-3 text-charcoal-300" />
-                <p className="font-medium text-charcoal-700 mb-2">No conversations yet</p>
+                <p className="font-medium text-charcoal-700 mb-2">{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
                 <p className="text-sm text-charcoal-500 mb-5">
                   Find a car and tap "Message Seller" to start chatting.
                 </p>
@@ -428,6 +429,8 @@ export default function MessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messagesError && <div role="alert" className="nc-panel"><p>Unable to load these messages.</p><button className="nc-button nc-button-secondary" onClick={() => refetchMessages()}>Try again</button></div>}
+                {messagesLoading && <p role="status" className="text-muted">Loading messages…</p>}
                 {/* Empty state for new/pending conversations */}
                 {messages.length === 0 && (
                   <motion.div

@@ -1,0 +1,5 @@
+ESLint: passed (complete frontend).
+Production build: passed, Vite 7.3.6, 2290 modules.
+Backend: 50 tests passed, 0 failures.
+Frontend: 3 tests passed, 0 failures.
+Local integration: booking, listing, photo, profile, messaging, favourite, support and admin permission checks passed.

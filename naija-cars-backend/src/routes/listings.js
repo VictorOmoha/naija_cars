@@ -64,6 +64,14 @@ const withPlaceholderFlag = (listing) => ({
   isPlaceholder: isDemoSeedListing(listing)
 });
 
+const listingSorts = {
+  newest: [{ createdAt: 'desc' }, { id: 'asc' }],
+  'price-low': [{ price: 'asc' }, { id: 'asc' }],
+  'price-high': [{ price: 'desc' }, { id: 'asc' }],
+  'year-new': [{ year: 'desc' }, { id: 'asc' }],
+  mileage: [{ mileage: 'asc' }, { id: 'asc' }],
+};
+
 /**
  * @route   GET /api/listings
  * @desc    Get all listings with filters
@@ -86,18 +94,31 @@ router.get('/', async (req, res, next) => {
       minYear,
       maxYear,
       featured,
+      bodyType,
+      verified,
+      sort,
       search
     } = req.query;
+
+    if (Object.keys(req.query).some((key) => /[\[\]]/.test(key))
+      || Object.values(req.query).some((value) => typeof value !== 'string')
+      || (sort && !Object.hasOwn(listingSorts, sort))) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid search filters' } });
+    }
 
     const pagination = clampPagination(page, limit);
 
     // Build where clause
     const where = {
       status: 'ACTIVE',
+      seller: { isActive: true, ...(['true', '1'].includes(verified) && { profile: { verificationBadge: true } }) },
       ...(type && { listingType: type.toUpperCase() }),
-      ...(make && { make: { contains: make, mode: 'insensitive' } }),
+      ...(make && { make: make.includes(',')
+        ? { in: make.split(',').map((value) => value.trim()).filter(Boolean), mode: 'insensitive' }
+        : { contains: make, mode: 'insensitive' } }),
       ...(model && { model: { contains: model, mode: 'insensitive' } }),
-      ...(state && { locationState: state }),
+      ...(bodyType && { bodyType: { equals: bodyType, mode: 'insensitive' } }),
+      ...(state && { locationState: ['Abuja', 'FCT'].includes(state) ? { in: ['Abuja', 'FCT'] } : state }),
       ...(condition && { condition: condition.toUpperCase() }),
       ...(transmission && { transmission }),
       ...(fuelType && { fuelType }),
@@ -114,12 +135,14 @@ router.get('/', async (req, res, next) => {
           ...(maxYear && { lte: parseInt(maxYear, 10) })
         }
       }),
-      ...(search && {
-        OR: [
-          { make: { contains: search, mode: 'insensitive' } },
-          { model: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
-        ]
+      ...(search?.trim() && {
+        AND: search.trim().split(/\s+/).slice(0, 10).map((term) => ({
+          OR: [
+            { make: { contains: term, mode: 'insensitive' } },
+            { model: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } }
+          ]
+        }))
       })
     };
 
@@ -137,10 +160,11 @@ router.get('/', async (req, res, next) => {
         },
         skip: pagination.skip,
         take: pagination.limit,
-        orderBy: [
+        orderBy: sort ? listingSorts[sort] : [
           { isFeatured: 'desc' },
           { isBoosted: 'desc' },
-          { createdAt: 'desc' }
+          { createdAt: 'desc' },
+          { id: 'asc' }
         ]
       }),
       prisma.carListing.count({ where })
@@ -230,7 +254,9 @@ router.post('/',
     body('mileage').optional({ nullable: true }).isInt({ min: 0 }),
     body('locationState').trim().notEmpty(),
     body('locationCity').trim().notEmpty(),
-    body('description').optional().trim()
+    body('description').optional().trim(),
+    body('features').optional().isArray({ max: 50 }),
+    body('features.*').isString().bail().trim().isLength({ min: 1, max: 100 }),
   ],
   async (req, res, next) => {
     try {
@@ -249,7 +275,7 @@ router.post('/',
         listingType, make, model, year, trim, title, mileage, transmission,
         fuelType, bodyType, color, engineSize, condition, price,
         negotiable, locationState, locationCity, phone, whatsapp,
-        vinNumber, description
+        vinNumber, description, features = []
       } = req.body;
 
       // Paid subscribers receive automatic featured placement for listings
@@ -290,7 +316,7 @@ router.post('/',
             listingType, make, model,
             year: parseInt(year, 10),
             trim, title,
-            mileage: mileage ? parseInt(mileage, 10) : null,
+            mileage: mileage != null ? parseInt(mileage, 10) : null,
             transmission, fuelType,
             bodyType: bodyType || null,
             color: color || null,
@@ -301,7 +327,7 @@ router.post('/',
             locationState, locationCity,
             phone: phone || null,
             whatsapp: whatsapp || null,
-            vinNumber, description,
+            vinNumber, description, features,
             sellerId: req.user.id,
             status: 'ACTIVE',
             isFeatured,
@@ -348,6 +374,8 @@ router.put('/:id',
     body('locationCity').optional().trim().notEmpty(),
     body('negotiable').optional().isBoolean(),
     body('description').optional().trim(),
+    body('features').optional().isArray({ max: 50 }),
+    body('features.*').isString().bail().trim().isLength({ min: 1, max: 100 }),
   ],
   async (req, res, next) => {
   try {
@@ -383,7 +411,7 @@ router.put('/:id',
       'transmission', 'fuelType', 'bodyType', 'color', 'engineSize',
       'condition', 'price', 'negotiable',
       'locationState', 'locationCity', 'phone', 'whatsapp',
-      'vinNumber', 'description'
+      'vinNumber', 'description', 'features'
     ];
     const updateData = {};
     for (const field of allowedFields) {

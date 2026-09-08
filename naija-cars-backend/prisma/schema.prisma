@@ -133,6 +133,7 @@ model CarListing {
   whatsapp       String?
   vinNumber      String?       @map("vin_number")
   description    String?
+  features       String[]      @default([])
   status         ListingStatus @default(PENDING)
   isFeatured     Boolean       @default(false) @map("is_featured")
   isBoosted      Boolean       @default(false) @map("is_boosted")
@@ -288,4 +289,19 @@ model Verification {
   @@index([code])
   @@index([expiresAt])
   @@map("verifications")
+}
+
+model ContactInquiry {
+  id        String   @id @default(uuid())
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([resolved, createdAt])
+  @@map("contact_inquiries")
 }

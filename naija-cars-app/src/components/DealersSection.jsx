@@ -191,7 +191,7 @@ const DealersSection = () => {
             whileHover={{ scale: 1.02, boxShadow: '0 12px 40px rgba(196, 92, 62, 0.2)' }}
             whileTap={{ scale: 0.98 }}
             onClick={handleViewAllDealers}
-            className="group flex items-center gap-3 px-8 py-4 border-2 border-naija-500
+            className="group flex items-center gap-3 px-8 py-4 border border-naija-500
                      text-naija-500 font-semibold rounded-2xl transition-all duration-300
                      hover:bg-naija-500 hover:text-white"
           >

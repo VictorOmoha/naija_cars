@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageLayout';
+import PageContents from '../components/PageContents';
 import { motion } from 'framer-motion';
 import { Shield, ChevronRight, Lock, Eye, Database, UserCheck, Bell, Globe } from 'lucide-react';
 
@@ -5,7 +7,7 @@ const highlights = [
   { icon: Lock, title: 'Your Data is Encrypted', desc: '256-bit SSL encryption protects all data' },
   { icon: Eye, title: 'No Hidden Tracking', desc: 'We only collect what\'s necessary' },
   { icon: UserCheck, title: 'You\'re in Control', desc: 'Manage your data preferences anytime' },
-  { icon: Database, title: 'Data Stored Locally', desc: 'Your data stays in Nigeria' },
+  { icon: Database, title: 'Hosting locations', desc: 'Hosting may be outside Nigeria' },
 ];
 
 const sections = [
@@ -220,35 +222,16 @@ This Privacy Policy was last updated on January 1, 2024.`
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-pearl-100">
-      {/* Hero */}
-      <div className="bg-gradient-to-r from-naija-600 to-emerald-500 pt-10 pb-16">
-        <div className="section-container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4"
-          >
-            <div className="p-4 bg-white/20 rounded-2xl">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-display font-bold text-white">
-                Privacy Policy
-              </h1>
-              <p className="text-white/80 mt-1">Last updated: January 1, 2024</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+      <PageHeader eyebrow="NaijaCars policies" title="Privacy policy" description="Last updated: January 1, 2024" />
 
       {/* Highlights */}
-      <div className="section-container -mt-8 relative z-10 mb-12">
+      <div className="nc-page-width pt-8 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-card p-6"
+          className="bg-white rounded-2xl border border-lightborder p-6"
         >
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 nc-privacy-highlights">
             {highlights.map((item, index) => (
               <motion.div
                 key={index}
@@ -268,7 +251,7 @@ export default function PrivacyPage() {
         </motion.div>
       </div>
 
-      <div className="section-container pb-12">
+      <div className="nc-page-width pb-12">
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
           <motion.div
@@ -276,21 +259,7 @@ export default function PrivacyPage() {
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
-            <div className="bg-white rounded-2xl shadow-card p-4 sticky top-28">
-              <h3 className="font-semibold text-charcoal-800 mb-4 px-2">Quick Navigation</h3>
-              <nav className="space-y-1">
-                {sections.map((section) => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-charcoal-600 hover:bg-naija-50 hover:text-naija-600 rounded-lg transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                    {section.title.replace(/^\d+\.\s*/, '')}
-                  </a>
-                ))}
-              </nav>
-            </div>
+            <PageContents sections={sections} />
           </motion.div>
 
           {/* Content */}
@@ -299,7 +268,7 @@ export default function PrivacyPage() {
             animate={{ opacity: 1, y: 0 }}
             className="lg:col-span-3"
           >
-            <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+            <div className="nc-panel !p-0">
               <div className="p-6 md:p-8 border-b border-pearl-200">
                 <p className="text-charcoal-600">
                   At NaijaCars, we take your privacy seriously. This Privacy Policy explains how we collect, use, share, and protect your personal information when you use our platform.
@@ -332,11 +301,11 @@ export default function PrivacyPage() {
 
             {/* Related Links */}
             <div className="mt-8 grid md:grid-cols-2 gap-4">
-              <a href="/terms" className="bg-white rounded-2xl shadow-card p-6 hover:shadow-card-hover transition-all">
+              <a href="/terms" className="bg-white rounded-2xl border border-lightborder p-6 hover:shadow-card-hover transition-all">
                 <h3 className="font-display font-bold text-charcoal-800 mb-2">Terms of Service</h3>
                 <p className="text-charcoal-500 text-sm">Read our terms and conditions</p>
               </a>
-              <a href="/contact" className="bg-white rounded-2xl shadow-card p-6 hover:shadow-card-hover transition-all">
+              <a href="/contact" className="bg-white rounded-2xl border border-lightborder p-6 hover:shadow-card-hover transition-all">
                 <h3 className="font-display font-bold text-charcoal-800 mb-2">Contact Us</h3>
                 <p className="text-charcoal-500 text-sm">Questions about privacy? Reach out</p>
               </a>

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const http = require('http');
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
+const { authenticateSocket, registerSocketHandlers } = require('./services/socketHandlers');
 const app = require('./app');
 const prisma = require('./lib/prisma');
 const cloudinary = require('./config/cloudinary');
@@ -58,65 +58,8 @@ async function startServer() {
       }
     });
 
-    // Socket.IO authentication middleware
-    io.use((socket, next) => {
-      const token = socket.handshake.auth.token;
-
-      if (!token) {
-        return next(new Error('Authentication error'));
-      }
-
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.userId = decoded.id;
-        next();
-      } catch (error) {
-        next(new Error('Authentication error'));
-      }
-    });
-
-    // Socket.IO connection handling
-    io.on('connection', (socket) => {
-      console.log(`✅ User connected: ${socket.userId}`);
-
-      // Join user to their personal room
-      socket.join(socket.userId);
-
-      // Conversation IDs are built as the two participant UUIDs sorted and
-      // joined with `_`. Split and match exactly — substring matching would
-      // let user "ab" join a room `abcd_efgh` they don't belong to.
-      const isConversationParticipant = (conversationId) => {
-        if (typeof conversationId !== 'string') return false;
-        const parts = conversationId.split('_');
-        return parts.length === 2 && parts.includes(socket.userId);
-      };
-
-      socket.on('join-conversation', (conversationId) => {
-        if (isConversationParticipant(conversationId)) {
-          socket.join(conversationId);
-        }
-      });
-
-      socket.on('leave-conversation', (conversationId) => {
-        if (isConversationParticipant(conversationId)) {
-          socket.leave(conversationId);
-        }
-      });
-
-      // Typing indicator
-      socket.on('typing', ({ conversationId, isTyping }) => {
-        if (!isConversationParticipant(conversationId)) return;
-        socket.to(conversationId).emit('user-typing', {
-          userId: socket.userId,
-          isTyping
-        });
-      });
-
-      // Disconnect
-      socket.on('disconnect', () => {
-        console.log(`❌ User disconnected: ${socket.userId}`);
-      });
-    });
+    io.use(authenticateSocket);
+    io.on('connection', registerSocketHandlers);
 
     // Make io accessible to routes
     app.set('io', io);

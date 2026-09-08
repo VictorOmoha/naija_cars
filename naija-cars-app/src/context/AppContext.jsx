@@ -25,6 +25,9 @@ export const AppProvider = ({ children }) => {
   // Toast notifications
   const [toasts, setToasts] = useState([]);
 
+  // Compare tray — up to 3 cars, persists across listing pages
+  const [compareList, setCompareList] = useState([]);
+
   // Search state
   const [searchFilters, setSearchFilters] = useState({
     type: 'buy',
@@ -35,7 +38,7 @@ export const AppProvider = ({ children }) => {
 
   // Add toast notification
   const addToast = useCallback((message, type = 'success') => {
-    const id = Date.now();
+    const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -46,6 +49,23 @@ export const AppProvider = ({ children }) => {
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
+
+  // Toggle a car in the compare tray (max 3)
+  const toggleCompare = useCallback((car) => {
+    setCompareList((prev) => {
+      if (prev.some((c) => c.id === car.id)) {
+        return prev.filter((c) => c.id !== car.id);
+      }
+      if (prev.length >= 3) return prev;
+      return [...prev, car];
+    });
+  }, []);
+
+  const removeFromCompare = useCallback((carId) => {
+    setCompareList((prev) => prev.filter((c) => c.id !== carId));
+  }, []);
+
+  const clearCompare = useCallback(() => setCompareList([]), []);
 
   // Open Quick View
   const openQuickView = useCallback((car) => {
@@ -105,6 +125,11 @@ export const AppProvider = ({ children }) => {
     toasts,
     addToast,
     removeToast,
+    // Compare
+    compareList,
+    toggleCompare,
+    removeFromCompare,
+    clearCompare,
     // Search
     searchFilters,
     setSearchFilters,

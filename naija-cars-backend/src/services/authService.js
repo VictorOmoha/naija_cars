@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 const { sendOTPEmail, sendPasswordResetEmail, sendWelcomeEmail } = require('../lib/emailService');
@@ -227,7 +228,7 @@ class AuthService {
    */
   async sendVerificationOTP(userId, phoneNumber, email) {
     // Generate 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     // Save verification record
@@ -254,6 +255,7 @@ class AuthService {
       where: {
         userId,
         code,
+        verificationType: 'OTP_PHONE',
         isVerified: false,
         expiresAt: {
           gte: new Date()
@@ -262,7 +264,7 @@ class AuthService {
     });
 
     if (!verification) {
-      throw new Error('Invalid or expired OTP');
+      throw Object.assign(new Error('Invalid or expired OTP'), { status: 400 });
     }
 
     // Mark verification as complete
@@ -329,7 +331,7 @@ class AuthService {
     }
 
     // Generate 6-digit reset code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
     // Delete any existing reset codes for this user
@@ -378,7 +380,7 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid reset code');
+      throw Object.assign(new Error('Invalid reset code'), { status: 400 });
     }
 
     const verification = await prisma.verification.findFirst({
@@ -392,23 +394,26 @@ class AuthService {
     });
 
     if (!verification) {
-      throw new Error('Invalid or expired reset code');
+      throw Object.assign(new Error('Invalid or expired reset code'), { status: 400 });
     }
 
     // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     // Update password and mark verification as used
-    await Promise.all([
-      prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      const consumed = await tx.verification.updateMany({
+        where: { id: verification.id, isVerified: false, expiresAt: { gt: new Date() } },
+        data: { isVerified: true }
+      });
+      if (consumed.count !== 1) {
+        throw Object.assign(new Error('Invalid or expired reset code'), { status: 400 });
+      }
+      await tx.user.update({
         where: { id: user.id },
         data: { passwordHash }
-      }),
-      prisma.verification.update({
-        where: { id: verification.id },
-        data: { isVerified: true }
-      })
-    ]);
+      });
+    });
 
     return { message: 'Password reset successful. You can now log in with your new password.' };
   }

@@ -55,7 +55,7 @@ export default function DealerPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-24">
+      <div className="min-h-screen bg-pearl-100 pt-6">
         <div className="section-container">
           {/* Cover skeleton */}
           <div className="h-64 bg-pearl-300 animate-pulse rounded-3xl mb-8" />
@@ -77,7 +77,7 @@ export default function DealerPage() {
   // Error / not found state
   if (error || !dealer) {
     return (
-      <div className="min-h-screen bg-pearl-100 flex items-center justify-center pt-24">
+      <div className="min-h-screen bg-pearl-100 flex items-center justify-center pt-6">
         <div className="text-center max-w-md mx-auto px-6">
           <div className="w-20 h-20 bg-naija-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-naija-500" />

@@ -5,6 +5,7 @@ const sharp = require('sharp');
 const prisma = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
 const { uploadSingle } = require('../middleware/upload');
+const { publicProfileSelect, publicUserSelect } = require('../lib/publicUser');
 
 const listingSellerSelect = {
   id: true,
@@ -14,7 +15,7 @@ const listingSellerSelect = {
   isActive: true,
   createdAt: true,
   updatedAt: true,
-  profile: true
+  profile: { select: publicProfileSelect }
 };
 
 const persistAvatar = async (userId, inputBuffer) => {
@@ -117,7 +118,7 @@ const authenticateAvatarUpload = async (req, res, next) => {
       }
     }
 
-    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken;
     if (refreshToken) {
       try {
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
@@ -459,8 +460,8 @@ router.get('/dealers', async (req, res, next) => {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        include: {
-          profile: true,
+        select: {
+          ...publicUserSelect,
           _count: { select: { listings: { where: { status: 'ACTIVE' } } } }
         },
         orderBy: [
@@ -502,8 +503,8 @@ router.get('/:id', async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
-      include: {
-        profile: true,
+      select: {
+        ...publicUserSelect,
         _count: {
           select: {
             listings: {

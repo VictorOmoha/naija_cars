@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { publicUserSelect } = require('../lib/publicUser');
 
 class MessageService {
   /**
@@ -52,7 +53,7 @@ class MessageService {
         throw error;
       }
 
-      if (listing.sellerId !== receiverId) {
+      if (listing.sellerId !== receiverId && listing.sellerId !== senderId) {
         const error = new Error('This listing does not belong to the selected seller');
         error.status = 400;
         throw error;
@@ -71,14 +72,10 @@ class MessageService {
       },
       include: {
         sender: {
-          include: {
-            profile: true
-          }
+          select: publicUserSelect
         },
         receiver: {
-          include: {
-            profile: true
-          }
+          select: publicUserSelect
         },
         listing: {
           select: {
@@ -113,14 +110,10 @@ class MessageService {
       },
       include: {
         sender: {
-          include: {
-            profile: true
-          }
+          select: publicUserSelect
         },
         receiver: {
-          include: {
-            profile: true
-          }
+          select: publicUserSelect
         },
         listing: {
           select: {
@@ -180,11 +173,13 @@ class MessageService {
     const skip = (safePage - 1) * safeLimit;
 
     // Extract user IDs from conversation ID
-    const [user1Id, user2Id] = conversationId.split('_');
+    const participants = conversationId.split('_');
 
     // Verify user is part of conversation
-    if (userId !== user1Id && userId !== user2Id) {
-      throw new Error('Unauthorized access to conversation');
+    if (participants.length !== 2 || !participants.includes(userId)) {
+      const error = new Error('Unauthorized access to conversation');
+      error.status = 403;
+      throw error;
     }
 
     const [messages, total] = await Promise.all([
@@ -192,9 +187,7 @@ class MessageService {
         where: { conversationId },
         include: {
           sender: {
-            include: {
-              profile: true
-            }
+            select: publicUserSelect
           },
           listing: {
             select: {

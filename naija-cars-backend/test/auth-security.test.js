@@ -147,3 +147,21 @@ test('refresh accepts the HTTP-only cookie and returns only an access token', as
   assert.equal(receivedRefreshToken, 'cookie-refresh-token');
   assert.deepEqual(body.data, { accessToken: 'new-access-token' });
 });
+
+test('password reset attempts are rate limited', async () => {
+  let response;
+  for (let i = 0; i < 16; i++) {
+    response = await postJson('/api/auth/reset-password');
+    await response.text();
+  }
+  assert.equal(response.status, 429);
+});
+
+test('password reset email requests are rate limited', async () => {
+  let response;
+  for (let i = 0; i < 6; i++) {
+    response = await postJson('/api/auth/forgot-password');
+    await response.text();
+  }
+  assert.equal(response.status, 429);
+});

@@ -294,7 +294,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
+    <div className="min-h-screen bg-pearl-100 pt-8 pb-20">
       {/* Hero Banner */}
       <div className="relative h-48 md:h-64 bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 overflow-hidden">
         <div className="absolute inset-0 kente-overlay opacity-10" />

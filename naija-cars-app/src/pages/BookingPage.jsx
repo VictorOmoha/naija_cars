@@ -5,29 +5,27 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
   Car, MapPin, Clock, Shield, CheckCircle, ArrowRight,
-  ChevronLeft, User, Phone, Mail, Lock, Sparkles,
-  Truck, FileText, BadgeCheck, Gift, Tag, Minus, Plus
+  ChevronLeft, User, Phone, Mail, Lock,
+  Truck, FileText, BadgeCheck, Minus, Plus
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import api from '../services/api';
-import { rentalCars } from '../data/cars';
 
 export default function BookingPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { addToast } = useApp();
+  const { addToast, openAuthModal } = useApp();
   const { user, isAuthenticated } = useAuthStore();
 
   const bookingType = searchParams.get('type') || 'purchase'; // 'purchase' or 'rental'
 
   const [step, setStep] = useState(1);
   const [rentalDays, setRentalDays] = useState(3);
-  const [selectedPayment, setSelectedPayment] = useState('paystack');
+  const selectedPayment = 'arrange_with_seller';
   const [isProcessing, setIsProcessing] = useState(false);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoApplied, setPromoApplied] = useState(false);
+  const [confirmedTotal, setConfirmedTotal] = useState(null);
   const [bookingReference, setBookingReference] = useState('');
   const [addons, setAddons] = useState({
     insurance: false,
@@ -35,12 +33,12 @@ export default function BookingPage() {
     inspection: false,
   });
 
-  const { register, formState: { errors }, getValues } = useForm({
+  const { register, formState: { errors }, getValues, trigger } = useForm({
     defaultValues: {
       firstName: user?.profile?.firstName || '',
       lastName: user?.profile?.lastName || '',
       email: user?.email || '',
-      phone: user?.profile?.phone || '',
+      phone: user?.phoneNumber || '',
     }
   });
 
@@ -48,28 +46,6 @@ export default function BookingPage() {
   const { data: listing, isLoading, isError } = useQuery({
     queryKey: ['listing', id],
     queryFn: async () => {
-      const localRental = rentalCars.find((car) => String(car.id) === String(id));
-      if (bookingType === 'rental' && localRental) {
-        return {
-          id: String(localRental.id),
-          make: localRental.make,
-          model: localRental.model,
-          year: localRental.year,
-          trim: localRental.trim,
-          price: localRental.pricePerDay,
-          pricePerDay: localRental.pricePerDay,
-          transmission: localRental.transmission,
-          fuelType: localRental.fuelType,
-          locationCity: localRental.location?.city || '',
-          locationState: localRental.location?.state || '',
-          media: localRental.images?.map((url, index) => ({ url, displayOrder: index })) || [],
-          seller: {
-            profile: { businessName: localRental.company?.name || 'Rental Partner' },
-          },
-          localOnly: true,
-        };
-      }
-
       const response = await api.get(`/listings/${id}`);
       return response.data.data.listing;
     },
@@ -78,8 +54,7 @@ export default function BookingPage() {
 
   // Derived values from listing
   const carPrice = listing ? parseFloat(listing.price) : 0;
-  // For rentals, estimate a daily price (if not on the schema, derive from price)
-  const pricePerDay = listing?.pricePerDay || Math.round(carPrice * 0.01);
+  const pricePerDay = carPrice;
   const carName = listing ? `${listing.year} ${listing.make} ${listing.model}` : '';
   const carImage = listing?.media?.[0]?.url || listing?.media?.[0]?.thumbnailUrl || null;
   const carLocation = listing ? `${listing.locationCity}, ${listing.locationState}` : '';
@@ -93,28 +68,22 @@ export default function BookingPage() {
   const deliveryFee = addons.delivery ? 50000 : 0;
   const inspectionFee = addons.inspection ? 75000 : 0;
   const serviceFee = bookingType === 'rental' ? 5000 : basePrice * 0.01;
-  const promoDiscount = promoApplied ? (bookingType === 'rental' ? 20000 : basePrice * 0.05) : 0;
-  const totalPrice = basePrice + insuranceFee + deliveryFee + inspectionFee + serviceFee - promoDiscount;
+  const totalPrice = Math.round((basePrice + insuranceFee + deliveryFee + inspectionFee + serviceFee) * 100) / 100;
 
   const formatPrice = (price) => {
     if (price >= 1000000) return `₦${(price / 1000000).toFixed(2)}M`;
     return `₦${price.toLocaleString()}`;
   };
 
-  const handleApplyPromo = async () => {
-    // In a real implementation, validate promo against API
-    // For now validate a simple format
-    if (promoCode.trim().length >= 4) {
-      setPromoApplied(true);
-      addToast('Promo code applied!', 'success');
-    } else {
-      addToast('Invalid promo code', 'error');
-    }
-  };
-
   const handlePayment = async () => {
+    if (isProcessing) return;
     if (!isAuthenticated) {
       addToast('Please log in to continue', 'error');
+      openAuthModal();
+      return;
+    }
+    if (!await trigger()) {
+      setStep(1);
       return;
     }
 
@@ -128,27 +97,12 @@ export default function BookingPage() {
         paymentMethod: selectedPayment,
         addons,
         contactInfo: getValues(),
-        listingSnapshot: listing?.localOnly ? {
-          id: listing.id,
-          make: listing.make,
-          model: listing.model,
-          year: listing.year,
-          trim: listing.trim,
-          pricePerDay: listing.pricePerDay,
-          locationCity: listing.locationCity,
-          locationState: listing.locationState,
-          image: listing.media?.[0]?.url || null,
-          sellerName,
-        } : undefined,
         totalAmount: totalPrice,
-        promoCode: promoApplied ? promoCode : undefined,
       });
       setBookingReference(response.data?.data?.booking?.reference || '');
-
-      setTimeout(() => {
-        setIsProcessing(false);
-        setStep(4);
-      }, 2000);
+      setConfirmedTotal(response.data.data.booking.totalAmount);
+      setIsProcessing(false);
+      setStep(4);
     } catch (error) {
       setIsProcessing(false);
       addToast(
@@ -158,15 +112,9 @@ export default function BookingPage() {
     }
   };
 
-  const paymentMethods = [
-    { id: 'paystack', name: 'Paystack', desc: 'Pay with card, bank transfer, or USSD', logo: '💳' },
-    { id: 'flutterwave', name: 'Flutterwave', desc: 'Multiple payment options', logo: '🦋' },
-    { id: 'bank_transfer', name: 'Bank Transfer', desc: 'Pay directly to our bank account', logo: '🏦' },
-  ];
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-28 flex items-center justify-center">
+      <div className="min-h-screen bg-pearl-100 pt-8 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-naija-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-charcoal-600">Loading listing details...</p>
@@ -175,9 +123,9 @@ export default function BookingPage() {
     );
   }
 
-  if (isError || !listing) {
+  if (isError || !listing || listing.listingType !== (bookingType === 'rental' ? 'RENT' : 'SALE')) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-28 flex items-center justify-center">
+      <div className="min-h-screen bg-pearl-100 pt-8 flex items-center justify-center">
         <div className="text-center bg-white rounded-3xl shadow-card p-12 max-w-md">
           <Car className="w-16 h-16 text-charcoal-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-charcoal-800 mb-2">Listing Not Found</h2>
@@ -194,7 +142,7 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
+    <div className="min-h-screen bg-pearl-100 pt-8 pb-20">
       {/* Header */}
       <div className="bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 py-8 relative overflow-hidden">
         <div className="absolute inset-0 kente-overlay opacity-10" />
@@ -220,12 +168,12 @@ export default function BookingPage() {
             {[
               { num: 1, label: 'Details' },
               { num: 2, label: bookingType === 'rental' ? 'Rental Info' : 'Add-ons' },
-              { num: 3, label: 'Payment' },
+              { num: 3, label: 'Review' },
               { num: 4, label: 'Confirmation' },
             ].map((s, index) => (
-              <div key={s.num} className="flex items-center">
-                <div className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+              <div key={s.num} className={`flex items-center min-w-0 ${index < 3 ? 'flex-1' : ''}`}>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div aria-label={`Step ${s.num}: ${s.label}`} className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold transition-all ${
                     step >= s.num ? 'bg-naija-500 text-white' : 'bg-pearl-200 text-charcoal-400'
                   }`}>
                     {step > s.num ? <CheckCircle className="w-5 h-5" /> : s.num}
@@ -235,7 +183,7 @@ export default function BookingPage() {
                   </span>
                 </div>
                 {index < 3 && (
-                  <div className={`w-12 md:w-20 h-1 mx-2 md:mx-4 rounded-full ${step > s.num ? 'bg-naija-500' : 'bg-pearl-200'}`} />
+                  <div className={`flex-1 min-w-2 h-1 mx-1 md:mx-3 rounded-full ${step > s.num ? 'bg-naija-500' : 'bg-pearl-200'}`} />
                 )}
               </div>
             ))}
@@ -257,7 +205,7 @@ export default function BookingPage() {
                 >
                   <div className="p-6 border-b border-pearl-200">
                     <h2 className="text-xl font-display font-bold text-charcoal-800">Contact Information</h2>
-                    <p className="text-charcoal-500">We'll use this to send your {bookingType === 'rental' ? 'booking' : 'purchase'} confirmation</p>
+                    <p className="text-charcoal-500">Contact details for your booking request</p>
                   </div>
                   <div className="p-6 space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
@@ -283,29 +231,32 @@ export default function BookingPage() {
                             placeholder="Enter last name"
                           />
                         </div>
+                        {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-charcoal-700 mb-2">Email *</label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('email', { required: 'Email is required' })}
+                            {...register('email', { required: 'Email is required', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' } })}
                             type="email"
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="your@email.com"
                           />
                         </div>
+                        {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-charcoal-700 mb-2">Phone *</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                           <input
-                            {...register('phone', { required: 'Phone is required' })}
+                            {...register('phone', { required: 'Phone is required', pattern: { value: /^\+?[\d\s()-]{7,20}$/, message: 'Enter a valid phone number' } })}
                             className="w-full pl-12 pr-4 py-3.5 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100"
                             placeholder="+234 xxx xxx xxxx"
                           />
                         </div>
+                        {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone.message}</p>}
                       </div>
                     </div>
                     {bookingType === 'purchase' && (
@@ -324,7 +275,7 @@ export default function BookingPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
+                      onClick={async () => { if (await trigger()) setStep(2); }}
                       className="w-full btn-primary py-4 rounded-xl flex items-center justify-center gap-2"
                     >
                       Continue <ArrowRight className="w-5 h-5" />
@@ -357,7 +308,7 @@ export default function BookingPage() {
                             <div className="text-4xl font-bold text-charcoal-800">{rentalDays}</div>
                             <div className="text-charcoal-500">days</div>
                           </div>
-                          <button onClick={() => setRentalDays(rentalDays + 1)} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
+                          <button onClick={() => setRentalDays(Math.min(365, rentalDays + 1))} className="p-3 bg-pearl-100 text-charcoal-600 rounded-xl hover:bg-pearl-200 transition-colors">
                             <Plus className="w-6 h-6" />
                           </button>
                         </div>
@@ -368,12 +319,6 @@ export default function BookingPage() {
                             </button>
                           ))}
                         </div>
-                        {rentalDays >= 7 && (
-                          <div className="mt-4 p-4 bg-emerald-50 rounded-xl flex items-center gap-3">
-                            <Gift className="w-5 h-5 text-emerald-600" />
-                            <span className="text-emerald-700 font-medium">10% discount applied for weekly rental!</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -412,13 +357,13 @@ export default function BookingPage() {
                   <div className="flex gap-4">
                     <button onClick={() => setStep(1)} className="flex-1 py-4 border-2 border-pearl-300 text-charcoal-700 font-medium rounded-xl hover:bg-pearl-50 transition-colors">Back</button>
                     <button onClick={() => setStep(3)} className="flex-1 btn-primary py-4 rounded-xl flex items-center justify-center gap-2">
-                      Continue to Payment <ArrowRight className="w-5 h-5" />
+                      Review Booking <ArrowRight className="w-5 h-5" />
                     </button>
                   </div>
                 </motion.div>
               )}
 
-              {/* Step 3: Payment */}
+              {/* Step 3: Review */}
               {step === 3 && (
                 <motion.div
                   key="step3"
@@ -427,53 +372,10 @@ export default function BookingPage() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-6"
                 >
-                  <div className="bg-white rounded-3xl shadow-card overflow-hidden">
-                    <div className="p-6 border-b border-pearl-200">
-                      <h2 className="text-xl font-display font-bold text-charcoal-800">Payment Method</h2>
-                      <p className="text-charcoal-500">Choose how you'd like to pay</p>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      {paymentMethods.map((method) => (
-                        <label key={method.id} className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-colors ${selectedPayment === method.id ? 'border-naija-500 bg-naija-50' : 'border-pearl-300 hover:border-pearl-400'}`}>
-                          <div className="flex items-center gap-4">
-                            <span className="text-3xl">{method.logo}</span>
-                            <div>
-                              <h3 className="font-semibold text-charcoal-800">{method.name}</h3>
-                              <p className="text-sm text-charcoal-500">{method.desc}</p>
-                            </div>
-                          </div>
-                          <input type="radio" name="payment" checked={selectedPayment === method.id} onChange={() => setSelectedPayment(method.id)} className="w-5 h-5 text-naija-500 focus:ring-naija-500" />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Promo Code */}
                   <div className="bg-white rounded-3xl shadow-card p-6">
-                    <h3 className="font-semibold text-charcoal-800 mb-4">Have a Promo Code?</h3>
-                    <div className="flex gap-3">
-                      <div className="relative flex-1">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
-                        <input
-                          type="text"
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value)}
-                          disabled={promoApplied}
-                          className="w-full pl-12 pr-4 py-3 border border-pearl-300 rounded-xl focus:border-naija-500 focus:ring-2 focus:ring-naija-100 disabled:bg-pearl-100"
-                          placeholder="Enter promo code"
-                        />
-                      </div>
-                      <button onClick={handleApplyPromo} disabled={promoApplied || !promoCode} className="px-6 py-3 bg-naija-500 text-white font-medium rounded-xl hover:bg-naija-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {promoApplied ? 'Applied!' : 'Apply'}
-                      </button>
-                    </div>
-                    {promoApplied && (
-                      <p className="mt-2 text-sm text-emerald-600 flex items-center gap-1">
-                        <Sparkles className="w-4 h-4" /> 5% discount applied!
-                      </p>
-                    )}
+                    <h2 className="text-xl font-display font-bold text-charcoal-800">Review your booking request</h2>
+                    <p className="text-charcoal-500 mt-2">No payment is collected here. Confirm availability, add-ons, and payment arrangements with the seller before paying.</p>
                   </div>
-
                   <div className="flex gap-4">
                     <button onClick={() => setStep(2)} className="flex-1 py-4 border-2 border-pearl-300 text-charcoal-700 font-medium rounded-xl hover:bg-pearl-50 transition-colors">Back</button>
                     <button
@@ -489,7 +391,7 @@ export default function BookingPage() {
                       ) : (
                         <>
                           <Lock className="w-5 h-5" />
-                          Pay {formatPrice(totalPrice)}
+                          Submit Booking Request
                         </>
                       )}
                     </button>
@@ -497,7 +399,7 @@ export default function BookingPage() {
 
                   <div className="flex items-center justify-center gap-2 text-sm text-charcoal-500">
                     <Shield className="w-4 h-4" />
-                    <span>Your payment is secured with 256-bit SSL encryption</span>
+                    <span>No payment is collected when you submit this request</span>
                   </div>
                 </motion.div>
               )}
@@ -521,12 +423,10 @@ export default function BookingPage() {
                     </motion.div>
 
                     <h2 className="text-2xl font-display font-bold text-charcoal-800 mb-2">
-                      {bookingType === 'rental' ? 'Booking Confirmed!' : 'Order Placed Successfully!'}
+                      Booking Request Received
                     </h2>
                     <p className="text-charcoal-500 mb-6">
-                      {bookingType === 'rental'
-                        ? 'Your rental has been confirmed. Check your email for details.'
-                        : "Thank you for your purchase. We'll be in touch shortly."}
+                      Save your reference and contact the seller to confirm availability. No payment has been collected.
                     </p>
 
                     <div className="bg-pearl-50 rounded-2xl p-6 mb-6 text-left">
@@ -545,17 +445,17 @@ export default function BookingPage() {
                         </div>
                       </div>
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-charcoal-500">Reference</span>
-                          <span className="font-medium text-charcoal-800">{bookingReference || `NC-${String(id).slice(-6).toUpperCase()}`}</span>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-charcoal-500 shrink-0">Reference</span>
+                          <span className="font-medium text-charcoal-800 text-right break-all">{bookingReference}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-charcoal-500">Total Paid</span>
-                          <span className="font-bold text-naija-600">{formatPrice(totalPrice)}</span>
+                          <span className="text-charcoal-500">Estimated Total</span>
+                          <span className="font-bold text-naija-600">{formatPrice(confirmedTotal ?? totalPrice)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-charcoal-500">Payment Method</span>
-                          <span className="font-medium capitalize">{selectedPayment.replace('_', ' ')}</span>
+                          <span className="text-charcoal-500">Payment Status</span>
+                          <span className="font-medium capitalize">Not collected</span>
                         </div>
                       </div>
                     </div>
@@ -618,13 +518,12 @@ export default function BookingPage() {
                   {addons.delivery && <div className="flex justify-between"><span className="text-charcoal-500 text-sm">Delivery</span><span className="font-medium text-sm">{formatPrice(deliveryFee)}</span></div>}
                   {addons.inspection && <div className="flex justify-between"><span className="text-charcoal-500 text-sm">Inspection</span><span className="font-medium text-sm">{formatPrice(inspectionFee)}</span></div>}
                   <div className="flex justify-between"><span className="text-charcoal-500 text-sm">Service Fee</span><span className="font-medium text-sm">{formatPrice(serviceFee)}</span></div>
-                  {promoApplied && <div className="flex justify-between text-emerald-600"><span className="text-sm">Promo Discount</span><span className="font-medium text-sm">-{formatPrice(promoDiscount)}</span></div>}
                 </div>
 
                 <div className="border-t border-pearl-200 pt-4 mb-6">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-charcoal-800">Total</span>
-                    <span className="text-2xl font-bold text-naija-600">{formatPrice(totalPrice)}</span>
+                    <span className="text-2xl font-bold text-naija-600">{formatPrice(confirmedTotal ?? totalPrice)}</span>
                   </div>
                 </div>
 
@@ -632,7 +531,7 @@ export default function BookingPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm text-charcoal-600"><Shield className="w-5 h-5 text-naija-500" /><span>Buyer Protection Guarantee</span></div>
                   <div className="flex items-center gap-3 text-sm text-charcoal-600"><BadgeCheck className="w-5 h-5 text-naija-500" /><span>Verified Vehicle</span></div>
-                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Lock className="w-5 h-5 text-naija-500" /><span>Secure Payment</span></div>
+                  <div className="flex items-center gap-3 text-sm text-charcoal-600"><Lock className="w-5 h-5 text-naija-500" /><span>Review details before paying</span></div>
                   <div className="flex items-center gap-3 text-sm text-charcoal-600"><Clock className="w-5 h-5 text-naija-500" /><span>Quick Response Guaranteed</span></div>
                 </div>
               </div>

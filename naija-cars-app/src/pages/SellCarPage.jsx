@@ -1,16 +1,14 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Car, Camera, DollarSign, FileText, Shield, CheckCircle,
-  ChevronRight, TrendingUp, Users, Clock, ArrowRight, X, Plus, Loader2
-} from 'lucide-react';
+import { Car, X, Plus, Loader2, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api, { subscriptionAPI } from '../services/api';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 import { CAR_MAKES, BODY_TYPES, NIGERIAN_STATES, CAR_FEATURES } from '../data/constants';
 import { prepareListingImageData } from '../utils/listingImages';
+import { calculateValuation } from '../utils/valuation';
+import { formatNaira } from '../utils/format';
 
 // Map frontend condition values → backend enum
 const conditionToBackend = {
@@ -19,19 +17,58 @@ const conditionToBackend = {
   'nigerian-used': 'NIGERIAN_USED',
 };
 
-// Map backend condition enum → frontend values
 const conditionToFrontend = {
-  'BRAND_NEW': 'brand-new',
-  'FOREIGN_USED': 'foreign-used',
-  'NIGERIAN_USED': 'nigerian-used',
+  BRAND_NEW: 'brand-new',
+  FOREIGN_USED: 'foreign-used',
+  NIGERIAN_USED: 'nigerian-used',
 };
+
+// Condition values → valuation model labels
+const conditionToValuation = {
+  'brand-new': 'Brand New',
+  'foreign-used': 'Foreign Used (Tokunbo)',
+  'nigerian-used': 'Nigerian Used',
+};
+
+const STEPS = [
+  { number: 1, label: 'CAR DETAILS' },
+  { number: 2, label: 'PHOTOS' },
+  { number: 3, label: 'PRICING' },
+  { number: 4, label: 'REVIEW' },
+];
+
+const Field = ({ label, children, className = '' }) => (
+  <div className={className}>
+    <div className="text-[11px] font-black tracking-[0.08em] uppercase mb-[7px]">{label}</div>
+    {children}
+  </div>
+);
+
+const ChipGroup = ({ options, value, onChange }) => (
+  <div className="flex gap-2 flex-wrap">
+    {options.map((opt) => (
+      <button
+        key={opt.value}
+        type="button"
+        onClick={() => onChange(opt.value)}
+        className={`text-[13px] rounded-full transition-colors ${
+          value === opt.value
+            ? 'font-extrabold bg-ink text-white px-5 py-[11px]'
+            : 'font-bold border-2 border-ink px-[18px] py-[9px] hover:bg-ink/5'
+        }`}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
 
 const SellCarPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { addToast } = useApp();
   const { isAuthenticated } = useAuthStore();
-  const editId = searchParams.get('edit'); // listing ID if in edit mode
+  const editId = searchParams.get('edit');
   const isEditMode = !!editId;
 
   // Subscription check
@@ -46,50 +83,45 @@ const SellCarPage = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
-  const [images, setImages] = useState([]); // new file uploads
-  const [existingImages, setExistingImages] = useState([]); // already-uploaded URLs
+  const [images, setImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [formData, setFormData] = useState({
-    // Basic Info
     make: '',
     model: '',
     year: '',
     condition: 'nigerian-used',
     listingType: 'SALE',
-    // Details
     mileage: '',
     transmission: 'automatic',
     fuelType: 'petrol',
     bodyType: '',
     color: '',
     engineSize: '',
-    // Pricing
     price: '',
     negotiable: true,
-    // Description
     title: '',
     description: '',
     features: [],
-    // Contact
     phone: '',
     whatsapp: '',
     locationCity: '',
     locationState: '',
   });
 
-  const steps = [
-    { number: 1, title: 'Basic Info', icon: Car },
-    { number: 2, title: 'Details', icon: FileText },
-    { number: 3, title: 'Photos', icon: Camera },
-    { number: 4, title: 'Pricing', icon: DollarSign },
-    { number: 5, title: 'Review', icon: CheckCircle },
-  ];
-
-  const benefits = [
-    { icon: Users, title: 'Reach Active Buyers', desc: 'Connect with buyers looking for verified cars in Nigeria' },
-    { icon: Shield, title: 'Secure Transactions', desc: 'Protected payments and verified buyer contacts' },
-    { icon: TrendingUp, title: 'Best Prices', desc: 'Get competitive market rates for your vehicle' },
-    { icon: Clock, title: 'Easy Follow-up', desc: 'Manage listing interest and buyer messages from your dashboard' },
-  ];
+  // Live instant estimate — recalculates as car details change
+  const estimate = useMemo(() => {
+    if (!formData.make || !formData.model || !formData.year) return null;
+    return calculateValuation({
+      make: formData.make,
+      model: formData.model,
+      year: formData.year,
+      condition: conditionToValuation[formData.condition],
+      mileage: formData.mileage,
+      transmission: formData.transmission === 'manual' ? 'Manual' : 'Automatic',
+      fuelType: formData.fuelType.charAt(0).toUpperCase() + formData.fuelType.slice(1),
+      location: formData.locationState,
+    });
+  }, [formData.make, formData.model, formData.year, formData.condition, formData.mileage, formData.transmission, formData.fuelType, formData.locationState]);
 
   // Fetch existing listing data in edit mode
   useEffect(() => {
@@ -117,17 +149,17 @@ const SellCarPage = () => {
           negotiable: listing.negotiable ?? true,
           title: listing.title || `${listing.year} ${listing.make} ${listing.model}`,
           description: listing.description || '',
+          features: [],
           phone: listing.phone || '',
           whatsapp: listing.whatsapp || '',
           locationCity: listing.locationCity || '',
           locationState: listing.locationState || '',
         });
 
-        // Load existing images as previews
         if (listing.media && listing.media.length > 0) {
           setExistingImages(listing.media.map(m => ({ id: m.id, url: m.url || m.thumbnailUrl })));
         }
-      } catch (error) {
+      } catch {
         addToast('Failed to load listing for editing', 'error');
         navigate('/dashboard');
       } finally {
@@ -140,10 +172,7 @@ const SellCarPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleFeatureToggle = (feature) => {
@@ -157,10 +186,7 @@ const SellCarPage = () => {
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = files.map(file => ({
-      file,
-      preview: URL.createObjectURL(file)
-    }));
+    const newImages = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
     const totalAllowed = 10 - existingImages.length;
     setImages(prev => [...prev, ...newImages].slice(0, totalAllowed));
   };
@@ -186,7 +212,7 @@ const SellCarPage = () => {
 
     if (existingImages.length + images.length === 0) {
       addToast('Please add at least one photo before submitting your listing.', 'error');
-      setCurrentStep(3);
+      setCurrentStep(2);
       setIsSubmitting(false);
       return;
     }
@@ -215,20 +241,15 @@ const SellCarPage = () => {
       };
 
       let listing;
-
       if (isEditMode) {
-        // Update existing listing
         const response = await api.put(`/listings/${editId}`, payload);
         listing = response.data.data.listing;
       } else {
-        // Create new listing
         const response = await api.post('/listings', payload);
         listing = response.data.data.listing;
       }
 
-      // Upload new images if any were selected
       let failedImageUploads = 0;
-
       if (images.length > 0) {
         for (const image of images) {
           try {
@@ -250,10 +271,7 @@ const SellCarPage = () => {
           'info'
         );
       } else {
-        addToast(
-          isEditMode ? 'Listing updated successfully!' : 'Your listing is now live!',
-          'success'
-        );
+        addToast(isEditMode ? 'Listing updated successfully!' : 'Your listing is now live!', 'success');
       }
 
       navigate(`/car/${listing.id}`);
@@ -266,534 +284,330 @@ const SellCarPage = () => {
     }
   };
 
+  const inputClass = 'input-1b';
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-display font-bold text-charcoal-800">
-              Tell us about your car
-            </h3>
+          <div className="space-y-4">
+            <Field label="Listing type">
+              <ChipGroup
+                options={[{ value: 'SALE', label: 'For sale' }, { value: 'RENT', label: 'For rent' }]}
+                value={formData.listingType}
+                onChange={(v) => setFormData(prev => ({ ...prev, listingType: v }))}
+              />
+            </Field>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Listing Type */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Listing Type *
-                </label>
-                <div className="flex gap-4">
-                  {[{ value: 'SALE', label: 'For Sale' }, { value: 'RENT', label: 'For Rent' }].map(option => (
-                    <label key={option.value} className={`flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.listingType === option.value
-                        ? 'border-naija-500 bg-naija-50 text-naija-700'
-                        : 'border-pearl-300 text-charcoal-600'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="listingType"
-                        value={option.value}
-                        checked={formData.listingType === option.value}
-                        onChange={handleInputChange}
-                        className="sr-only"
-                      />
-                      <span className="font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Car Make *
-                </label>
-                <select
-                  name="make"
-                  value={formData.make}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
-                  <option value="">Select Make</option>
-                  {CAR_MAKES.map(make => (
-                    <option key={make} value={make}>{make}</option>
-                  ))}
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <Field label="Make *">
+                <select name="make" value={formData.make} onChange={handleInputChange} className={inputClass}>
+                  <option value="">Select make</option>
+                  {CAR_MAKES.map(make => <option key={make} value={make}>{make}</option>)}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Model *
-                </label>
+              </Field>
+              <Field label="Model *">
                 <input
-                  type="text"
-                  name="model"
-                  value={formData.model}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Camry, Accord, C300"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
+                  type="text" name="model" value={formData.model} onChange={handleInputChange}
+                  placeholder="e.g. Camry, Accord, C300" className={inputClass}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Year *
-                </label>
-                <select
-                  name="year"
-                  value={formData.year}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
-                  <option value="">Select Year</option>
+              </Field>
+              <Field label="Year *">
+                <select name="year" value={formData.year} onChange={handleInputChange} className={inputClass}>
+                  <option value="">Select year</option>
                   {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Condition *
-                </label>
-                <select
-                  name="condition"
-                  value={formData.condition}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
-                  <option value="brand-new">Brand New</option>
-                  <option value="foreign-used">Foreign Used (Tokunbo)</option>
-                  <option value="nigerian-used">Nigerian Used</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-display font-bold text-charcoal-800">
-              Vehicle Details
-            </h3>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Mileage (km) *
-                </label>
+              </Field>
+              <Field label="Mileage (km)">
                 <input
-                  type="number"
-                  name="mileage"
-                  value={formData.mileage}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 50000"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
+                  type="number" name="mileage" value={formData.mileage} onChange={handleInputChange}
+                  placeholder="e.g. 62,400" className={inputClass}
                 />
-              </div>
+              </Field>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Transmission *
-                </label>
-                <select
-                  name="transmission"
-                  value={formData.transmission}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
+            <Field label="Condition *">
+              <ChipGroup
+                options={[
+                  { value: 'foreign-used', label: 'Tokunbo (foreign used)' },
+                  { value: 'nigerian-used', label: 'Naija-used' },
+                  { value: 'brand-new', label: 'Brand new' },
+                ]}
+                value={formData.condition}
+                onChange={(v) => setFormData(prev => ({ ...prev, condition: v }))}
+              />
+            </Field>
+
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <Field label="Transmission">
+                <select name="transmission" value={formData.transmission} onChange={handleInputChange} className={inputClass}>
                   <option value="automatic">Automatic</option>
                   <option value="manual">Manual</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Fuel Type *
-                </label>
-                <select
-                  name="fuelType"
-                  value={formData.fuelType}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
+              </Field>
+              <Field label="Fuel type">
+                <select name="fuelType" value={formData.fuelType} onChange={handleInputChange} className={inputClass}>
                   <option value="petrol">Petrol</option>
                   <option value="diesel">Diesel</option>
                   <option value="hybrid">Hybrid</option>
                   <option value="electric">Electric</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Body Type *
-                </label>
-                <select
-                  name="bodyType"
-                  value={formData.bodyType}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
-                  <option value="">Select Body Type</option>
-                  {BODY_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+              </Field>
+              <Field label="Body type">
+                <select name="bodyType" value={formData.bodyType} onChange={handleInputChange} className={inputClass}>
+                  <option value="">Select body type</option>
+                  {BODY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Color
-                </label>
+              </Field>
+              <Field label="Colour">
                 <input
-                  type="text"
-                  name="color"
-                  value={formData.color}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Black, White, Silver"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
+                  type="text" name="color" value={formData.color} onChange={handleInputChange}
+                  placeholder="e.g. Black, Silver" className={inputClass}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Engine Size
-                </label>
+              </Field>
+              <Field label="Engine size">
                 <input
-                  type="text"
-                  name="engineSize"
-                  value={formData.engineSize}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 2.5L, 3.0L"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
+                  type="text" name="engineSize" value={formData.engineSize} onChange={handleInputChange}
+                  placeholder="e.g. 2.5L" className={inputClass}
                 />
-              </div>
+              </Field>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-charcoal-700 mb-3">
-                Features
-              </label>
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <Field label="State *">
+                <select name="locationState" value={formData.locationState} onChange={handleInputChange} className={inputClass}>
+                  <option value="">Select state</option>
+                  {NIGERIAN_STATES.map(state => <option key={state} value={state}>{state}</option>)}
+                </select>
+              </Field>
+              <Field label="Area *">
+                <input
+                  type="text" name="locationCity" value={formData.locationCity} onChange={handleInputChange}
+                  placeholder="e.g. Lekki, Victoria Island" className={inputClass}
+                />
+              </Field>
+              <Field label="Phone *">
+                <input
+                  type="tel" name="phone" value={formData.phone} onChange={handleInputChange}
+                  placeholder="0803 000 0000" className={inputClass}
+                />
+              </Field>
+              <Field label="Phone (WhatsApp)">
+                <input
+                  type="tel" name="whatsapp" value={formData.whatsapp} onChange={handleInputChange}
+                  placeholder="0803 000 0000" className={inputClass}
+                />
+              </Field>
+            </div>
+
+            <Field label="Features">
               <div className="flex flex-wrap gap-2">
                 {CAR_FEATURES.map(feature => (
                   <button
                     key={feature}
                     type="button"
                     onClick={() => handleFeatureToggle(feature)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    className={`text-xs rounded-full transition-colors ${
                       formData.features.includes(feature)
-                        ? 'bg-naija-500 text-white'
-                        : 'bg-pearl-100 text-charcoal-600 hover:bg-pearl-200'
+                        ? 'font-extrabold bg-brand text-white px-3.5 py-2'
+                        : 'font-bold border-2 border-lightborder px-3 py-1.5 hover:border-ink'
                     }`}
                   >
                     {feature}
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
           </div>
         );
 
-      case 3:
+      case 2:
         return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-display font-bold text-charcoal-800">
-              Upload Photos
-            </h3>
-            <p className="text-charcoal-600">
-              Add up to 10 photos. First photo will be the main image.
+          <div className="space-y-5">
+            <p className="text-[13px] font-semibold text-muted">
+              Add up to 10 photos. The first photo becomes the main image.
             </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {/* Existing (already uploaded) images */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {existingImages.map((image, index) => (
-                <div key={`existing-${index}`} className="relative aspect-square rounded-xl overflow-hidden group">
-                  <img
-                    src={image.url}
-                    alt={`Car ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                <div key={`existing-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border-2 border-ink group">
+                  <img src={image.url} alt={`Car ${index + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removeExistingImage(index)}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove photo"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                   {index === 0 && (
-                    <span className="absolute bottom-2 left-2 px-2 py-1 bg-naija-500 text-white text-xs rounded-full">
-                      Main
-                    </span>
+                    <span className="absolute bottom-1.5 left-1.5 badge-verified text-[9px] px-2 py-[3px]">MAIN</span>
                   )}
                 </div>
               ))}
 
-              {/* New file uploads */}
               {images.map((image, index) => (
-                <div key={`new-${index}`} className="relative aspect-square rounded-xl overflow-hidden group">
-                  <img
-                    src={image.preview}
-                    alt={`New ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                <div key={`new-${index}`} className="relative aspect-square rounded-[10px] overflow-hidden border-2 border-ink group">
+                  <img src={image.preview} alt={`New ${index + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-1 bg-ink text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove photo"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                  <span className="absolute bottom-2 left-2 px-2 py-1 bg-gold-500 text-white text-xs rounded-full">
+                  <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black uppercase bg-amber text-ink px-2 py-[3px] rounded-full">
                     New
                   </span>
                 </div>
               ))}
 
               {(existingImages.length + images.length) < 10 && (
-                <label className="aspect-square rounded-xl border-2 border-dashed border-pearl-300 hover:border-naija-500 cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors">
-                  <Plus className="w-8 h-8 text-pearl-400" />
-                  <span className="text-sm text-pearl-500">Add Photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                <label className="aspect-square rounded-[10px] border-2 border-dashed border-ink/40 hover:border-brand cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors">
+                  <Plus className="w-7 h-7 text-placeholdertext" />
+                  <span className="text-xs font-bold text-placeholdertext">Add photo</span>
+                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
                 </label>
               )}
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <h4 className="font-medium text-amber-800 mb-2">Photo Tips:</h4>
-              <ul className="text-sm text-amber-700 space-y-1">
-                <li>• Take photos in good lighting</li>
-                <li>• Include exterior, interior, and engine photos</li>
-                <li>• Show any damage or wear clearly</li>
-                <li>• Clean your car before taking photos</li>
+            <div className="border-2 border-amber bg-amber-tint rounded-xl p-4">
+              <h4 className="text-xs font-black uppercase tracking-[0.06em] text-warntext mb-2">Photo tips</h4>
+              <ul className="text-[12.5px] font-semibold text-warntext space-y-1">
+                <li>• Shoot in good light — golden hour flatters every car</li>
+                <li>• Include exterior ¾ front, interior, dashboard and engine bay</li>
+                <li>• Show any damage or wear clearly — honesty sells faster</li>
               </ul>
             </div>
           </div>
         );
 
-      case 4:
+      case 3:
         return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-display font-bold text-charcoal-800">
-              Set Your Price & Contact Info
-            </h3>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Asking Price (₦) *
-                </label>
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <Field label="Asking price (₦) *">
                 <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 15000000"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
+                  type="number" name="price" value={formData.price} onChange={handleInputChange}
+                  placeholder="e.g. 18,500,000" className={inputClass}
                 />
-              </div>
-
-              <div className="flex items-center">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="negotiable"
-                    checked={formData.negotiable}
-                    onChange={handleInputChange}
-                    className="w-5 h-5 text-naija-500 rounded focus:ring-naija-500"
-                  />
-                  <span className="text-charcoal-700">Price is negotiable</span>
+              </Field>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, negotiable: !prev.negotiable }))}
+                    role="switch"
+                    aria-checked={formData.negotiable}
+                    className={`relative w-10 h-[23px] rounded-full transition-colors ${formData.negotiable ? 'bg-brand' : 'bg-lightborder'}`}
+                  >
+                    <span className={`absolute top-[3px] w-[17px] h-[17px] rounded-full bg-white transition-all ${formData.negotiable ? 'right-[3px]' : 'left-[3px]'}`} />
+                  </button>
+                  <span className="text-[13px] font-bold">Price slightly negotiable</span>
                 </label>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Listing Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Clean Toyota Camry 2019 with full options"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  placeholder="Describe your car's condition, history, and any special features..."
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 08012345678"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  WhatsApp Number
-                </label>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={formData.whatsapp}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 08012345678"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  State *
-                </label>
-                <select
-                  name="locationState"
-                  value={formData.locationState}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                >
-                  <option value="">Select State</option>
-                  {NIGERIAN_STATES.map(state => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-charcoal-700 mb-2">
-                  Location/Area *
-                </label>
-                <input
-                  type="text"
-                  name="locationCity"
-                  value={formData.locationCity}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Victoria Island, Lekki"
-                  className="w-full px-4 py-3 border border-pearl-300 rounded-xl focus:ring-2 focus:ring-naija-500 focus:border-transparent"
-                />
               </div>
             </div>
+
+            {estimate && (
+              <div className="border-2 border-amber bg-amber-tint rounded-[14px] px-4 py-3.5 flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[10.5px] font-black tracking-[0.08em] uppercase">Instant estimate</span>
+                <span className="text-[17px] font-black">
+                  {formatNaira(estimate.lowEstimate)} – {formatNaira(estimate.highEstimate)}
+                </span>
+              </div>
+            )}
+
+            <Field label="Listing title">
+              <input
+                type="text" name="title" value={formData.title} onChange={handleInputChange}
+                placeholder={`e.g. Clean ${formData.year || '2019'} ${formData.make || 'Toyota'} ${formData.model || 'Camry'} with full options`}
+                className={inputClass}
+              />
+            </Field>
+
+            <Field label="Description">
+              <textarea
+                name="description" value={formData.description} onChange={handleInputChange} rows={5}
+                placeholder="Describe the car's condition, history and any special features…"
+                className={`${inputClass} resize-none`}
+              />
+            </Field>
           </div>
         );
 
-      case 5:
+      case 4:
         return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-display font-bold text-charcoal-800">
-              Review Your Listing
-            </h3>
-
-            <div className="bg-pearl-50 rounded-2xl p-6 space-y-4">
-              <div className="flex gap-4">
+          <div className="space-y-5">
+            <div className="border-2 border-lightborder rounded-2xl p-5 space-y-4">
+              <div className="flex gap-4 items-start">
                 {(existingImages[0] || images[0]) && (
                   <img
                     src={existingImages[0]?.url || images[0]?.preview}
                     alt="Main"
-                    className="w-32 h-24 object-cover rounded-xl"
+                    className="w-32 h-24 object-cover rounded-[10px] border-2 border-ink"
                   />
                 )}
                 <div>
-                  <h4 className="font-bold text-charcoal-800">
+                  <h4 className="text-[15px] font-extrabold">
                     {formData.title || `${formData.year} ${formData.make} ${formData.model}`}
                   </h4>
-                  <p className="text-2xl font-bold text-naija-600">
-                    ₦{Number(formData.price).toLocaleString()}
-                    {formData.negotiable && <span className="text-sm font-normal text-charcoal-500 ml-2">Negotiable</span>}
+                  <p className="text-[22px] font-black tracking-[-0.02em] mt-0.5">
+                    ₦{Number(formData.price || 0).toLocaleString()}
+                    {formData.negotiable && (
+                      <span className="text-xs font-bold text-brand ml-2">slightly negotiable</span>
+                    )}
                   </p>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    formData.listingType === 'RENT' ? 'bg-blue-100 text-blue-700' : 'bg-naija-100 text-naija-700'
-                  }`}>
-                    {formData.listingType === 'RENT' ? 'For Rent' : 'For Sale'}
+                  <span className="inline-block mt-1.5 text-[10px] font-black uppercase tracking-[0.05em] bg-greentint text-brand px-2.5 py-1 rounded-full">
+                    {formData.listingType === 'RENT' ? 'For rent' : 'For sale'}
                   </span>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Make</span>
-                  <span className="font-medium">{formData.make}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Model</span>
-                  <span className="font-medium">{formData.model}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Year</span>
-                  <span className="font-medium">{formData.year}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Condition</span>
-                  <span className="font-medium capitalize">{formData.condition.replace(/-/g, ' ')}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Mileage</span>
-                  <span className="font-medium">{Number(formData.mileage).toLocaleString()} km</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Transmission</span>
-                  <span className="font-medium capitalize">{formData.transmission}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Location</span>
-                  <span className="font-medium">{formData.locationCity}, {formData.locationState}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-pearl-200">
-                  <span className="text-charcoal-500">Photos</span>
-                  <span className="font-medium">{existingImages.length + images.length} uploaded</span>
-                </div>
+              <div className="grid md:grid-cols-2 gap-x-6 text-[13px] font-semibold">
+                {[
+                  ['Make', formData.make],
+                  ['Model', formData.model],
+                  ['Year', formData.year],
+                  ['Condition', { 'foreign-used': 'Tokunbo', 'nigerian-used': 'Naija-used', 'brand-new': 'Brand new' }[formData.condition]],
+                  ['Mileage', formData.mileage ? `${Number(formData.mileage).toLocaleString()} km` : '—'],
+                  ['Transmission', formData.transmission],
+                  ['Location', [formData.locationCity, formData.locationState].filter(Boolean).join(', ') || '—'],
+                  ['Photos', `${existingImages.length + images.length} uploaded`],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between py-2 border-b-2 border-hairline">
+                    <span className="text-muted">{label}</span>
+                    <span className="font-bold capitalize">{value}</span>
+                  </div>
+                ))}
               </div>
 
               {formData.features.length > 0 && (
-                <div>
-                  <span className="text-charcoal-500 text-sm">Features:</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.features.map(feature => (
-                      <span key={feature} className="px-3 py-1 bg-naija-100 text-naija-700 text-sm rounded-full">
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {formData.features.map(feature => (
+                    <span key={feature} className="text-[10px] font-extrabold uppercase bg-greentint text-brand px-2.5 py-1 rounded-full">
+                      {feature}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className={`border rounded-xl p-4 ${isEditMode ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
-              <div className="flex items-start gap-3">
-                <CheckCircle className={`w-5 h-5 mt-0.5 ${isEditMode ? 'text-blue-600' : 'text-green-600'}`} />
-                <div>
-                  <h4 className={`font-medium ${isEditMode ? 'text-blue-800' : 'text-green-800'}`}>
-                    {isEditMode ? 'Ready to Update' : 'Ready to Submit'}
-                  </h4>
-                  <p className={`text-sm ${isEditMode ? 'text-blue-700' : 'text-green-700'}`}>
-                    {isEditMode
-                      ? 'Your changes will be saved immediately.'
-                      : 'Your listing will be reviewed within 24 hours and published once approved.'}
-                  </p>
-                </div>
+            <div className="border-2 border-brand bg-greentint rounded-xl p-4 flex items-start gap-3">
+              <span className="flex-none w-[22px] h-[22px] rounded-full bg-brand text-white flex items-center justify-center">
+                <Check className="w-3.5 h-3.5" strokeWidth={3.5} />
+              </span>
+              <div>
+                <h4 className="text-[13px] font-extrabold text-brand">
+                  {isEditMode ? 'Ready to update' : 'Ready to submit'}
+                </h4>
+                <p className="text-[12.5px] font-semibold text-muted mt-0.5">
+                  {isEditMode
+                    ? 'Your changes will be saved immediately.'
+                    : 'Your listing will be reviewed within 24 hours and published once approved.'}
+                </p>
               </div>
             </div>
           </div>
@@ -806,33 +620,28 @@ const SellCarPage = () => {
 
   if (isLoadingEdit) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-paper flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-naija-500 animate-spin mx-auto mb-4" />
-          <p className="text-charcoal-600">Loading listing data...</p>
+          <Loader2 className="w-10 h-10 text-brand animate-spin mx-auto mb-4" />
+          <p className="text-sm font-semibold text-muted">Loading listing data…</p>
         </div>
       </div>
     );
   }
 
-  // Show subscription gate if no active subscription (skip for edit mode)
+  // Subscription gate (skip in edit mode)
   if (!isEditMode && !subLoading && !hasActiveSub && isAuthenticated) {
     return (
-      <div className="min-h-screen bg-pearl-50 pt-32 px-4">
+      <div className="min-h-screen bg-paper pt-12 px-4">
         <div className="max-w-lg mx-auto text-center">
-          <div className="bg-white rounded-2xl shadow-lg p-10">
-            <Car className="w-16 h-16 text-naija-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-display font-bold text-charcoal-800 mb-3">
-              Subscription Required
-            </h1>
-            <p className="text-charcoal-600 mb-6">
+          <div className="card-1b-lg p-10">
+            <Car className="w-14 h-14 text-brand mx-auto mb-4" />
+            <h1 className="display-1b text-2xl mb-3">Subscription required</h1>
+            <p className="text-sm font-semibold text-muted mb-6">
               You need an active subscription to list cars on NaijaCars. Choose a plan that fits your needs.
             </p>
-            <Link
-              to="/pricing"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-naija-500 hover:bg-naija-600 text-white font-semibold rounded-xl transition-colors"
-            >
-              View Plans <ArrowRight className="w-5 h-5" />
+            <Link to="/pricing" className="btn-pill-green text-sm px-8 py-3.5">
+              View plans →
             </Link>
           </div>
         </div>
@@ -840,25 +649,19 @@ const SellCarPage = () => {
     );
   }
 
-  // Show listing limit warning
   if (!isEditMode && hasActiveSub && subscription.listingsRemaining === 0) {
     return (
-      <div className="min-h-screen bg-pearl-50 pt-32 px-4">
+      <div className="min-h-screen bg-paper pt-12 px-4">
         <div className="max-w-lg mx-auto text-center">
-          <div className="bg-white rounded-2xl shadow-lg p-10">
-            <Car className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-display font-bold text-charcoal-800 mb-3">
-              Listing Limit Reached
-            </h1>
-            <p className="text-charcoal-600 mb-6">
+          <div className="card-1b-lg p-10">
+            <Car className="w-14 h-14 text-amber mx-auto mb-4" />
+            <h1 className="display-1b text-2xl mb-3">Listing limit reached</h1>
+            <p className="text-sm font-semibold text-muted mb-6">
               You've used all {subscription.listingsLimit} listings on your {subscription.planName} plan this month.
               Upgrade for more listings.
             </p>
-            <Link
-              to="/pricing"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-naija-500 hover:bg-naija-600 text-white font-semibold rounded-xl transition-colors"
-            >
-              Upgrade Plan <ArrowRight className="w-5 h-5" />
+            <Link to="/pricing" className="btn-pill-amber text-sm px-8 py-3.5">
+              Upgrade plan →
             </Link>
           </div>
         </div>
@@ -867,185 +670,187 @@ const SellCarPage = () => {
   }
 
   return (
-    <>
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-800 via-gray-900 to-green-900">
-        <div className="section-container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl"
-          >
-            {isEditMode && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-200 rounded-full text-sm font-medium mb-4">
-                <FileText className="w-4 h-4" />
-                Editing Listing
-              </div>
-            )}
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-              {isEditMode ? 'Update Your Listing' : <>Sell Your Car <span className="text-green-400">Fast</span></>}
+    <div className="bg-paper text-ink min-h-screen">
+      {/* ===== Ink header with step indicator ===== */}
+      <div className="bg-ink text-white px-4 md:px-9 pt-7 md:pt-[34px] pb-6 md:pb-[30px]">
+        <div className="flex flex-col lg:flex-row justify-between lg:items-end gap-6">
+          <div>
+            <h1 className="display-1b text-2xl md:text-[40px]">
+              {isEditMode ? 'Update your listing.' : 'Sell am fast.'}
+              <br />
+              <span className="text-mint">{isEditMode ? 'Changes save instantly.' : 'Get paid same week.'}</span>
             </h1>
-            <p className="text-xl text-gray-300">
+            <p className="text-[13px] md:text-sm text-darkmuted mt-3">
               {isEditMode
-                ? 'Make changes to your listing below. Updates are saved immediately.'
-                : 'List your vehicle and connect with buyers looking for verified cars in Nigeria. Manage your listing from your dashboard.'
-              }
+                ? 'Edit the details below — your listing stays live while you work'
+                : 'List in ~3 minutes · we screen serious buyers · manage everything from your dashboard'}
             </p>
-          </motion.div>
-        </div>
-      </section>
+          </div>
 
-      {/* Benefits (only on create) */}
-      {!isEditMode && (
-        <section className="py-12 bg-white border-b border-pearl-200">
-          <div className="section-container">
-            <div className="grid md:grid-cols-4 gap-6">
-              {benefits.map((benefit, index) => (
-                <motion.div
-                  key={benefit.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4"
+          {/* Desktop step indicator */}
+          <div className="hidden md:flex items-center">
+            {STEPS.map((step, i) => (
+              <div key={step.number} className="flex items-center">
+                {i > 0 && <div className="w-[52px] h-0.5 bg-ink-line mx-2 mb-[18px]" />}
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(step.number)}
+                  className="flex flex-col items-center gap-1.5"
                 >
-                  <div className="p-3 bg-naija-100 rounded-xl">
-                    <benefit.icon className="w-6 h-6 text-naija-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-charcoal-800">{benefit.title}</h3>
-                    <p className="text-sm text-charcoal-600">{benefit.desc}</p>
-                  </div>
-                </motion.div>
+                  <span
+                    className={`w-9 h-9 rounded-full text-sm font-black flex items-center justify-center ${
+                      currentStep === step.number
+                        ? 'bg-amber text-ink'
+                        : currentStep > step.number
+                          ? 'bg-brand text-white'
+                          : 'border-2 border-ink-line text-placeholdertext'
+                    }`}
+                  >
+                    {currentStep > step.number ? <Check className="w-4 h-4" strokeWidth={3.5} /> : step.number}
+                  </span>
+                  <span
+                    className={`text-[10.5px] tracking-[0.06em] ${
+                      currentStep === step.number
+                        ? 'font-extrabold text-amber'
+                        : currentStep > step.number
+                          ? 'font-bold text-mint'
+                          : 'font-bold text-placeholdertext'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile: step count + progress bar */}
+        <div className="md:hidden mt-5">
+          <div className="flex justify-between text-[11px] font-extrabold mb-2">
+            <span className="uppercase tracking-[0.06em]">{STEPS[currentStep - 1].label}</span>
+            <span className="text-placeholdertext">{currentStep}/4</span>
+          </div>
+          <div className="flex gap-[5px]">
+            {STEPS.map((step) => (
+              <span
+                key={step.number}
+                className={`flex-1 h-[5px] rounded-full ${
+                  step.number <= currentStep ? 'bg-amber' : 'bg-ink-line'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Form + rail ===== */}
+      <div className="grid lg:grid-cols-[1fr_380px] gap-[26px] px-4 md:px-9 pt-6 md:pt-8 pb-11">
+        {/* Form card */}
+        <form onSubmit={handleSubmit} className="card-1b-lg p-5 md:p-[26px] self-start">
+          <h2 className="display-1b text-lg mb-5">
+            {currentStep === 1 && 'Tell us about your car'}
+            {currentStep === 2 && 'Add photos'}
+            {currentStep === 3 && 'Set your price'}
+            {currentStep === 4 && 'Review your listing'}
+          </h2>
+
+          {renderStepContent()}
+
+          <div className="flex justify-between items-center mt-6 pt-6 border-t-2 border-hairline">
+            {currentStep > 1 ? (
+              <button
+                type="button"
+                onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+                className="btn-pill-outline text-[13px] px-5 py-2.5"
+              >
+                ← Back
+              </button>
+            ) : (
+              <span className="text-xs font-semibold text-muted">
+                Step {currentStep} of 4 · takes ~3 minutes total
+              </span>
+            )}
+
+            {currentStep < 4 ? (
+              <button
+                type="button"
+                onClick={() => setCurrentStep(prev => Math.min(4, prev + 1))}
+                className="btn-pill-green text-sm px-[30px] py-3.5"
+              >
+                {currentStep === 1 ? 'Continue to photos →' : currentStep === 2 ? 'Continue to pricing →' : 'Review listing →'}
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-pill-green text-sm px-[30px] py-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {isEditMode ? 'Updating…' : 'Submitting…'}
+                  </>
+                ) : (
+                  <>{isEditMode ? 'Update listing' : 'Submit listing'} →</>
+                )}
+              </button>
+            )}
+          </div>
+        </form>
+
+        {/* Right rail */}
+        <div className="flex flex-col gap-4 self-start lg:sticky lg:top-[88px]">
+          {/* Instant estimate */}
+          <div className="border-2 border-amber rounded-[18px] bg-amber-tint p-[22px]">
+            <div className="text-[11px] font-black tracking-[0.1em] uppercase mb-2">Instant estimate</div>
+            {estimate ? (
+              <>
+                <div className="text-[27px] font-black tracking-[-0.02em]">
+                  {formatNaira(estimate.lowEstimate)} – {formatNaira(estimate.highEstimate)}
+                </div>
+                <p className="text-xs font-semibold text-muted mt-1.5 leading-normal">
+                  Based on Nigerian market data for {formData.make} {formData.model} — your asking price is your call.
+                </p>
+              </>
+            ) : (
+              <p className="text-[13px] font-semibold text-muted">
+                Fill in make, model and year to see what your car is worth.
+              </p>
+            )}
+          </div>
+
+          {/* What happens next */}
+          <div className="border-2 border-ink rounded-[18px] bg-white p-5">
+            <div className="text-xs font-black tracking-[0.08em] uppercase mb-3.5">What happens next</div>
+            <div className="flex flex-col gap-3 text-[12.5px] font-semibold text-muted leading-normal">
+              {[
+                'Your listing is reviewed and goes live within 24 hours',
+                'Serious buyers reach you on WhatsApp or in-app messages',
+                'Track views, offers and messages from your dashboard',
+              ].map((line) => (
+                <div key={line} className="flex gap-2.5">
+                  <span className="flex-none w-[22px] h-[22px] rounded-full bg-brand text-white flex items-center justify-center">
+                    <Check className="w-3 h-3" strokeWidth={4} />
+                  </span>
+                  {line}
+                </div>
               ))}
             </div>
           </div>
-        </section>
-      )}
 
-      {/* Form Section */}
-      <section className="py-16">
-        <div className="section-container">
-          <div className="max-w-4xl mx-auto">
-            {/* Progress Steps */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between">
-                {steps.map((step, index) => (
-                  <div key={step.number} className="flex items-center">
-                    <button
-                      onClick={() => setCurrentStep(step.number)}
-                      className={`flex flex-col items-center gap-2 ${
-                        currentStep >= step.number ? 'text-naija-600' : 'text-pearl-400'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                        currentStep >= step.number
-                          ? 'bg-naija-500 text-white'
-                          : 'bg-pearl-200 text-pearl-500'
-                      }`}>
-                        {currentStep > step.number ? (
-                          <CheckCircle className="w-6 h-6" />
-                        ) : (
-                          <step.icon className="w-6 h-6" />
-                        )}
-                      </div>
-                      <span className="text-sm font-medium hidden md:block">{step.title}</span>
-                    </button>
-                    {index < steps.length - 1 && (
-                      <div className={`w-full h-1 mx-2 rounded ${
-                        currentStep > step.number ? 'bg-naija-500' : 'bg-pearl-200'
-                      }`} style={{ minWidth: '40px' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Form */}
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-3xl shadow-card p-8"
-            >
-              <form onSubmit={handleSubmit}>
-                {renderStepContent()}
-
-                <div className="flex justify-between mt-8 pt-6 border-t border-pearl-200">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-                    className={`px-6 py-3 rounded-xl font-medium transition-all ${
-                      currentStep === 1
-                        ? 'opacity-0 pointer-events-none'
-                        : 'text-charcoal-600 hover:bg-pearl-100'
-                    }`}
-                  >
-                    Back
-                  </button>
-
-                  {currentStep < 5 ? (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(prev => Math.min(5, prev + 1))}
-                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2"
-                    >
-                      Continue
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="btn-primary px-8 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          {isEditMode ? 'Updating...' : 'Submitting...'}
-                        </>
-                      ) : (
-                        <>
-                          {isEditMode ? 'Update Listing' : 'Submit Listing'}
-                          <ArrowRight className="w-5 h-5" />
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </form>
-            </motion.div>
+          {/* Testimonial */}
+          <div className="border-2 border-ink rounded-[18px] bg-ink text-white px-5 py-[18px]">
+            <p className="text-[13px] font-bold leading-relaxed text-herosub">
+              "Listed Tuesday, sold Friday. No wahala at all."
+            </p>
+            <p className="text-[11.5px] font-extrabold text-mint mt-2">
+              — Chinedu O., sold a 2018 RAV4 · Lagos
+            </p>
           </div>
         </div>
-      </section>
-
-      {/* CTA Section (only on create) */}
-      {!isEditMode && (
-        <section className="py-16 bg-gray-800">
-          <div className="section-container text-center">
-            <h2 className="text-3xl font-display font-bold text-white mb-4">
-              Need Help Selling Your Car?
-            </h2>
-            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-              Our team can help you create the perfect listing and connect with serious buyers.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link
-                to="/valuation"
-                className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
-              >
-                Get Free Valuation
-              </Link>
-              <Link
-                to="/contact"
-                className="px-6 py-3 border border-gray-400 text-gray-200 rounded-xl font-medium hover:bg-gray-700 transition-colors"
-              >
-                Contact Support
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-    </>
+      </div>
+    </div>
   );
 };
 

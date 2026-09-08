@@ -1,60 +1,103 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import {
-  ChevronLeft, ChevronRight, MapPin, Fuel, Settings2, Gauge,
-  Calendar, Car, BadgeCheck, MessageCircle, Phone, Heart,
-  Copy, Check, ArrowLeft, Eye, Shield
-} from 'lucide-react';
+import { Car, Check, Copy, Heart } from 'lucide-react';
 import { listingsAPI } from '../services/api';
 import useAuthStore from '../stores/authStore';
 import { useApp } from '../context/AppContext';
 import SeoHead from '../components/SeoHead';
+import CarCard from '../components/CarCard';
+import { transformToCardShape } from '../utils/listingCard';
+import {
+  formatNaira, formatNairaFull, formatKm, monthlyPayment,
+  conditionLabel, getDialablePhone, waLink,
+} from '../utils/format';
 
-const SITE_URL = 'https://naijacars.online';
 // Share URL routes through the backend so social bots receive proper OG meta tags
-// (SPAs can't serve OG tags to bots — they don't run JS)
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://naija-cars-api.onrender.com';
 
-const getDialablePhone = (value) => {
-  const digits = String(value || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('0')) return `234${digits.slice(1)}`;
-  return digits;
+const DOWN_OPTIONS = [20, 30, 50];
+const TENOR_OPTIONS = [12, 24, 48];
+
+const PillGroup = ({ options, value, onChange, format }) => (
+  <div className="flex gap-1.5">
+    {options.map((opt) => (
+      <button
+        key={opt}
+        onClick={() => onChange(opt)}
+        className={`flex-1 text-center text-xs rounded-full transition-colors ${
+          value === opt
+            ? 'font-extrabold bg-ink text-white py-[9px]'
+            : 'font-bold border-2 border-ink py-[7px] hover:bg-ink/5'
+        }`}
+      >
+        {format(opt)}
+      </button>
+    ))}
+  </div>
+);
+
+// Financing calculator block — shared between desktop rail and mobile layout
+const FinancingCalc = ({ price, downPct, setDownPct, tenor, setTenor }) => {
+  const monthly = monthlyPayment(price, downPct, tenor);
+  const downAmount = price * (downPct / 100);
+  return (
+    <>
+      <div className="flex flex-col gap-2.5 mb-3.5">
+        <PillGroup options={DOWN_OPTIONS} value={downPct} onChange={setDownPct} format={(v) => `${v}% down`} />
+        <PillGroup options={TENOR_OPTIONS} value={tenor} onChange={setTenor} format={(v) => `${v} mo`} />
+      </div>
+      <div className="flex justify-between items-center bg-amber-tint border-2 border-amber rounded-xl px-4 py-[13px]">
+        <span className="text-xs font-bold">{formatNaira(downAmount)} down, then</span>
+        <span className="text-[19px] font-black">
+          {formatNaira(monthly)}
+          <span className="text-xs font-bold">/mo</span>
+        </span>
+      </div>
+    </>
+  );
 };
 
-// Social share helpers
-function buildShareLinks(car, url) {
-  const title = `${car.year} ${car.make} ${car.model}${car.trim ? ' ' + car.trim : ''}`;
-  const price = `₦${parseFloat(car.price).toLocaleString()}`;
-  const text = `Check out this ${title} for ${price} on Naija Cars! 🚗`;
-  const encoded = encodeURIComponent(url);
-  const encodedText = encodeURIComponent(text);
-
-  return {
-    whatsapp: `https://wa.me/?text=${encodedText}%20${encoded}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encoded}`,
-    twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encoded}&via=naijacars`,
-    telegram: `https://t.me/share/url?url=${encoded}&text=${encodedText}`,
-  };
-}
+const SpecTile = ({ label, value }) => (
+  <div className="border-2 border-lightborder rounded-xl px-[15px] py-[13px] bg-white">
+    <div className="microlabel-1b">{label}</div>
+    <div className="text-[15px] font-extrabold mt-1">{value}</div>
+  </div>
+);
 
 export default function CarDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-  const { setIsSignInOpen, addToast } = useApp();
+  const { setIsSignInOpen, addToast, compareList, toggleCompare } = useApp();
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAllThumbs, setShowAllThumbs] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteSaving, setFavoriteSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downPct, setDownPct] = useState(20);
+  const [tenor, setTenor] = useState(48);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['listing', id],
     queryFn: () => listingsAPI.getById(id),
   });
+
+  const car = data?.data?.data?.listing;
+
+  // Similar cars: same make, excluding this one
+  const { data: similarData } = useQuery({
+    queryKey: ['similar', car?.make],
+    queryFn: () => listingsAPI.getAll({ limit: 5, page: 1, type: 'SALE', make: car.make }),
+    enabled: Boolean(car?.make),
+    select: (res) => res?.data?.data?.listings ?? [],
+  });
+
+  const similarCars = useMemo(
+    () => (similarData ?? []).filter((l) => l.id !== id).slice(0, 4).map(transformToCardShape),
+    [similarData, id]
+  );
 
   const handleCopyLink = async (url) => {
     try {
@@ -72,81 +115,71 @@ export default function CarDetailsPage() {
       setIsSignInOpen(true);
       return;
     }
-
     setFavoriteSaving(true);
     try {
       const response = await listingsAPI.toggleFavorite(id);
       setIsFavorite(response.data.data.isFavorited);
-      addToast(
-        response.data.data.isFavorited ? 'Saved to favourites' : 'Removed from favourites',
-        'success'
-      );
-    } catch (error) {
-      addToast(error.response?.data?.error?.message || 'Failed to update favourite', 'error');
+      addToast(response.data.data.isFavorited ? 'Saved to favourites' : 'Removed from favourites', 'success');
+    } catch (err) {
+      addToast(err.response?.data?.error?.message || 'Failed to update favourite', 'error');
     } finally {
       setFavoriteSaving(false);
     }
   };
 
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-24">
-        <div className="section-container py-8">
-          <div className="bg-white rounded-3xl shadow-card overflow-hidden">
-            <div className="aspect-video bg-pearl-200 animate-pulse" />
-            <div className="p-8 space-y-4">
-              <div className="h-10 bg-pearl-200 animate-pulse rounded-xl w-2/3" />
-              <div className="h-8 bg-pearl-200 animate-pulse rounded-xl w-1/3" />
-              <div className="grid grid-cols-4 gap-4 mt-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-20 bg-pearl-200 animate-pulse rounded-xl" />
-                ))}
-              </div>
+      <div className="min-h-screen bg-paper px-4 md:px-9 py-8">
+        <div className="grid lg:grid-cols-[1fr_400px] gap-[26px]">
+          <div className="space-y-4">
+            <div className="h-[300px] md:h-[430px] bg-hairline animate-pulse rounded-[18px] border-2 border-lightborder" />
+            <div className="h-10 bg-hairline animate-pulse rounded-xl w-2/3" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-hairline animate-pulse rounded-xl" />)}
             </div>
           </div>
+          <div className="h-[420px] bg-hairline animate-pulse rounded-[18px] border-2 border-lightborder" />
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || (!isLoading && !car)) {
     return (
-      <div className="min-h-screen flex items-center justify-center pt-24">
+      <div className="min-h-screen bg-paper flex items-center justify-center">
         <div className="text-center">
-          <Car className="w-16 h-16 text-charcoal-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-display font-bold text-charcoal-700 mb-2">Car Not Found</h2>
-          <p className="text-charcoal-500 mb-6">This listing may have been removed or sold.</p>
-          <Link to="/cars" className="px-6 py-3 bg-naija-500 text-white rounded-xl hover:bg-naija-600 transition-colors">
-            Browse All Cars
-          </Link>
+          <Car className="w-16 h-16 text-lightborder mx-auto mb-4" />
+          <h2 className="display-1b text-2xl mb-2">Car not found</h2>
+          <p className="text-sm font-semibold text-muted mb-6">This listing may have been removed or sold.</p>
+          <Link to="/cars" className="btn-pill-dark text-sm px-6 py-3">Browse all cars</Link>
         </div>
       </div>
     );
   }
-
-  const car = data?.data?.data?.listing;
-  if (!car) return null;
 
   const carTitle = `${car.year} ${car.make} ${car.model}${car.trim ? ' ' + car.trim : ''}`;
   const carPrice = parseFloat(car.price);
   const isPlaceholder = Boolean(car.isPlaceholder);
-  // Bot-friendly share URL → backend serves OG HTML to crawlers, redirects browsers to SPA
   const shareUrl = `${API_BASE}/share/car/${car.id}`;
-  const shareLinks = buildShareLinks(car, shareUrl);
   const sellerPhone = car.phone || car.whatsapp || car.seller?.phoneNumber || '';
-  const dialableSellerPhone = getDialablePhone(sellerPhone);
   const whatsappPhone = getDialablePhone(car.whatsapp || sellerPhone);
-  const mainImage = car.media?.[0]?.url;
+  const media = car.media ?? [];
+  const mainImage = media[currentImageIndex]?.url;
+  const isVerified = car.seller?.profile?.verificationBadge || false;
+  const isCompared = compareList.some((c) => c.id === car.id);
+  const condLabel = conditionLabel(car.condition);
+  const listedDaysAgo = car.createdAt
+    ? Math.max(0, Math.round((Date.now() - new Date(car.createdAt).getTime()) / 86400000))
+    : null;
 
-  const conditionLabel = {
-    FOREIGN_USED: 'Foreign Used',
-    NIGERIAN_USED: 'Nigerian Used',
-    BRAND_NEW: 'Brand New',
-  }[car.condition] || car.condition?.replace(/_/g, ' ');
+  const cardShape = transformToCardShape(car);
+
+  const whatsappHref = whatsappPhone
+    ? waLink(sellerPhone, `Hi, I'm interested in your ${carTitle} listed on NaijaCars (ref ${car.id.slice(0, 8).toUpperCase()}). Is it still available?`)
+    : null;
 
   const seoDescription = [
-    `Buy this ${conditionLabel} ${carTitle}`,
+    `Buy this ${condLabel} ${carTitle}`,
     car.locationCity && `in ${car.locationCity}`,
     car.locationState && `${car.locationCity ? ',' : 'in'} ${car.locationState}.`,
     car.transmission && `${car.transmission} transmission,`,
@@ -154,399 +187,363 @@ export default function CarDetailsPage() {
     `Listed on Naija Cars for ₦${carPrice.toLocaleString()}.`,
   ].filter(Boolean).join(' ');
 
+  const visibleThumbs = showAllThumbs ? media : media.slice(0, 4);
+  const hiddenThumbCount = media.length - 5;
+
+  const specs = [
+    car.mileage != null && { label: 'Mileage', value: formatKm(car.mileage) },
+    car.transmission && { label: 'Transmission', value: car.transmission },
+    { label: 'Engine', value: car.engineSize || car.fuelType || '—' },
+    { label: 'Condition', value: condLabel },
+    car.bodyType && { label: 'Body type', value: car.bodyType },
+    car.color && { label: 'Colour', value: car.color },
+    car.doors && { label: 'Doors', value: car.doors },
+    car.fuelType && car.engineSize && { label: 'Fuel', value: car.fuelType },
+  ].filter(Boolean);
+
   return (
     <>
       <SeoHead
         title={`${carTitle} – ₦${(carPrice / 1_000_000).toFixed(1)}M`}
         description={seoDescription}
-        image={mainImage}
-        url={`/car/${car.id}`}  // canonical = SPA page
+        image={media[0]?.url}
+        url={`/car/${car.id}`}
         type="article"
       />
 
-      <div className="min-h-screen bg-pearl-100 pt-24 pb-20">
-        <div className="section-container">
-          {/* Back navigation */}
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-charcoal-500 hover:text-naija-600 transition-colors mb-6 group"
-          >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            Back to listings
-          </button>
+      <div className="bg-paper text-ink min-h-screen pb-24 lg:pb-10">
+        {/* Breadcrumb (desktop) */}
+        <div className="hidden md:block px-9 pt-[18px] pb-1 text-xs font-bold text-muted">
+          <Link to="/cars" className="hover:text-ink">Buy</Link>
+          {car.locationState && <> → <Link to={`/cars?state=${car.locationState}`} className="hover:text-ink">{car.locationState}</Link></>}
+          {' → '}
+          <Link to={`/cars?make=${car.make}`} className="hover:text-ink">{car.make}</Link>
+          {' → '}
+          <span className="text-ink">{car.model} {car.trim} {car.year}</span>
+        </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left: images + details */}
-            <div className="lg:col-span-2 space-y-6">
-              {isPlaceholder && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
-                  This is a placeholder listing for preview only. Real listings appear without this notice.
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-5 px-4 md:px-9 pt-4 md:pt-1.5 pb-4 md:pb-5">
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="display-1b text-[22px] md:text-[34px]">{carTitle}</h1>
+              {isVerified && (
+                <span className="badge-verified text-[11px] px-3 py-1.5">✓ VERIFIED</span>
+              )}
+            </div>
+            <p className="text-xs md:text-[13.5px] font-semibold text-muted mt-1.5">
+              {[car.locationCity, car.locationState].filter(Boolean).join(', ')}
+              {listedDaysAgo != null && ` · Listed ${listedDaysAgo === 0 ? 'today' : `${listedDaysAgo} day${listedDaysAgo === 1 ? '' : 's'} ago`}`}
+              {` · Ref NC-${car.id.slice(0, 6).toUpperCase()}`}
+            </p>
+          </div>
+          <div className="hidden md:flex gap-2.5 flex-none">
+            <button
+              onClick={handleToggleFavorite}
+              disabled={favoriteSaving}
+              className={`btn-pill-outline text-[12.5px] px-4 py-2.5 ${isFavorite ? '!border-brand !text-brand' : ''}`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-brand' : ''}`} />
+              {isFavorite ? 'Saved' : 'Save'}
+            </button>
+            <button
+              onClick={() => toggleCompare(cardShape)}
+              className={`btn-pill-outline text-[12.5px] px-4 py-2.5 ${isCompared ? '!border-brand !text-brand' : ''}`}
+            >
+              ⇄ {isCompared ? 'In compare tray' : 'Compare'}
+            </button>
+          </div>
+        </div>
+
+        {isPlaceholder && (
+          <div className="mx-4 md:mx-9 mb-4 rounded-2xl border-2 border-amber bg-amber-tint px-5 py-3.5 text-sm font-semibold text-warntext">
+            This is a placeholder listing for preview only. Real listings appear without this notice.
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-[1fr_400px] gap-[26px] px-4 md:px-9">
+          {/* ===== Left column: gallery + specs + description ===== */}
+          <div>
+            {/* Gallery */}
+            <div className="relative h-[250px] md:h-[430px] border-2 border-ink rounded-[18px] stripes-1b overflow-hidden">
+              {mainImage ? (
+                <img src={mainImage} alt={`${carTitle} — photo ${currentImageIndex + 1}`} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Car className="w-16 h-16 text-lightborder" />
                 </div>
               )}
-
-              {/* Image Gallery */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl shadow-card overflow-hidden"
-              >
-                <div className="relative aspect-video bg-charcoal-200">
-                  {car.media && car.media.length > 0 ? (
-                    <>
-                      <img
-                        src={car.media[currentImageIndex]?.url}
-                        alt={`${carTitle} - Photo ${currentImageIndex + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-
-                      {/* Condition badge */}
-                      <div className="absolute top-4 left-4">
-                        <span className={`px-3 py-1.5 text-sm font-bold rounded-xl ${
-                          car.condition === 'BRAND_NEW'
-                            ? 'bg-emerald-500 text-white'
-                            : car.condition === 'FOREIGN_USED'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-naija-500 text-white'
-                        }`}>
-                          {conditionLabel}
-                        </span>
-                      </div>
-
-                      {/* Image counter */}
-                      {car.media.length > 1 && (
-                        <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/60 text-white text-sm font-medium rounded-xl flex items-center gap-1.5">
-                          <Eye className="w-4 h-4" />
-                          {currentImageIndex + 1}/{car.media.length}
-                        </div>
-                      )}
-
-                      {/* Nav arrows */}
-                      {car.media.length > 1 && (
-                        <>
-                          <button
-                            onClick={() => setCurrentImageIndex(i => i === 0 ? car.media.length - 1 : i - 1)}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 hover:bg-black/75 text-white rounded-full transition-colors"
-                          >
-                            <ChevronLeft className="w-6 h-6" />
-                          </button>
-                          <button
-                            onClick={() => setCurrentImageIndex(i => i === car.media.length - 1 ? 0 : i + 1)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 hover:bg-black/75 text-white rounded-full transition-colors"
-                          >
-                            <ChevronRight className="w-6 h-6" />
-                          </button>
-                        </>
-                      )}
-
-                      {/* Dot indicators */}
-                      {car.media.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                          {car.media.map((_, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setCurrentImageIndex(idx)}
-                              className={`transition-all rounded-full ${
-                                idx === currentImageIndex
-                                  ? 'w-6 h-2.5 bg-white'
-                                  : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Car className="w-20 h-20 text-charcoal-300" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Thumbnail strip */}
-                {car.media && car.media.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto">
-                    {car.media.map((img, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentImageIndex(idx)}
-                        className={`flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all ${
-                          idx === currentImageIndex
-                            ? 'border-naija-500 opacity-100'
-                            : 'border-transparent opacity-60 hover:opacity-90'
-                        }`}
-                      >
-                        <img src={img.url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Car Info */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-3xl shadow-card p-6 md:p-8"
-              >
-                <h1 className="text-3xl md:text-4xl font-display font-bold text-charcoal-800 mb-1">
-                  {carTitle}
-                </h1>
-                {car.trim && (
-                  <p className="text-lg text-charcoal-400 mb-4">{car.trim}</p>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2 mb-6">
-                  {car.locationState && (
-                    <span className="flex items-center gap-1.5 text-charcoal-500 text-sm">
-                      <MapPin className="w-4 h-4 text-naija-500" />
-                      {[car.locationCity, car.locationState].filter(Boolean).join(', ')}
-                    </span>
-                  )}
-                </div>
-
-                {/* Specs grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {[
-                    { icon: Calendar, label: 'Year', value: car.year },
-                    { icon: Gauge, label: 'Mileage', value: car.mileage ? `${car.mileage.toLocaleString()} km` : 'N/A' },
-                    { icon: Settings2, label: 'Transmission', value: car.transmission },
-                    { icon: Fuel, label: 'Fuel Type', value: car.fuelType },
-                    car.bodyType && { icon: Car, label: 'Body Type', value: car.bodyType },
-                    car.color && { icon: Car, label: 'Colour', value: car.color },
-                    car.engineSize && { icon: Settings2, label: 'Engine', value: car.engineSize },
-                    car.doors && { icon: Car, label: 'Doors', value: car.doors },
-                  ].filter(Boolean).map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="p-4 bg-pearl-50 rounded-2xl">
-                      <Icon className="w-5 h-5 text-naija-500 mb-2" />
-                      <p className="text-xs text-charcoal-400 mb-0.5">{label}</p>
-                      <p className="font-semibold text-charcoal-800 text-sm">{value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Description */}
-                {car.description && (
-                  <div className="mb-6">
-                    <h2 className="text-xl font-display font-bold text-charcoal-800 mb-3">Description</h2>
-                    <p className="text-charcoal-600 leading-relaxed whitespace-pre-line">{car.description}</p>
-                  </div>
-                )}
-
-                {/* Features */}
-                {car.features && car.features.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-display font-bold text-charcoal-800 mb-3">Features</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {car.features.map((feature, i) => (
-                        <span key={i} className="px-3 py-1.5 bg-naija-50 text-naija-700 text-sm rounded-xl">
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
+              {isVerified && (
+                <span className="badge-verified absolute top-3 left-3 md:hidden">✓ VERIFIED</span>
+              )}
+              {media.length > 0 && (
+                <span className="absolute bottom-3.5 right-3.5 text-[11.5px] font-extrabold bg-ink text-white px-3 py-1.5 rounded-full">
+                  {currentImageIndex + 1} / {media.length} photos
+                </span>
+              )}
+              {media.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setCurrentImageIndex((i) => (i === 0 ? media.length - 1 : i - 1))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white border-2 border-ink rounded-full font-black flex items-center justify-center hover:bg-ink hover:text-white transition-colors"
+                    aria-label="Previous photo"
+                  >
+                    ←
+                  </button>
+                  <button
+                    onClick={() => setCurrentImageIndex((i) => (i === media.length - 1 ? 0 : i + 1))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white border-2 border-ink rounded-full font-black flex items-center justify-center hover:bg-ink hover:text-white transition-colors"
+                    aria-label="Next photo"
+                  >
+                    →
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Right: price, actions, seller */}
-            <div className="space-y-6">
-              {/* Price Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="bg-white rounded-3xl shadow-card p-6 sticky top-28"
-              >
-                <div className="mb-6">
-                  <p className="text-sm text-charcoal-400 mb-1">Asking Price</p>
-                  <div className="text-4xl font-display font-bold text-naija-600">
-                    ₦{carPrice.toLocaleString()}
-                  </div>
-                  {carPrice >= 1_000_000 && (
-                    <p className="text-charcoal-400 text-sm mt-1">
-                      ≈ ₦{(carPrice / 1_000_000).toFixed(2)}M
-                    </p>
-                  )}
-                </div>
+            {/* Thumb strip */}
+            {media.length > 1 && (
+              <div className="grid grid-cols-5 gap-2.5 mt-3">
+                {visibleThumbs.map((m, idx) => (
+                  <button
+                    key={m.url || idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`h-[54px] md:h-[70px] rounded-[10px] overflow-hidden border-2 ${
+                      idx === currentImageIndex ? 'border-ink' : 'border-lightborder'
+                    }`}
+                  >
+                    <img src={m.url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  </button>
+                ))}
+                {!showAllThumbs && hiddenThumbCount > 0 && (
+                  <button
+                    onClick={() => setShowAllThumbs(true)}
+                    className="h-[54px] md:h-[70px] rounded-[10px] bg-ink text-white text-xs font-extrabold flex items-center justify-center"
+                  >
+                    +{hiddenThumbCount + 1} more
+                  </button>
+                )}
+              </div>
+            )}
 
-                {/* Action buttons */}
-                <div className="space-y-3 mb-6">
+            {/* Mobile financing (above the fold on mobile) */}
+            <div className="lg:hidden mt-5">
+              <div className="text-[11.5px] font-black uppercase tracking-[0.08em] mb-2.5">Or pay monthly</div>
+              <FinancingCalc price={carPrice} downPct={downPct} setDownPct={setDownPct} tenor={tenor} setTenor={setTenor} />
+            </div>
+
+            {/* Verification card — only shown for verified sellers */}
+            {isVerified && (
+              <div className="border-2 border-ink rounded-[18px] mt-[22px] overflow-hidden bg-white">
+                <div className="flex items-center justify-between bg-ink text-white px-4 md:px-5 py-4 gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 md:w-11 md:h-11 flex-none rounded-full bg-brand flex items-center justify-center">
+                      <Check className="w-5 h-5" strokeWidth={3.5} />
+                    </span>
+                    <div>
+                      <div className="text-[13px] md:text-[15px] font-black uppercase tracking-[0.04em]">Verified listing</div>
+                      <div className="text-[11.5px] text-mint font-semibold">Seller identity checked by NaijaCars</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-4 px-4 md:px-5 py-4 text-xs font-bold flex-wrap">
+                  <span className="text-brand">✓ Verified seller badge</span>
+                  <span className="text-brand">✓ Escrow eligible</span>
+                  <span className="text-brand">✓ Screened before going live</span>
+                </div>
+              </div>
+            )}
+
+            {/* Spec tiles */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-[22px]">
+              {specs.map((spec) => (
+                <SpecTile key={spec.label} label={spec.label} value={spec.value} />
+              ))}
+            </div>
+
+            {/* Description */}
+            {car.description && (
+              <div className="mt-[22px]">
+                <h2 className="display-1b text-lg mb-3">Description</h2>
+                <p className="text-sm font-medium text-muted leading-relaxed whitespace-pre-line">{car.description}</p>
+              </div>
+            )}
+
+            {/* Features */}
+            {car.features?.length > 0 && (
+              <div className="mt-[22px]">
+                <h2 className="display-1b text-lg mb-3">Features</h2>
+                <div className="flex flex-wrap gap-2">
+                  {car.features.map((feature, i) => (
+                    <span key={i} className="text-[10.5px] font-extrabold uppercase tracking-[0.04em] bg-greentint text-brand px-2.5 py-[5px] rounded-full">
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ===== Right rail (sticky on desktop) ===== */}
+          <div className="hidden lg:flex flex-col gap-4 self-start sticky top-[88px]">
+            {/* Price + financing card */}
+            <div className="card-1b-lg p-5">
+              <div className="text-[31px] font-black tracking-[-0.02em]">{formatNairaFull(carPrice)}</div>
+              <div className="text-xs font-bold text-brand mt-0.5">
+                {isVerified ? 'Escrow-protected · ' : ''}price slightly negotiable
+              </div>
+              <div className="border-t-2 border-lightborder my-4" />
+              <div className="text-[11.5px] font-black uppercase tracking-[0.08em] mb-2.5">Or pay monthly</div>
+              <FinancingCalc price={carPrice} downPct={downPct} setDownPct={setDownPct} tenor={tenor} setTenor={setTenor} />
+
+              <div className="flex flex-col gap-[9px] mt-4">
+                {whatsappHref ? (
+                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn-pill-green text-sm py-[15px]">
+                    WhatsApp seller ↗
+                  </a>
+                ) : (
                   <button
                     onClick={() => {
                       if (!isAuthenticated) { setIsSignInOpen(true); return; }
                       navigate(`/messages?sellerId=${car.seller?.id}&listingId=${car.id}`);
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-naija-500 text-white font-semibold rounded-xl hover:bg-naija-600 transition-colors"
+                    className="btn-pill-green text-sm py-[15px]"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    Message Seller
+                    Message seller
                   </button>
+                )}
+                <Link to={`/booking/${car.id}`} className="btn-pill-outline text-sm py-[13px]">
+                  Book a viewing
+                </Link>
+                <Link to="/pricing" className="btn-pill-amber text-sm py-[15px]">
+                  Apply for financing
+                </Link>
+              </div>
 
-                  {dialableSellerPhone && (
-                    <a
-                      href={`tel:+${dialableSellerPhone}`}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-white border-2 border-naija-500 text-naija-600 font-semibold rounded-xl hover:bg-naija-50 transition-colors"
-                    >
-                      <Phone className="w-5 h-5" />
-                      Call Seller
-                    </a>
-                  )}
-
-                  {whatsappPhone && (
-                    <a
-                      href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hi, I'm interested in your ${carTitle} listed on Naija Cars. Is it still available?`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#20BD5A] transition-colors"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      WhatsApp Seller
-                    </a>
-                  )}
-
-                  {/* Save */}
-                  <button
-                    onClick={handleToggleFavorite}
-                    disabled={favoriteSaving}
-                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-medium transition-all ${
-                      isFavorite
-                        ? 'bg-naija-50 border-naija-400 text-naija-600'
-                        : 'border-pearl-300 text-charcoal-600 hover:border-naija-300'
-                    } disabled:opacity-60 disabled:cursor-not-allowed`}
-                  >
-                    <Heart className={`w-5 h-5 ${isFavorite ? 'fill-naija-500 text-naija-500' : ''}`} />
-                    {favoriteSaving ? 'Saving...' : isFavorite ? 'Saved to Favourites' : 'Save to Favourites'}
-                  </button>
-                </div>
-
-                {/* Share this listing — always visible, no clicks needed */}
-                <div className="pt-5 border-t border-pearl-100">
-                  <p className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-3">
-                    Share this listing
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* WhatsApp */}
-                    <a
-                      href={shareLinks.whatsapp}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2.5 bg-[#25D366] hover:bg-[#20BD5A] text-white text-sm font-medium rounded-xl transition-colors"
-                    >
-                      <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                      WhatsApp
-                    </a>
-
-                    {/* Facebook */}
-                    <a
-                      href={shareLinks.facebook}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] text-white text-sm font-medium rounded-xl transition-colors"
-                    >
-                      <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                      Facebook
-                    </a>
-
-                    {/* X / Twitter */}
-                    <a
-                      href={shareLinks.twitter}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2.5 bg-black hover:bg-charcoal-700 text-white text-sm font-medium rounded-xl transition-colors"
-                    >
-                      <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                      X (Twitter)
-                    </a>
-
-                    {/* Telegram */}
-                    <a
-                      href={shareLinks.telegram}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2.5 bg-[#229ED9] hover:bg-[#1e8ec2] text-white text-sm font-medium rounded-xl transition-colors"
-                    >
-                      <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                      Telegram
-                    </a>
-                  </div>
-
-                  {/* Copy link — full width below */}
-                  <button
-                    onClick={() => handleCopyLink(shareUrl)}
-                    className={`mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                      copied
-                        ? 'border-naija-400 bg-naija-50 text-naija-600'
-                        : 'border-pearl-200 text-charcoal-600 hover:border-charcoal-300'
-                    }`}
-                  >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Link Copied!' : 'Copy Link'}
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Seller Info */}
-              {car.seller && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white rounded-3xl shadow-card p-6"
-                >
-                  <h2 className="text-lg font-display font-bold text-charcoal-800 mb-4">Seller</h2>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-charcoal-100 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0">
-                      {car.seller.profile?.businessLogoUrl ? (
-                        <img
-                          src={car.seller.profile.businessLogoUrl}
-                          alt="Seller"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-2xl font-bold text-charcoal-500">
-                          {(car.seller.profile?.businessName || car.seller.email || 'S')[0].toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-charcoal-800">
-                        {car.seller.profile?.businessName || 'Private Seller'}
-                      </p>
-                      {car.seller.profile?.verificationBadge && (
-                        <span className="flex items-center gap-1 text-sm text-naija-600">
-                          <BadgeCheck className="w-4 h-4" />
-                          Verified Seller
-                        </span>
-                      )}
-                      {car.seller.userType === 'DEALER' && (
-                        <span className="flex items-center gap-1 text-sm text-charcoal-500">
-                          <Shield className="w-4 h-4" />
-                          Dealer Account
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <Link
-                    to={`/dealer/${car.seller.id}`}
-                    className="text-sm text-naija-600 hover:text-naija-700 font-medium underline-offset-2 hover:underline"
-                  >
-                    View all listings from this seller →
-                  </Link>
-                </motion.div>
+              {isVerified && (
+                <p className="text-[11px] font-semibold text-muted mt-3 leading-normal">
+                  🔒 Your payment stays in escrow until you confirm the car matches its listing.
+                </p>
               )}
 
-              {/* Safety tip */}
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                <p className="text-sm font-semibold text-amber-800 mb-1">Safety Tip</p>
-                <p className="text-sm text-amber-700 leading-relaxed">
-                  Always inspect the car in person before payment. Never send money before seeing
-                  the vehicle. Meet in a public place or at the seller's registered dealership.
-                </p>
+              <button
+                onClick={() => handleCopyLink(shareUrl)}
+                className="flex items-center gap-1.5 text-[11px] font-extrabold text-muted hover:text-ink mt-3 transition-colors"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Link copied!' : 'Copy listing link'}
+              </button>
+            </div>
+
+            {/* Seller card */}
+            {car.seller && (
+              <div className="border-2 border-ink rounded-[18px] px-[18px] py-4 bg-white">
+                <div className="flex items-center gap-3">
+                  <span className="w-11 h-11 flex-none rounded-full border-2 border-ink bg-hairline overflow-hidden flex items-center justify-center font-black text-muted">
+                    {car.seller.profile?.businessLogoUrl ? (
+                      <img src={car.seller.profile.businessLogoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      (car.seller.profile?.businessName || 'S')[0].toUpperCase()
+                    )}
+                  </span>
+                  <div>
+                    <div className="text-sm font-extrabold">
+                      {car.seller.profile?.businessName || 'Private Seller'}{' '}
+                      {car.seller.userType === 'DEALER' && (
+                        <span className="badge-verified text-[10px] px-2 py-[3px] align-[2px]">✓ DEALER</span>
+                      )}
+                    </div>
+                    <Link
+                      to={`/dealer/${car.seller.id}`}
+                      className="text-[11.5px] font-semibold text-muted hover:text-brand mt-0.5 inline-block"
+                    >
+                      View all listings from this seller →
+                    </Link>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* Safety note */}
+            <div className="border-2 border-amber bg-amber-tint rounded-[18px] px-[18px] py-4">
+              <p className="text-xs font-extrabold text-warntext mb-1 uppercase tracking-[0.04em]">Safety tip</p>
+              <p className="text-xs font-semibold text-warntext leading-relaxed">
+                Always inspect the car in person before payment. Meet in a public place or at the seller's registered dealership.
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* Mobile seller + safety */}
+        <div className="lg:hidden px-4 mt-5 space-y-4">
+          {car.seller && (
+            <div className="border-2 border-ink rounded-2xl px-4 py-3.5 bg-white flex items-center gap-3">
+              <span className="w-10 h-10 flex-none rounded-full border-2 border-ink bg-hairline overflow-hidden flex items-center justify-center font-black text-muted">
+                {car.seller.profile?.businessLogoUrl ? (
+                  <img src={car.seller.profile.businessLogoUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (car.seller.profile?.businessName || 'S')[0].toUpperCase()
+                )}
+              </span>
+              <div>
+                <div className="text-[13px] font-extrabold">
+                  {car.seller.profile?.businessName || 'Private Seller'}{' '}
+                  {car.seller.userType === 'DEALER' && (
+                    <span className="badge-verified text-[9px] px-1.5 py-[2px] align-[1px]">✓ DEALER</span>
+                  )}
+                </div>
+                <Link to={`/dealer/${car.seller.id}`} className="text-[11px] font-semibold text-muted">
+                  View all listings →
+                </Link>
+              </div>
+              <button
+                onClick={handleToggleFavorite}
+                disabled={favoriteSaving}
+                className="ml-auto p-2"
+                aria-label="Save to favourites"
+              >
+                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-brand text-brand' : ''}`} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ===== Similar cars ===== */}
+        {similarCars.length > 0 && (
+          <div className="border-t-2 border-ink mt-8 px-4 md:px-9 pt-[26px] pb-2">
+            <h2 className="display-1b text-lg md:text-xl mb-4">Similar correct cars</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {similarCars.map((c) => (
+                <CarCard key={c.id} car={c} variant="sale" showCompare={false} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ===== Mobile sticky bottom bar ===== */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center gap-2.5 bg-ink px-4 py-3">
+          <div className="text-white mr-auto">
+            <div className="text-[17px] font-black leading-tight">{formatNaira(carPrice)}</div>
+            {isVerified && <div className="text-[10px] font-semibold text-mint">escrow-protected</div>}
+          </div>
+          {whatsappHref ? (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn-pill-green text-[12.5px] px-[18px] py-3">
+              WhatsApp ↗
+            </a>
+          ) : (
+            <button
+              onClick={() => {
+                if (!isAuthenticated) { setIsSignInOpen(true); return; }
+                navigate(`/messages?sellerId=${car.seller?.id}&listingId=${car.id}`);
+              }}
+              className="btn-pill-green text-[12.5px] px-[18px] py-3"
+            >
+              Message
+            </button>
+          )}
+          <Link to="/pricing" className="btn-pill-amber text-[12.5px] px-[18px] py-3">
+            Finance it
+          </Link>
         </div>
       </div>
     </>

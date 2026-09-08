@@ -10,8 +10,8 @@ const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      isAuthenticated: false,
+      accessToken: localStorage.getItem('accessToken'),
+      isAuthenticated: Boolean(localStorage.getItem('accessToken')),
       isLoading: false,
       error: null,
 
@@ -171,8 +171,13 @@ window.addEventListener('auth:session-expired', () => {
     user: null,
     accessToken: null,
     isAuthenticated: false,
+    isLoading: false,
     error: null
   });
+});
+
+window.addEventListener('auth:token-refreshed', (event) => {
+  useAuthStore.setState({ accessToken: event.detail });
 });
 
 export default useAuthStore;

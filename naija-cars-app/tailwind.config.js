@@ -7,7 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Nigerian Pride Color Palette
+        // "1b: Bold Market Energy" design tokens
+        ink: {
+          DEFAULT: '#0E1F17',   // primary text, dark surfaces, borders, black buttons
+          line: '#3A4A40',      // outlines / connectors on dark surfaces
+          pill: '#1E3328',      // chips inside dark compare tray
+        },
+        brand: {
+          DEFAULT: '#008753',   // primary actions, verified badges, hero bg
+          hover: '#007145',     // darkened ~8% for hover
+        },
+        amber: {
+          DEFAULT: '#F5B840',   // secondary CTAs, highlights, warnings
+          tint: '#FBF3DC',      // financing / monthly-payment panel bg
+        },
+        mint: {
+          DEFAULT: '#8FD8B5',   // accent text on dark surfaces
+        },
+        paper: '#FCFBF7',       // page background
+        greentint: '#EAF6F0',   // verified-only panel, positive tag bg
+        muted: '#5E6B63',       // secondary/meta text
+        placeholdertext: '#8B948E', // input placeholders, inactive step labels
+        lightborder: '#E5E5DE', // input borders inside white panels
+        hairline: '#F0EEE6',    // card-internal dividers
+        warntext: '#B45309',    // inspection warnings
+        herosub: '#D6EFE2',     // sub-copy on green hero
+        darkmuted: '#AFC4B7',   // sub-copy on ink surfaces
+        // Nigerian Pride Color Palette (legacy pages)
         naija: {
           50: '#E8F5E9',
           100: '#C8E6C9',
@@ -70,9 +96,10 @@ export default {
         },
       },
       fontFamily: {
-        'display': ['Poppins', 'system-ui', 'sans-serif'], // Bold, modern
-        'heading': ['Inter', 'Helvetica', 'Arial', 'sans-serif'], // Clean, professional
-        'body': ['Inter', 'system-ui', 'sans-serif'], // Clean, readable
+        'archivo': ['Archivo', 'system-ui', 'sans-serif'],
+        'display': ['Archivo', 'system-ui', 'sans-serif'],
+        'heading': ['Archivo', 'system-ui', 'sans-serif'],
+        'body': ['Archivo', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -108,6 +135,12 @@ export default {
         },
       },
       boxShadow: {
+        // Hard offset shadows — the "1b look" (never soft blurred)
+        'hard': '5px 5px 0 #0E1F17',
+        'hard-sm': '4px 4px 0 #0E1F17',
+        'hard-lg': '6px 6px 0 #0E1F17',
+        'hard-green': '4px 4px 0 #008753',
+        'hard-green-lg': '5px 5px 0 #008753',
         'warm': '0 4px 20px rgba(0, 135, 83, 0.15)',
         'warm-lg': '0 8px 32px rgba(0, 135, 83, 0.2)',
         'card': '0 2px 8px rgba(0, 0, 0, 0.08)',

@@ -1,296 +1,139 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Heart, MapPin, Gauge, Fuel, Settings2, BadgeCheck,
-  ChevronLeft, ChevronRight, Eye
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { listingsAPI } from '../services/api';
-import useAuthStore from '../stores/authStore';
+import { formatNaira, formatKm, monthlyPayment, conditionLabel, waLink } from '../utils/format';
 
 const isPlaceholderCar = (car) => Boolean(car.isPlaceholder) || typeof car.id === 'number';
 
-const CarCard = ({ car, index = 0, variant = 'sale' }) => {
-  const { openQuickView, addToast } = useApp();
-  const { isAuthenticated } = useAuthStore();
-  const [isLiked, setIsLiked] = useState(car.isFavorited || false);
-  const [currentImage, setCurrentImage] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const formatPrice = (price) => {
-    if (price >= 1000000) {
-      return `₦${(price / 1000000).toFixed(1)}M`;
-    }
-    return `₦${price.toLocaleString()}`;
-  };
+// Listing card — "1b: Bold Market Energy": 2px ink border, hard offset shadow,
+// VERIFIED pill, compare checkbox, price + monthly line, WhatsApp pill.
+const CarCard = ({ car, variant = 'sale', showCompare = true }) => {
+  const navigate = useNavigate();
+  const { openQuickView, compareList, toggleCompare, addToast } = useApp();
 
   const isSale = variant === 'sale' || car.type === 'sale';
   const price = isSale ? car.price : car.pricePerDay;
-  const priceLabel = isSale ? '' : '/day';
   const isPlaceholder = isPlaceholderCar(car);
+  const isCompared = compareList.some((c) => c.id === car.id);
+  const compareFull = compareList.length >= 3 && !isCompared;
 
-  const handleLikeClick = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isAuthenticated) {
-      addToast('Please sign in to save favorites', 'info');
-      return;
-    }
-    try {
-      const { data } = await listingsAPI.toggleFavorite(car.id);
-      setIsLiked(data.data.isFavorited);
-      addToast(data.data.isFavorited ? 'Added to favorites!' : 'Removed from favorites', 'info');
-    } catch {
-      addToast('Failed to update favorite', 'error');
+  const title = `${car.year} ${car.make} ${car.model}${car.trim ? ` ${car.trim}` : ''}`;
+  const metaParts = [
+    [car.location?.city, car.location?.state].filter(Boolean).join(', '),
+    car.mileage ? formatKm(car.mileage) : null,
+    isSale ? conditionLabel(car.condition) : null,
+  ].filter(Boolean);
+  const monthly = isSale ? monthlyPayment(price) : 0;
+  const whatsappNumber = car.whatsapp || car.phone || car.dealer?.phone || '';
+
+  const handleOpen = () => {
+    if (isPlaceholder) {
+      openQuickView(car);
+    } else {
+      navigate(`/car/${car.id}`);
     }
   };
 
-  const handleQuickView = (e) => {
-    e.preventDefault();
+  const handleCompare = (e) => {
     e.stopPropagation();
-    openQuickView(car);
+    if (compareFull) {
+      addToast('You can compare up to 3 cars', 'info');
+      return;
+    }
+    toggleCompare(car);
+  };
+
+  const handleWhatsApp = (e) => {
+    e.stopPropagation();
+    if (!whatsappNumber) {
+      handleOpen();
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative cursor-pointer"
-      onClick={handleQuickView}
+    <div
+      onClick={handleOpen}
+      className={`card-1b card-1b-hover cursor-pointer ${isCompared ? 'card-1b-selected' : ''}`}
     >
-      <div className="card-warm overflow-hidden hover-lift">
-        {/* Image Container */}
-        <div className="relative h-56 overflow-hidden rounded-t-3xl">
-          {/* Images */}
-          <motion.img
-            src={car.images[currentImage]}
-            alt={`${car.make} ${car.model}`}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+      {/* Image */}
+      <div className="relative h-40 sm:h-[170px] stripes-1b">
+        {car.images?.[0] ? (
+          <img
+            src={car.images[0]}
+            alt={title}
+            loading="lazy"
+            className="w-full h-full object-cover"
           />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[11px] font-mono text-muted">
+            photos coming soon
+          </div>
+        )}
 
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal-900/60 via-transparent to-transparent" />
+        {car.verified && (
+          <span className="badge-verified absolute top-3 left-3">✓ VERIFIED</span>
+        )}
+        {isPlaceholder && (
+          <span className="absolute bottom-3 left-3 text-[10px] font-black uppercase tracking-[0.05em] bg-ink/85 text-white px-2.5 py-1 rounded-full">
+            Sample
+          </span>
+        )}
 
-          {/* Top Badges */}
-          <div className="absolute top-4 left-4 flex gap-2">
-            <span className={isSale ? 'tag-sale' : 'tag-rent'}>
-              {isSale ? 'For Sale' : 'For Rent'}
-            </span>
-            {car.featured && (
-              <span className="bg-gold-400 text-charcoal-900 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider">
-                Featured
-              </span>
-            )}
-            {isPlaceholder && (
-              <span className="bg-charcoal-900/85 text-white px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider">
-                Placeholder
-              </span>
+        {/* Compare checkbox */}
+        {showCompare && isSale && (
+          <button
+            onClick={handleCompare}
+            title={isCompared ? 'Remove from compare' : 'Tick to compare'}
+            aria-pressed={isCompared}
+            className={`absolute top-2.5 right-2.5 w-[24px] h-[24px] rounded-[7px] flex items-center justify-center transition-colors ${
+              isCompared
+                ? 'bg-brand text-white border-2 border-white'
+                : 'bg-white border-2 border-ink'
+            } ${compareFull ? 'opacity-40 cursor-not-allowed' : ''}`}
+          >
+            {isCompared && <Check className="w-3.5 h-3.5" strokeWidth={4} />}
+          </button>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="px-3.5 pt-3.5 pb-4">
+        <h3 className="text-[15px] font-extrabold leading-snug">{title}</h3>
+        <p className="text-[11.5px] font-semibold text-muted mt-0.5">
+          {metaParts.join(' · ')}
+        </p>
+
+        <div className="flex items-center justify-between mt-3">
+          <div>
+            <div className="text-[19px] font-black tracking-[-0.02em]">
+              {formatNaira(price)}
+              {!isSale && <span className="text-xs font-bold">/day</span>}
+            </div>
+            {isSale && monthly > 0 && (
+              <div className="text-[11px] font-semibold text-brand">
+                or {formatNaira(monthly)}/mo
+              </div>
             )}
           </div>
 
-          {/* Like Button */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleLikeClick}
-            className={`absolute top-4 right-4 p-2.5 rounded-xl backdrop-blur-sm transition-all duration-300
-                      ${isLiked
-                        ? 'bg-naija-500 text-white'
-                        : 'bg-white/80 text-charcoal-600 hover:bg-white'
-                      }`}
-          >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-          </motion.button>
-
-          {/* Image Navigation (only show if multiple images) */}
-          {car.images.length > 1 && isHovered && (
-            <>
-              <motion.button
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentImage((prev) => (prev === 0 ? car.images.length - 1 : prev - 1));
-                }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-white/90
-                         rounded-xl text-charcoal-700 hover:bg-white transition-colors shadow-card"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </motion.button>
-              <motion.button
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentImage((prev) => (prev === car.images.length - 1 ? 0 : prev + 1));
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/90
-                         rounded-xl text-charcoal-700 hover:bg-white transition-colors shadow-card"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </motion.button>
-            </>
-          )}
-
-          {/* Quick View Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }}
-            transition={{ duration: 0.3 }}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2"
-          >
-            <button
-              onClick={handleQuickView}
-              className="flex items-center gap-2 px-5 py-2.5 bg-naija-500 text-white
-                       font-semibold text-sm rounded-xl shadow-button transition-all hover:bg-naija-600"
+          {whatsappNumber ? (
+            <a
+              href={waLink(whatsappNumber, `Hi, I'm interested in your ${title} listed on NaijaCars. Is it still available?`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleWhatsApp}
+              className="btn-pill-dark text-xs px-4 py-[11px]"
             >
-              <Eye className="w-4 h-4" />
-              Quick View
+              WhatsApp ↗
+            </a>
+          ) : (
+            <button onClick={handleOpen} className="btn-pill-dark text-xs px-4 py-[11px]">
+              View details
             </button>
-          </motion.div>
-
-          {/* Image Dots */}
-          {car.images.length > 1 && (
-            <div className="absolute bottom-4 right-4 flex gap-1.5">
-              {car.images.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImage(idx);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    currentImage === idx ? 'bg-white w-4' : 'bg-white/50'
-                  }`}
-                />
-              ))}
-            </div>
           )}
-        </div>
-
-        {/* Content */}
-        <div className="p-5">
-          {isPlaceholder && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-              Sample listing for preview only. Real listings appear without this notice.
-            </div>
-          )}
-
-          {/* Title & Verification */}
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="font-display text-lg font-semibold text-charcoal-800 group-hover:text-naija-500
-                           transition-colors duration-300">
-                {car.year} {car.make} {car.model}
-              </h3>
-              <p className="text-sm text-charcoal-600">{car.trim}</p>
-            </div>
-            {car.verified && (
-              <div className="verified-badge">
-                <BadgeCheck className="w-4 h-4" />
-                Verified
-              </div>
-            )}
-          </div>
-
-          {/* Specs Grid */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {isSale ? (
-              <>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <Gauge className="w-4 h-4 text-naija-400" />
-                  <span className="text-xs">{car.mileage?.toLocaleString()} km</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <Fuel className="w-4 h-4 text-naija-400" />
-                  <span className="text-xs">{car.fuelType}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <Settings2 className="w-4 h-4 text-naija-400" />
-                  <span className="text-xs">{car.transmission?.slice(0, 4)}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <Settings2 className="w-4 h-4 text-naija-400" />
-                  <span className="text-xs">{car.transmission}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <Fuel className="w-4 h-4 text-naija-400" />
-                  <span className="text-xs">{car.fuelType}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-charcoal-500">
-                  <span className="text-xs">{car.seats} Seats</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Condition Tag (for sale cars) */}
-          {isSale && car.condition && (
-            <div className="mb-4">
-              <span className={`inline-block px-3 py-1.5 rounded-xl text-xs font-medium
-                            ${car.condition === 'Brand New'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : car.condition === 'Foreign Used'
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'bg-gold-100 text-gold-900'
-                            }`}>
-                {car.condition}
-              </span>
-            </div>
-          )}
-
-          {/* Location */}
-          <div className="flex items-center gap-1.5 text-charcoal-600 text-sm mb-4">
-            <MapPin className="w-4 h-4" />
-            {car.location.city}, {car.location.state}
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-pearl-300 pt-4">
-            <div className="flex items-center justify-between">
-              {/* Price */}
-              <div>
-                <span className="text-2xl font-display font-bold text-naija-500">
-                  {formatPrice(price)}
-                </span>
-                {priceLabel && (
-                  <span className="text-sm text-charcoal-600">{priceLabel}</span>
-                )}
-              </div>
-
-              {/* Dealer Info */}
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 bg-pearl-200 rounded-xl flex items-center justify-center
-                              text-naija-500 text-xs font-bold">
-                  {(car.dealer?.name || car.company?.name)?.charAt(0)}
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-xs text-charcoal-600 font-medium truncate max-w-[100px]">
-                    {car.dealer?.name || car.company?.name}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-gold-500 text-xs">★</span>
-                    <span className="text-xs text-charcoal-600">
-                      {car.dealer?.rating || car.company?.rating}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

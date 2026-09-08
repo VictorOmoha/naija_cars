@@ -117,7 +117,7 @@ export default function FavoritesPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
+      <div className="min-h-screen bg-pearl-100 pt-8 pb-20">
         <div className="bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 py-12 relative overflow-hidden">
           <div className="absolute inset-0 kente-overlay opacity-10" />
           <div className="section-container relative">
@@ -144,7 +144,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-28 pb-20">
+    <div className="min-h-screen bg-pearl-100 pt-8 pb-20">
       {/* Header */}
       <div className="bg-gradient-to-r from-naija-600 via-naija-500 to-emerald-500 py-12 relative overflow-hidden">
         <div className="absolute inset-0 kente-overlay opacity-10" />

@@ -169,8 +169,11 @@ router.get(
       if (existingEvent?.processed) {
         // Already processed — return existing subscription
         const subscription = await prisma.subscription.findFirst({
-          where: { paymentReference: reference },
+          where: { paymentReference: reference, userId: req.user.id },
         });
+        if (!subscription) {
+          return res.status(404).json({ success: false, error: { message: 'Subscription not found' } });
+        }
         return res.json({
           success: true,
           message: 'Subscription already activated',
@@ -206,10 +209,17 @@ router.get(
       }
 
       const plan = PLANS[planType];
-      if (!plan) {
+      if (!Object.hasOwn(PLANS, planType)) {
         return res.status(400).json({
           success: false,
           error: { message: 'Invalid plan in transaction metadata' },
+        });
+      }
+
+      if (txn.currency !== 'NGN' || !Number.isSafeInteger(txn.amount) || txn.amount !== plan.price) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Payment amount or currency does not match the selected plan' },
         });
       }
 
@@ -262,7 +272,7 @@ router.get(
             where: { paymentReference: reference },
           });
 
-          if (existingSubscription) {
+          if (existingSubscription?.userId === req.user.id) {
             return res.json({
               success: true,
               message: 'Subscription already activated',
@@ -306,6 +316,7 @@ router.get(
  * @access  Public (validated via HMAC signature)
  */
 router.post('/webhook', async (req, res, next) => {
+  let eventId;
   try {
     const signature = req.headers['x-paystack-signature'];
     const rawBody =
@@ -323,7 +334,12 @@ router.post('/webhook', async (req, res, next) => {
       ? JSON.parse(rawBody)
       : req.body;
 
-    const eventId = event.data?.reference || event.data?.id?.toString();
+    // Other event types do not activate a subscription.
+    if (event.event !== 'charge.success') return res.sendStatus(200);
+    eventId = event.data?.reference;
+    if (typeof eventId !== 'string' || !eventId) {
+      return res.status(400).json({ success: false, error: { message: 'Missing payment reference' } });
+    }
 
     // Idempotency
     const existing = await prisma.paystackEvent.findUnique({
@@ -336,8 +352,12 @@ router.post('/webhook', async (req, res, next) => {
     if (event.event === 'charge.success') {
       const { userId, planType } = event.data.metadata || {};
 
-      if (userId && planType && PLANS[planType]) {
+      if (userId && planType && Object.hasOwn(PLANS, planType)) {
         const plan = PLANS[planType];
+        if (event.data.currency !== 'NGN' || !Number.isSafeInteger(event.data.amount)
+          || event.data.amount !== plan.price || event.data.status !== 'success') {
+          return res.status(400).json({ success: false, error: { message: 'Invalid subscription payment' } });
+        }
 
         await prisma.$transaction(async (tx) => {
           await tx.paystackEvent.create({
@@ -397,8 +417,15 @@ router.post('/webhook', async (req, res, next) => {
     // Always return 200 to Paystack
     res.sendStatus(200);
   } catch (error) {
+    if (eventId && isUniqueConstraintError(error)) {
+      const processed = await prisma.paystackEvent.findUnique({
+        where: { eventId },
+      }).catch(() => null);
+      if (processed?.processed) return res.sendStatus(200);
+    }
     console.error('Webhook error:', error);
-    res.sendStatus(200); // Still return 200 to prevent retries
+    // A failed transaction must be retried by Paystack, not acknowledged as delivered.
+    res.sendStatus(500);
   }
 });
 

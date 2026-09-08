@@ -47,11 +47,12 @@ async function verifyTransaction(reference) {
  */
 function validateWebhook(rawBody, signature) {
   const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || typeof signature !== 'string' || !/^[a-f0-9]{128}$/i.test(signature)) return false;
   const hash = crypto
     .createHmac('sha512', secret)
     .update(rawBody)
     .digest('hex');
-  return hash === signature;
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(signature, 'hex'));
 }
 
 module.exports = {

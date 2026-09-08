@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const prisma = require('../lib/prisma');
+const { publicUserSelect } = require('../lib/publicUser');
 const { authenticate, requireUserType } = require('../middleware/auth');
 
 const router = express.Router();
@@ -98,9 +99,7 @@ router.get('/listings/recent', async (req, res) => {
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
-        seller: {
-          include: { profile: true }
-        },
+        seller: { select: publicUserSelect },
         media: {
           take: 1,
           orderBy: { displayOrder: 'asc' }
@@ -494,9 +493,7 @@ router.get('/listings', async (req, res) => {
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' },
         include: {
-          seller: {
-            include: { profile: true }
-          },
+          seller: { select: publicUserSelect },
           media: {
             take: 1,
             orderBy: { displayOrder: 'asc' }
@@ -608,9 +605,7 @@ router.get('/listings/:id', async (req, res) => {
     const listing = await prisma.carListing.findUnique({
       where: { id },
       include: {
-        seller: {
-          include: { profile: true }
-        },
+        seller: { select: publicUserSelect },
         media: {
           orderBy: { displayOrder: 'asc' }
         }
@@ -735,7 +730,7 @@ router.post('/listings', [
         }
       },
       include: {
-        seller: { include: { profile: true } },
+        seller: { select: publicUserSelect },
         media: true
       }
     });
@@ -830,7 +825,7 @@ router.put('/listings/:id', [
       where: { id },
       data: updateData,
       include: {
-        seller: { include: { profile: true } },
+        seller: { select: publicUserSelect },
         media: true
       }
     });
@@ -856,7 +851,7 @@ router.put('/listings/:id', [
       const updatedListing = await prisma.carListing.findUnique({
         where: { id },
         include: {
-          seller: { include: { profile: true } },
+          seller: { select: publicUserSelect },
           media: { orderBy: { displayOrder: 'asc' } }
         }
       });
@@ -945,7 +940,7 @@ router.get('/analytics/overview', async (req, res) => {
       take: 5,
       orderBy: { viewsCount: 'desc' },
       include: {
-        seller: { include: { profile: true } },
+        seller: { select: publicUserSelect },
         media: { take: 1 }
       }
     });

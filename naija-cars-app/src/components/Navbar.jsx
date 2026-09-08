@@ -1,461 +1,302 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Menu, X, ChevronDown, Car, Key, Search, User, Heart, Bell,
+  Menu, X, ChevronDown, User, Heart, Bell,
   LayoutDashboard, LogOut, MessageCircle, HelpCircle, Shield
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import useAuthStore from '../stores/authStore';
 
+// City counts shown in the ticker strip (marketing figures)
+const TICKER_ITEMS = [
+  'LAGOS 6,204 CARS',
+  'ABUJA 3,118',
+  'PORT HARCOURT 1,442',
+  'IBADAN 986',
+  'KANO 688',
+];
+
+const NAV_LINKS = [
+  { name: 'Buy', href: '/cars' },
+  { name: 'Rent', href: '/rent' },
+  { name: 'Sell', href: '/sell' },
+  { name: 'Financing', href: '/pricing' },
+];
+
+// Wordmark: "Naija" green, "Cars" ink, "." amber
+export const Logo = ({ className = 'text-[21px]' }) => (
+  <span className={`font-black uppercase tracking-[-0.03em] leading-none text-ink ${className}`}>
+    <span className="text-brand">Naija</span>Cars<span className="text-amber">.</span>
+  </span>
+);
+
+const Ticker = () => (
+  <div className="ticker-1b py-2 px-4 md:px-9">
+    <div className="ticker-track flex gap-7 w-max">
+      {[0, 1].map((copy) => (
+        <div key={copy} className="flex gap-7" aria-hidden={copy === 1}>
+          {TICKER_ITEMS.map((item) => (
+            <span key={item} className="flex gap-7">
+              <span>{item}</span>
+              <span>·</span>
+            </span>
+          ))}
+          <span className="text-amber">FINANCING FROM 20% DOWN</span>
+          <span className="pr-7">·</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setIsSignInOpen, setIsListCarOpen, scrollToSection, addToast, unreadNotificationCount } = useApp();
+  const { setIsSignInOpen, unreadNotificationCount } = useApp();
   const { user, isAuthenticated, logout } = useAuthStore();
 
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
+  // Transparent at page top so the hero car cutout can pop out behind the nav
+  // row; opaque once sticky engages and content scrolls beneath.
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setIsScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Close menus when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setShowUserMenu(false);
-    setActiveDropdown(null);
   }, [location.pathname]);
 
-  const navLinks = [
-    {
-      name: 'Buy Cars',
-      href: '/cars',
-      icon: Car,
-      dropdown: [
-        { name: 'Browse All Cars', href: '/cars' },
-        { name: 'Foreign Used', href: '/cars?condition=foreign' },
-        { name: 'Nigerian Used', href: '/cars?condition=nigerian' },
-        { name: 'Brand New', href: '/cars?condition=new' },
-      ]
-    },
-    {
-      name: 'Rent Cars',
-      href: '/rent',
-      icon: Key,
-      dropdown: [
-        { name: 'All Rentals', href: '/rent' },
-        { name: 'Daily Rentals', href: '/rent?period=daily' },
-        { name: 'Weekly Deals', href: '/rent?period=weekly' },
-        { name: 'Corporate Rentals', href: '/rent?period=corporate' },
-      ]
-    },
-    { name: 'Sell Your Car', href: '/sell' },
-    { name: 'Pricing', href: '/pricing' },
-    { name: 'Car Valuation', href: '/valuation' },
-    { name: 'Dealers', href: '/dealers' },
-  ];
-
-  const handleNavClick = (link, e) => {
-    if (link.action === 'listCar') {
-      e.preventDefault();
-      setIsListCarOpen(true);
-    } else if (link.href) {
-      // Let the Link handle it
-    } else if (link.sectionId) {
-      e.preventDefault();
-      if (location.pathname !== '/') {
-        navigate('/');
-        setTimeout(() => scrollToSection(link.sectionId), 100);
-      } else {
-        scrollToSection(link.sectionId);
-      }
-    }
-    setIsMobileMenuOpen(false);
-    setActiveDropdown(null);
-  };
+  const isActive = (href) =>
+    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   const handleLogout = () => {
     logout();
-    addToast('Logged out successfully', 'success');
     navigate('/');
     setShowUserMenu(false);
   };
 
-  const handleLogoClick = () => {
-    if (location.pathname === '/') {
-      scrollToSection('hero');
-    } else {
-      navigate('/');
-    }
-  };
-
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled
-        ? 'bg-white/95 backdrop-blur-md shadow-lg py-3'
-        : 'bg-white/80 backdrop-blur-sm py-5'
-        }`}
-    >
-      <div className="section-container">
-        <div className="flex items-center justify-between">
+    // Fragment (not a wrapper element) so the sticky nav can pin to the
+    // viewport for the whole page, while the ticker scrolls away.
+    <>
+      <Ticker />
+
+      <nav className={`sticky top-0 z-40 transition-colors duration-200 ${isScrolled ? 'bg-paper' : 'bg-transparent'}`}>
+        <div className="flex items-center justify-between px-4 md:px-9 py-4 border-b-2 border-ink">
           {/* Logo */}
-          <motion.button
-            onClick={handleLogoClick}
-            className="flex items-center gap-2 group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <img
-              src="/logo.png?v=3"
-              alt="Naija Cars"
-              className="h-14 w-auto object-contain drop-shadow-sm"
-            />
-          </motion.button>
+          <Link to="/" aria-label="NaijaCars home">
+            <Logo className="text-[19px] md:text-[21px]" />
+          </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden xl:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <div
+          {/* Desktop links */}
+          <div className="hidden lg:flex items-center gap-[26px] text-sm font-bold">
+            {NAV_LINKS.map((link) => (
+              <Link
                 key={link.name}
-                className="relative"
-                onMouseEnter={() => link.dropdown && setActiveDropdown(link.name)}
-                onMouseLeave={() => setActiveDropdown(null)}
+                to={link.href}
+                className={`pb-0.5 border-b-[3px] transition-colors hover:border-brand ${
+                  isActive(link.href) ? 'border-brand' : 'border-transparent'
+                }`}
               >
-                {link.href ? (
-                  <Link
-                    to={link.href}
-                    className="flex items-center gap-1 px-4 py-2 text-sm font-heading font-bold text-charcoal-700
-                             hover:text-naija-500 transition-colors duration-300 group uppercase tracking-wide"
-                  >
-                    {link.name}
-                    {link.dropdown && (
-                      <ChevronDown className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
-                    )}
-                  </Link>
-                ) : (
-                  <button
-                    onClick={(e) => handleNavClick(link, e)}
-                    className="flex items-center gap-1 px-4 py-2 text-sm font-heading font-bold text-charcoal-700
-                             hover:text-naija-500 transition-colors duration-300 group uppercase tracking-wide"
-                  >
-                    {link.name}
-                  </button>
-                )}
+                {link.name}
+              </Link>
+            ))}
+          </div>
 
-                {/* Dropdown */}
+          {/* Right actions */}
+          <div className="hidden lg:flex items-center gap-3">
+            {isAuthenticated && (
+              <>
+                <Link
+                  to="/favorites"
+                  title="Saved cars"
+                  className="p-2 rounded-full hover:bg-greentint transition-colors"
+                >
+                  <Heart className="w-5 h-5" />
+                </Link>
+                <Link
+                  to="/messages"
+                  title="Messages"
+                  className="relative p-2 rounded-full hover:bg-greentint transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-brand text-white text-[10px] font-extrabold rounded-full flex items-center justify-center">
+                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  to="/notifications?filter=all"
+                  title="Notifications"
+                  className="relative p-2 rounded-full hover:bg-greentint transition-colors"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-amber text-ink text-[10px] font-extrabold rounded-full flex items-center justify-center">
+                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                    </span>
+                  )}
+                </Link>
+              </>
+            )}
+
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="btn-pill-outline text-[13px] px-4 py-2"
+                >
+                  <span className="w-6 h-6 -ml-1 bg-brand text-white rounded-full flex items-center justify-center text-[11px] font-black">
+                    {user?.profile?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                  {user?.profile?.firstName || 'Account'}
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                </button>
+
                 <AnimatePresence>
-                  {link.dropdown && activeDropdown === link.name && (
+                  {showUserMenu && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 mt-2 w-56 bg-white
-                               border border-pearl-300 rounded-2xl shadow-card-hover overflow-hidden"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-3 w-60 bg-white border-2 border-ink rounded-2xl shadow-hard-sm overflow-hidden"
                     >
-                      <div className="py-2">
-                        {link.dropdown.map((item, index) => (
-                          <motion.div key={item.name}>
-                            <Link
-                              to={item.href}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className="block w-full text-left px-4 py-3 text-sm text-charcoal-600 hover:text-naija-500
-                                       hover:bg-pearl-100 transition-all duration-300"
-                            >
-                              {item.name}
-                            </Link>
-                          </motion.div>
-                        ))}
+                      <div className="p-3.5 border-b-2 border-hairline">
+                        <p className="font-extrabold text-sm">
+                          {user?.profile?.firstName} {user?.profile?.lastName}
+                        </p>
+                        <p className="text-xs font-semibold text-muted truncate">{user?.email}</p>
+                      </div>
+                      <div className="py-1.5 text-[13px] font-bold">
+                        <Link to="/dashboard" className="flex items-center gap-3 px-4 py-2.5 hover:bg-greentint transition-colors">
+                          <LayoutDashboard className="w-4 h-4" /> Dashboard
+                        </Link>
+                        <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 hover:bg-greentint transition-colors">
+                          <User className="w-4 h-4" /> My Profile
+                        </Link>
+                        <Link to="/favorites" className="flex items-center gap-3 px-4 py-2.5 hover:bg-greentint transition-colors">
+                          <Heart className="w-4 h-4" /> Saved Cars
+                        </Link>
+                        <Link to="/help" className="flex items-center gap-3 px-4 py-2.5 hover:bg-greentint transition-colors">
+                          <HelpCircle className="w-4 h-4" /> Help Center
+                        </Link>
+                        {user?.userType === 'ADMIN' && (
+                          <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 hover:bg-greentint transition-colors">
+                            <Shield className="w-4 h-4" /> Admin Panel
+                          </Link>
+                        )}
+                      </div>
+                      <div className="border-t-2 border-hairline py-1.5">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-[13px] font-bold text-warntext hover:bg-amber-tint transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" /> Sign Out
+                        </button>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            ))}
-          </div>
-
-          {/* Right Side Actions */}
-          <div className="hidden xl:flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/cars')}
-              className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all"
-            >
-              <Search className="w-5 h-5" />
-            </motion.button>
-
-            <Link to="/favorites">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
-              >
-                <Heart className="w-5 h-5" />
-              </motion.div>
-            </Link>
-
-            {isAuthenticated ? (
-              <>
-                <Link to="/messages">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
-                    title="Messages"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    {unreadNotificationCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-naija-500 text-white
-                                     text-[10px] font-bold rounded-full flex items-center justify-center">
-                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                      </span>
-                    )}
-                  </motion.div>
-                </Link>
-
-                <Link to="/notifications?filter=all" aria-label="Open notifications">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="p-2.5 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-200 rounded-xl transition-all relative"
-                    title="Notifications"
-                  >
-                    <Bell className="w-5 h-5" />
-                    {unreadNotificationCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white
-                                     text-[10px] font-bold rounded-full flex items-center justify-center">
-                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                      </span>
-                    )}
-                  </motion.div>
-                </Link>
-
-                {/* User Menu */}
-                <div className="relative">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-charcoal-700
-                             border border-pearl-400 rounded-xl hover:border-naija-300 hover:text-naija-500 transition-all"
-                  >
-                    <div className="w-7 h-7 bg-naija-500 text-white rounded-lg flex items-center justify-center text-xs font-bold">
-                      {user?.profile?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <span className="hidden xl:block">{user?.profile?.firstName || 'Account'}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-                  </motion.button>
-
-                  <AnimatePresence>
-                    {showUserMenu && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full right-0 mt-2 w-56 bg-white border border-pearl-300 rounded-2xl shadow-card-hover overflow-hidden"
-                      >
-                        <div className="p-3 border-b border-pearl-200">
-                          <p className="font-medium text-charcoal-800">
-                            {user?.profile?.firstName} {user?.profile?.lastName}
-                          </p>
-                          <p className="text-sm text-charcoal-500 truncate">{user?.email}</p>
-                        </div>
-                        <div className="py-2">
-                          <Link to="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <LayoutDashboard className="w-4 h-4" />
-                            Dashboard
-                          </Link>
-                          <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <User className="w-4 h-4" />
-                            My Profile
-                          </Link>
-                          <Link to="/messages" className="flex items-center justify-between gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <span className="flex items-center gap-3">
-                              <MessageCircle className="w-4 h-4" />
-                              Messages
-                            </span>
-                            {unreadNotificationCount > 0 && (
-                              <span className="min-w-[20px] h-5 px-1 bg-naija-500 text-white
-                                             text-[10px] font-bold rounded-full flex items-center justify-center">
-                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                              </span>
-                            )}
-                          </Link>
-                          <Link to="/favorites" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <Heart className="w-4 h-4" />
-                            Saved Cars
-                          </Link>
-                          <Link to="/help" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                            <HelpCircle className="w-4 h-4" />
-                            Help Center
-                          </Link>
-                          {user?.userType === 'ADMIN' && (
-                            <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-charcoal-600 hover:text-naija-500 hover:bg-pearl-100 transition-colors">
-                              <Shield className="w-4 h-4" />
-                              Admin Panel
-                            </Link>
-                          )}
-                        </div>
-                        <div className="border-t border-pearl-200 py-2">
-                          <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            Sign Out
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </>
             ) : (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={() => setIsSignInOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-charcoal-700
-                         border border-pearl-400 rounded-xl hover:border-naija-300 hover:text-naija-500 transition-all"
+                className="btn-pill-outline text-[13px] px-[18px] py-[9px]"
               >
-                <User className="w-4 h-4" />
-                Sign In
-              </motion.button>
+                Sign in
+              </button>
             )}
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsListCarOpen(true)}
-              className="btn-primary px-6 py-2.5 text-sm rounded-xl"
-            >
-              List Your Car
-            </motion.button>
+            <Link to="/sell" className="btn-pill-amber text-sm px-5 py-[11px]">
+              Sell am fast →
+            </Link>
           </div>
 
-          {/* Mobile Actions */}
-          <div className="xl:hidden flex items-center gap-2">
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              onClick={() => setIsListCarOpen(true)}
-              className="inline-flex h-12 items-center justify-center gap-2 px-3 sm:px-4 bg-naija-500 text-white
-                       text-sm font-semibold rounded-xl shadow-sm hover:bg-naija-600 transition-colors"
-              aria-label="List your car"
-            >
-              <Car className="w-4 h-4" />
-              <span>List</span>
-              <span className="hidden sm:inline">Your Car</span>
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+          {/* Mobile actions */}
+          <div className="lg:hidden flex items-center gap-2">
+            <Link to="/sell" className="btn-pill-amber text-xs px-3.5 py-2">
+              Sell am fast →
+            </Link>
+            <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="flex items-center justify-center w-12 h-12 text-charcoal-700 hover:bg-pearl-200 rounded-xl transition-colors border border-pearl-300"
+              className="flex items-center justify-center w-10 h-10"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </motion.button>
+            </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile menu */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="xl:hidden mt-4 pb-4 border-t border-pearl-300"
+              transition={{ duration: 0.2 }}
+              className="lg:hidden overflow-hidden bg-paper border-b-2 border-ink"
             >
-              <div className="pt-4 space-y-1">
-                {navLinks.map((link) => (
-                  link.href ? (
-                    <Link
-                      key={link.name}
-                      to={link.href}
-                      className="block w-full text-left px-4 py-3 text-charcoal-700 hover:text-naija-500
-                               hover:bg-pearl-100 rounded-xl transition-colors font-medium"
-                    >
-                      {link.name}
-                    </Link>
-                  ) : (
-                    <button
-                      key={link.name}
-                      onClick={(e) => handleNavClick(link, e)}
-                      className="block w-full text-left px-4 py-3 text-charcoal-700 hover:text-naija-500
-                               hover:bg-pearl-100 rounded-xl transition-colors font-medium"
-                    >
-                      {link.name}
-                    </button>
-                  )
+              <div className="px-4 py-4 space-y-1">
+                {NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    className={`block px-3 py-3 rounded-xl font-extrabold text-[15px] ${
+                      isActive(link.href) ? 'bg-greentint text-brand' : 'hover:bg-greentint'
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
                 ))}
+                <Link to="/dealers" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
+                  Dealers
+                </Link>
+                <Link to="/valuation" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
+                  Car Valuation
+                </Link>
 
                 {isAuthenticated && (
                   <>
-                    <div className="border-t border-pearl-200 my-3" />
-                    <Link to="/dashboard" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                    <div className="border-t-2 border-hairline my-2" />
+                    <Link to="/dashboard" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
                       Dashboard
                     </Link>
-                    <Link to="/profile" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                    <Link to="/profile" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
                       My Profile
                     </Link>
-                    <Link to="/favorites" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
+                    <Link to="/favorites" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
                       Saved Cars
                     </Link>
-                    <Link to="/notifications?filter=all" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                      <span>Notifications</span>
+                    <Link to="/messages" className="flex items-center justify-between px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
+                      Messages
                       {unreadNotificationCount > 0 && (
-                        <span className="min-w-[22px] h-5 px-1 bg-red-500 text-white
-                                       text-[10px] font-bold rounded-full flex items-center justify-center">
+                        <span className="min-w-[20px] h-5 px-1 bg-brand text-white text-[10px] font-extrabold rounded-full flex items-center justify-center">
                           {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                         </span>
                       )}
                     </Link>
-                    <Link to="/messages" className="flex items-center justify-between px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                      <span>Messages</span>
-                      {unreadNotificationCount > 0 && (
-                        <span className="min-w-[22px] h-5 px-1 bg-naija-500 text-white
-                                       text-[10px] font-bold rounded-full flex items-center justify-center">
-                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                        </span>
-                      )}
+                    <Link to="/notifications?filter=all" className="block px-3 py-3 rounded-xl font-bold text-[15px] hover:bg-greentint">
+                      Notifications
                     </Link>
                   </>
                 )}
 
-                <div className="border-t border-pearl-200 my-3" />
-                <Link to="/help" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                  Help Center
-                </Link>
-                <Link to="/about" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                  About Us
-                </Link>
-                <Link to="/contact" className="block px-4 py-3 text-charcoal-700 hover:text-naija-500 hover:bg-pearl-100 rounded-xl font-medium">
-                  Contact
-                </Link>
-
-                <div className="pt-4 space-y-3 px-4">
+                <div className="border-t-2 border-hairline my-2" />
+                <div className="pt-2 pb-1 space-y-2.5">
                   {isAuthenticated ? (
-                    <button
-                      onClick={handleLogout}
-                      className="w-full py-3 text-red-600 border border-red-300
-                               rounded-xl hover:bg-red-50 transition-colors font-medium"
-                    >
+                    <button onClick={handleLogout} className="btn-pill-outline w-full py-3 text-sm">
                       Sign Out
                     </button>
                   ) : (
@@ -464,28 +305,21 @@ const Navbar = () => {
                         setIsMobileMenuOpen(false);
                         setIsSignInOpen(true);
                       }}
-                      className="w-full py-3 text-charcoal-700 border border-pearl-400
-                               rounded-xl hover:border-naija-300 transition-colors font-medium"
+                      className="btn-pill-outline w-full py-3 text-sm"
                     >
-                      Sign In
+                      Sign in
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsListCarOpen(true);
-                    }}
-                    className="btn-primary w-full py-3 rounded-xl"
-                  >
-                    List Your Car
-                  </button>
+                  <Link to="/sell" className="btn-pill-amber w-full py-3.5 text-sm">
+                    Sell am fast →
+                  </Link>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.nav>
+      </nav>
+    </>
   );
 };
 

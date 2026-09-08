@@ -3,7 +3,20 @@
 @tailwind utilities;
 
 :root {
-  /* Nigerian Pride Palette */
+  /* "1b: Bold Market Energy" tokens */
+  --ink: #0E1F17;
+  --brand-green: #008753;
+  --brand-green-hover: #007145;
+  --amber: #F5B840;
+  --amber-tint: #FBF3DC;
+  --mint: #8FD8B5;
+  --paper: #FCFBF7;
+  --green-tint: #EAF6F0;
+  --muted: #5E6B63;
+  --placeholder: #8B948E;
+  --light-border: #E5E5DE;
+  --hairline: #F0EEE6;
+  /* Nigerian Pride Palette (legacy) */
   --color-naija: #008753;
   --color-naija-dark: #00632E;
   --color-naija-light: #10B981;
@@ -28,31 +41,31 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--color-pearl);
-  color: var(--color-charcoal);
+  font-family: 'Archivo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar - Nigerian Theme */
+/* Custom Scrollbar — flat ink on paper, matches the 1b look */
 ::-webkit-scrollbar {
   width: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-pearl-dark);
+  background: var(--paper);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-naija), var(--color-naija-dark));
-  border-radius: 6px;
-  border: 2px solid var(--color-pearl-dark);
+  background: var(--ink);
+  border-radius: 99px;
+  border: 3px solid var(--paper);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--color-naija-light), var(--color-naija));
+  background: var(--brand-green);
 }
 
 /* Selection */
@@ -63,6 +76,168 @@ body {
 
 /* Component Layer Utilities */
 @layer components {
+  /* ---------- "1b: Bold Market Energy" primitives ---------- */
+
+  /* Display headlines: 900, UPPERCASE, tight tracking + leading */
+  .display-1b {
+    @apply font-black uppercase;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  /* Micro-labels: input labels, tags */
+  .microlabel-1b {
+    @apply font-extrabold uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--placeholder);
+  }
+
+  /* Pill buttons */
+  .btn-pill {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full font-extrabold
+           transition-colors duration-150 cursor-pointer select-none;
+  }
+  .btn-pill:active { transform: translateY(1px); }
+  .btn-pill-green {
+    @apply btn-pill text-white;
+    background: var(--brand-green);
+  }
+  .btn-pill-green:hover { background: var(--brand-green-hover); }
+  .btn-pill-dark {
+    @apply btn-pill text-white;
+    background: var(--ink);
+  }
+  .btn-pill-dark:hover { background: #1a2f24; }
+  .btn-pill-amber {
+    @apply btn-pill;
+    background: var(--amber);
+    color: var(--ink);
+  }
+  .btn-pill-amber:hover { background: #e9a92e; }
+  .btn-pill-outline {
+    @apply btn-pill;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    background: transparent;
+  }
+  .btn-pill-outline:hover { background: rgba(14, 31, 23, 0.06); }
+
+  /* Cards with 2px ink border + hard offset shadow */
+  .card-1b {
+    @apply bg-white overflow-hidden;
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .card-1b-lg {
+    @apply bg-white overflow-hidden;
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+  .card-1b-hover {
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .card-1b-hover:hover {
+    box-shadow: 6px 6px 0 var(--ink);
+    transform: translate(-1px, -1px);
+  }
+  .card-1b-selected {
+    border-color: var(--brand-green) !important;
+    box-shadow: 4px 4px 0 var(--brand-green) !important;
+  }
+
+  /* Inputs: 2px ink border, 10px radius, bold value */
+  .input-1b {
+    @apply w-full font-bold bg-white;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    padding: 13px 15px;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .input-1b:focus {
+    outline: none;
+    border-color: var(--brand-green);
+  }
+  .input-1b::placeholder { color: var(--placeholder); }
+
+  /* Light-bordered input (inside white panels on colored bg) */
+  .input-1b-light {
+    @apply w-full font-bold bg-white;
+    border: 2px solid var(--light-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .input-1b-light:focus {
+    outline: none;
+    border-color: var(--brand-green);
+  }
+  .input-1b-light::placeholder { color: var(--placeholder); }
+
+  /* Verified pill badge */
+  .badge-verified {
+    @apply inline-flex items-center gap-1 rounded-full text-white font-black uppercase;
+    background: var(--brand-green);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    padding: 5px 10px;
+  }
+
+  /* Ticker strip */
+  .ticker-1b {
+    background: var(--ink);
+    color: var(--mint);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .ticker-track {
+    animation: ticker-marquee 40s linear infinite;
+  }
+
+  /* Striped placeholder for missing photos — part of the "1b look" */
+  .stripes-1b {
+    background: repeating-linear-gradient(45deg, #E8E5DC 0 12px, #F0EEE6 12px 24px);
+  }
+  .stripes-1b-dark {
+    background: repeating-linear-gradient(45deg, #163526 0 12px, #1B4030 12px 24px);
+  }
+
+  /* Dual-handle range slider (budget filter) */
+  .range-1b {
+    @apply absolute w-full appearance-none bg-transparent pointer-events-none;
+    height: 6px;
+    top: 0;
+  }
+  .range-1b::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    background: #fff;
+    border: 3px solid var(--ink);
+    cursor: pointer;
+    margin-top: 0;
+  }
+  .range-1b::-moz-range-thumb {
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 99px;
+    background: #fff;
+    border: 3px solid var(--ink);
+    cursor: pointer;
+  }
+
+  /* ---------- Legacy utilities ---------- */
   .btn-primary {
     @apply relative overflow-hidden text-white font-bold px-8 py-4 rounded
            transition-all duration-300 active:scale-95;
@@ -206,6 +381,100 @@ body {
     outline: none;
     box-shadow: 0 0 0 3px rgba(0, 135, 83, 0.1);
   }
+}
+
+@keyframes ticker-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ---------- Hero animations (per homepage-live.html reference) ---------- */
+/* Transform-only by design: content stays visible if animations fail to run */
+@keyframes ncPop {
+  0% { transform: translateY(28px); }
+  60% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+@keyframes ncUp {
+  from { transform: translateY(26px); }
+  to { transform: translateY(0); }
+}
+@keyframes ncDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-22px, 16px) scale(1.06); }
+}
+/* Two-car rotation: idle → engine-start shake → rock back → drive off right
+   → hidden → drive in from the left → idle */
+@keyframes ncCycle {
+  0%, 8% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  8.5% { transform: translate(-1.5px, 1px) rotate(-0.25deg); }
+  9.5% { transform: translate(1.5px, -1px) rotate(0.25deg); }
+  10.5% { transform: translate(-2px, 1.5px) rotate(-0.35deg); }
+  11.5% { transform: translate(2px, -1.5px) rotate(0.35deg); }
+  12.5% { transform: translate(-2.5px, 2px) rotate(-0.45deg); }
+  13.5% { transform: translate(2.5px, -2px) rotate(0.45deg); }
+  14.5% { transform: translate(-3px, 2px) rotate(-0.5deg); }
+  15.5% { transform: translate(3px, -2px) rotate(0.5deg); }
+  16% { transform: translateX(0) rotate(0deg); }
+  17% { transform: translateX(-10px) rotate(0.6deg); }
+  18% { transform: translateX(-14px) rotate(0.8deg); }
+  19% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  21% { transform: translateX(8%) rotate(-1deg); }
+  23% { transform: translateX(40%) rotate(-1.4deg); }
+  25% { transform: translateX(100%) rotate(-0.8deg); opacity: 1; }
+  27% { transform: translateX(175%) rotate(0deg); opacity: 0; }
+  28%, 78% { transform: translateX(-60%); opacity: 0; }
+  80% { transform: translateX(-45%) rotate(0.5deg); opacity: 1; }
+  84% { transform: translateX(3%) rotate(-0.4deg); opacity: 1; }
+  86% { transform: translateX(-1%) rotate(0.15deg); }
+  88%, 100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+}
+
+.nc-pop { animation: ncPop 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.nc-pop-2 { display: inline-block; animation: ncPop 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.12s both; }
+.nc-up-sub { animation: ncUp 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.28s both; }
+.nc-up-search { animation: ncUp 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.45s both; }
+.nc-drift-1 { animation: ncDrift 9s ease-in-out infinite; }
+.nc-drift-2 { animation: ncDrift 13s ease-in-out 1.2s infinite reverse; }
+
+/* Car cutout popping out of the green hero block */
+.hero-car-pop {
+  position: absolute;
+  right: 120px;
+  top: -40px;
+  width: min(620px, calc(100vw - 760px));
+  min-width: 280px;
+  aspect-ratio: 8 / 5;
+  z-index: 3;
+  animation: ncUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both;
+  filter: drop-shadow(0 30px 40px rgba(14, 31, 23, 0.35));
+  pointer-events: none;
+}
+.hero-car-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 90%;
+  animation: ncCycle 22s ease-in-out 1.8s infinite;
+}
+.hero-car-layer-2 {
+  opacity: 0; /* only car 1 shows if animations don't run */
+  animation-delay: -9.2s;
+}
+@media (max-width: 1050px) {
+  .hero-car-pop { display: none; } /* never overlap the headline */
+}
+
+/* Respect users who opt out of motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ticker-track { animation: none; }
+  .card-1b-hover,
+  .card-1b-hover:hover,
+  .btn-pill:active { transition: none; transform: none; }
+  .nc-pop, .nc-pop-2, .nc-up-sub, .nc-up-search,
+  .nc-drift-1, .nc-drift-2,
+  .hero-car-pop, .hero-car-layer { animation: none; }
+  /* Static fallback: car 1 shows, car 2 stays hidden via its base opacity */
 }
 
 /* Subtle Texture Overlay */

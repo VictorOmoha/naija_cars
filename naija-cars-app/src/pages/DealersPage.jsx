@@ -51,7 +51,7 @@ export default function DealersPage() {
   return (
     <>
       {/* Hero */}
-      <section className="pt-32 pb-12 bg-gradient-to-br from-gray-800 via-gray-900 to-green-900">
+      <section className="pt-10 pb-12 bg-gradient-to-br from-gray-800 via-gray-900 to-green-900">
         <div className="section-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

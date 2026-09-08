@@ -147,6 +147,7 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // Strict rate limiting for OTP endpoints (SMS bombing protection)
 const otpLimiter = rateLimit({
@@ -166,6 +167,7 @@ const otpLimiter = rateLimit({
 });
 app.use('/api/auth/send-otp', otpLimiter);
 app.use('/api/auth/verify-otp', otpLimiter);
+app.use('/api/auth/forgot-password', otpLimiter);
 
 // Static files — serves public/ for local avatar uploads (dev fallback)
 const path = require('path');
@@ -297,7 +299,9 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({
     success: false,
     error: {
-      message: err.message || 'Internal Server Error',
+      message: (err.status || 500) >= 500 && process.env.NODE_ENV === 'production'
+        ? 'Internal Server Error'
+        : err.message || 'Internal Server Error',
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     }
   });

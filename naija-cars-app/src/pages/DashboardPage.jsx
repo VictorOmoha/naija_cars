@@ -98,7 +98,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-32 pb-20">
+    <div className="min-h-screen bg-pearl-100 pt-10 pb-20">
       <div className="container-custom">
         {/* Header */}
         <div className="mb-8">

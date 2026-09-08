@@ -226,7 +226,8 @@ router.post('/',
     body('transmission').trim().notEmpty(),
     body('fuelType').trim().notEmpty(),
     body('condition').isIn(['FOREIGN_USED', 'NIGERIAN_USED', 'BRAND_NEW']),
-    body('price').isDecimal({ decimal_digits: '0,2' }),
+    body('price').isFloat({ gt: 0 }).isDecimal({ decimal_digits: '0,2' }),
+    body('mileage').optional({ nullable: true }).isInt({ min: 0 }),
     body('locationState').trim().notEmpty(),
     body('locationCity').trim().notEmpty(),
     body('description').optional().trim()
@@ -453,13 +454,14 @@ router.delete('/:id', authenticate, async (req, res, next) => {
           userId: req.user.id,
           isActive: true,
           endDate: { gt: new Date() },
+          startDate: { lte: listing.createdAt },
           listingsUsed: { gt: 0 },
         },
         orderBy: { createdAt: 'desc' },
       });
       if (activeSub) {
-        await tx.subscription.update({
-          where: { id: activeSub.id },
+        await tx.subscription.updateMany({
+          where: { id: activeSub.id, listingsUsed: { gt: 0 } },
           data: { listingsUsed: { decrement: 1 } },
         });
       }

@@ -251,7 +251,7 @@ export default function MessagesPage() {
   // --- Not authenticated ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-pearl-100 pt-32 pb-20 flex items-center justify-center">
+      <div className="min-h-screen bg-pearl-100 pt-10 pb-20 flex items-center justify-center">
         <div className="text-center">
           <MessageCircle className="w-16 h-16 mx-auto mb-4 text-charcoal-400" />
           <h2 className="text-2xl font-display font-bold text-charcoal-700 mb-2">
@@ -280,7 +280,7 @@ export default function MessagesPage() {
   const messages = messagesData?.data?.messages ?? [];
 
   return (
-    <div className="min-h-screen bg-pearl-100 pt-32 lg:pt-28">
+    <div className="min-h-screen bg-pearl-100 pt-10 lg:pt-8">
       <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-7rem)] flex overflow-hidden">
 
         {/* ── Conversations Sidebar ── */}

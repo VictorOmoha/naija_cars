@@ -7,7 +7,9 @@ class SocketService {
   }
 
   connect(accessToken) {
-    if (this.socket?.connected) {
+    if (this.socket) {
+      this.socket.auth.token = accessToken;
+      if (!this.socket.connected) this.socket.connect();
       return this.socket;
     }
 

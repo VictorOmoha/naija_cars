@@ -3,17 +3,23 @@ const { body, validationResult } = require('express-validator');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
+const { calculateBookingTotal } = require('../services/bookingPricing');
 
 const router = express.Router();
 
 const createBookingValidation = [
-  body('listingId').notEmpty().withMessage('Listing id is required'),
+  body('listingId').isString().bail().notEmpty().withMessage('Listing id is required'),
   body('bookingType').isIn(['purchase', 'rental']).withMessage('Invalid booking type'),
   body('rentalDays').optional({ nullable: true }).isInt({ min: 1, max: 365 }),
-  body('paymentMethod').trim().notEmpty().withMessage('Payment method is required'),
+  body('paymentMethod').isIn(['paystack', 'flutterwave', 'bank_transfer', 'arrange_with_seller']),
   body('totalAmount').isFloat({ gt: 0 }).withMessage('Total amount must be greater than zero'),
   body('addons').optional().isObject(),
-  body('contactInfo').optional().isObject(),
+  ...['insurance', 'delivery', 'inspection'].map((key) => body(`addons.${key}`).optional().isBoolean({ strict: true })),
+  body('contactInfo').isObject(),
+  body('contactInfo.firstName').isString().bail().trim().notEmpty(),
+  body('contactInfo.lastName').isString().bail().trim().notEmpty(),
+  body('contactInfo.email').isEmail(),
+  body('contactInfo.phone').isString().bail().trim().matches(/^\+?[\d\s()-]{7,20}$/),
   body('listingSnapshot').optional().isObject(),
   body('promoCode').optional({ nullable: true }).trim(),
 ];
@@ -40,13 +46,12 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
       paymentMethod,
       addons = {},
       contactInfo = {},
-      listingSnapshot = null,
       totalAmount,
       promoCode,
     } = req.body;
 
     const listing = await prisma.carListing.findFirst({
-      where: { id: String(listingId), status: 'ACTIVE' },
+      where: { id: listingId, status: 'ACTIVE', seller: { isActive: true } },
       include: {
         media: { orderBy: { displayOrder: 'asc' }, take: 1 },
         seller: {
@@ -65,15 +70,25 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
       },
     });
 
-    if (!listing && !listingSnapshot) {
+    if (!listing) {
       return res.status(404).json({
         success: false,
         error: { message: 'Listing not found or no longer available' },
       });
     }
 
-    const snapshot = listing
-      ? {
+    if (listing.sellerId === req.user.id) {
+      return res.status(400).json({ success: false, error: { message: 'You cannot book your own listing' } });
+    }
+    const calculatedTotal = calculateBookingTotal(listing, { bookingType, rentalDays, addons, promoCode });
+    if (Math.round(Number(totalAmount) * 100) !== Math.round(calculatedTotal * 100)) {
+      return res.status(409).json({
+        success: false,
+        error: { message: 'The booking total has changed. Refresh the listing and review your booking.' },
+      });
+    }
+
+    const snapshot = {
           id: listing.id,
           make: listing.make,
           model: listing.model,
@@ -88,14 +103,13 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
             `${listing.seller?.profile?.firstName || ''} ${listing.seller?.profile?.lastName || ''}`.trim() ||
             listing.seller?.email ||
             null,
-        }
-      : listingSnapshot;
+        };
 
     const booking = await prisma.booking.create({
       data: {
         reference: createReference(),
         buyerId: req.user.id,
-        sellerId: listing?.sellerId || listingSnapshot?.sellerId || null,
+        sellerId: listing.sellerId,
         listingId: String(listingId),
         bookingType: bookingType === 'rental' ? 'RENTAL' : 'PURCHASE',
         rentalDays: bookingType === 'rental' ? parseInt(rentalDays || 1, 10) : null,
@@ -103,14 +117,14 @@ router.post('/', authenticate, createBookingValidation, async (req, res, next) =
         addons,
         contactInfo,
         listingSnapshot: snapshot,
-        totalAmount: parseFloat(totalAmount),
+        totalAmount: calculatedTotal,
         promoCode: promoCode || null,
       },
     });
 
     res.status(201).json({
       success: true,
-      message: bookingType === 'rental' ? 'Booking confirmed' : 'Order placed successfully',
+      message: 'Booking request received. No payment has been collected.',
       data: { booking },
     });
   } catch (error) {

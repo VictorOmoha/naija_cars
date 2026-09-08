@@ -160,7 +160,7 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-pearl-100">
       {/* Hero */}
-      <div className="bg-gradient-to-r from-naija-600 to-naija-500 pt-32 pb-16">
+      <div className="bg-gradient-to-r from-naija-600 to-naija-500 pt-10 pb-16">
         <div className="section-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

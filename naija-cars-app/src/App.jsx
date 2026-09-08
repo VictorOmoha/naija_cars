@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import ScrollToTop from './components/ScrollToTop';
+import CompareTray from './components/CompareTray';
 import MessageNotifications from './components/MessageNotifications';
 import AuthModal from './components/modals/AuthModal';
 import EnhancedListCarModal from './components/modals/EnhancedListCarModal';
@@ -46,10 +47,10 @@ const AdminSettings = lazy(() => import('./pages/admin').then(m => ({ default: m
 // Page loading spinner
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pearl-200">
+    <div className="min-h-screen flex items-center justify-center bg-paper">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-naija-200 border-t-naija-500 rounded-full animate-spin" />
-        <p className="text-charcoal-500 text-sm">Loading...</p>
+        <div className="w-10 h-10 border-4 border-greentint border-t-brand rounded-full animate-spin" />
+        <p className="text-muted text-sm font-semibold">Loading...</p>
       </div>
     </div>
   );
@@ -92,7 +93,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <div className="min-h-screen bg-pearl-200">
+        <div className="min-h-screen bg-paper">
           {/* Scroll to top on every navigation */}
           <ScrollToTop />
 
@@ -158,7 +159,7 @@ function App() {
 
                 {/* 404 Catch-all */}
                 <Route path="*" element={
-                  <div className="min-h-screen flex items-center justify-center pt-24">
+                  <div className="min-h-screen flex items-center justify-center pt-6">
                     <div className="text-center">
                       <h1 className="text-6xl font-display font-bold text-charcoal-300 mb-4">404</h1>
                       <p className="text-xl text-charcoal-500 mb-8">Page not found</p>
@@ -174,6 +175,9 @@ function App() {
 
           {/* Footer */}
           {!isAdminRoute && <Footer />}
+
+          {/* Compare tray — sticky at viewport bottom */}
+          {!isAdminRoute && <CompareTray />}
 
           {/* Modals */}
           <AuthModal />

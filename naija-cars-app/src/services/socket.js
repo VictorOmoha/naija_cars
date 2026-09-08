@@ -1,94 +1,76 @@
 import { io } from 'socket.io-client';
 
-class SocketService {
-  constructor() {
-    this.socket = null;
-    this.connected = false;
-  }
+const serverUrl = import.meta.env?.VITE_API_URL?.replace(/\/api\/?$/, '')
+  || (import.meta.env?.PROD ? 'https://naija-cars-api.onrender.com' : 'http://localhost:5000');
 
-  connect(accessToken) {
+export class SocketService {
+  constructor(createSocket = io) {
+    this.createSocket = createSocket;
+    this.socket = null;
+    this.userId = null;
+    this.connected = false;
+    this.rooms = new Set();
+    this.listeners = new Map();
+  }
+  connect(accessToken, userId) {
+    if (this.socket && this.userId !== userId) this.disconnect();
+    this.userId = userId;
     if (this.socket) {
       this.socket.auth.token = accessToken;
       if (!this.socket.connected) this.socket.connect();
       return this.socket;
     }
-
-    const SERVER_URL = import.meta.env.VITE_API_URL?.replace('/api', '')
-      || (import.meta.env.PROD ? 'https://naija-cars-api.onrender.com' : 'http://localhost:5000');
-
-    this.socket = io(SERVER_URL, {
-      auth: {
-        token: accessToken
-      },
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5
+    this.socket = this.createSocket(serverUrl, {
+      auth: { token: accessToken }, autoConnect: false,
+      reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 10000,
     });
-
     this.socket.on('connect', () => {
       this.connected = true;
+      for (const room of this.rooms) this.socket.emit('join-conversation', room);
+      this.notify('connect');
     });
-
-    this.socket.on('disconnect', () => {
-      this.connected = false;
-    });
-
-    this.socket.on('connect_error', () => {
-      this.connected = false;
-    });
-
+    this.socket.on('disconnect', () => { this.connected = false; });
+    this.socket.on('connect_error', () => { this.connected = false; });
+    for (const event of ['new-message', 'user-typing', 'messages-read']) {
+      this.socket.on(event, (payload) => this.notify(event, payload));
+    }
+    this.socket.connect();
     return this.socket;
   }
-
   disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.connected = false;
-    }
+    this.socket?.removeAllListeners();
+    this.socket?.disconnect();
+    this.socket = null;
+    this.userId = null;
+    this.connected = false;
+    this.rooms.clear();
   }
-
-  joinConversation(conversationId) {
-    if (this.socket) {
-      this.socket.emit('join-conversation', conversationId);
-    }
+  notify(event, payload) {
+    this.listeners.get(event)?.forEach(callback => callback(payload));
   }
-
-  leaveConversation(conversationId) {
-    if (this.socket) {
-      this.socket.emit('leave-conversation', conversationId);
-    }
+  on(event, callback) {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event).add(callback);
   }
-
+  off(event, callback) { this.listeners.get(event)?.delete(callback); }
+  joinConversation(id) {
+    this.rooms.add(id);
+    if (this.socket?.connected) this.socket.emit('join-conversation', id);
+  }
+  leaveConversation(id) {
+    this.rooms.delete(id);
+    if (this.socket?.connected) this.socket.emit('leave-conversation', id);
+  }
   sendTyping(conversationId, isTyping) {
-    if (this.socket) {
-      this.socket.emit('typing', { conversationId, isTyping });
-    }
+    if (this.socket?.connected) this.socket.emit('typing', { conversationId, isTyping });
   }
-
-  onNewMessage(callback) {
-    if (this.socket) {
-      this.socket.on('new-message', callback);
-    }
-  }
-
-  onUserTyping(callback) {
-    if (this.socket) {
-      this.socket.on('user-typing', callback);
-    }
-  }
-
-  offNewMessage(callback) {
-    if (this.socket) {
-      this.socket.off('new-message', callback);
-    }
-  }
-
-  offUserTyping(callback) {
-    if (this.socket) {
-      this.socket.off('user-typing', callback);
-    }
-  }
+  onConnect(callback) { this.on('connect', callback); }
+  offConnect(callback) { this.off('connect', callback); }
+  onNewMessage(callback) { this.on('new-message', callback); }
+  offNewMessage(callback) { this.off('new-message', callback); }
+  onUserTyping(callback) { this.on('user-typing', callback); }
+  offUserTyping(callback) { this.off('user-typing', callback); }
+  onMessagesRead(callback) { this.on('messages-read', callback); }
+  offMessagesRead(callback) { this.off('messages-read', callback); }
 }
-
 export default new SocketService();

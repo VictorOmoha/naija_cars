@@ -1,589 +1,244 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { MessageCircle, Search, Send, ArrowLeft, Loader2, Car } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { MessageCircle, Search, Send, ArrowLeft, Loader2, Check, CheckCheck } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import api, { usersAPI } from '../services/api';
 import socketService from '../services/socket';
+import { conversationTarget, historyMessages } from '../services/messaging';
 import { useApp } from '../context/AppContext';
 
-const QUICK_REPLIES = [
-  'Is this still available?',
-  "What's your best price?",
-  'Can I schedule a test drive?',
-  'Where is the car located?',
-  'Is the price negotiable?',
-  'Can you provide more photos?',
-];
+const QUICK_REPLIES = ['Is this still available?', "What's your best price?", 'Can I schedule a test drive?', 'Where is the car located?'];
+const displayName = person => person?.profile?.businessName
+  || [person?.profile?.firstName, person?.profile?.lastName].filter(Boolean).join(' ')
+  || person?.email || 'NaijaCars member';
+const avatar = person => person?.profile?.businessLogoUrl || person?.profile?.avatarUrl;
+
+function PersonAvatar({ person }) {
+  return <span className="w-11 h-11 rounded-full bg-greentint flex items-center justify-center shrink-0 overflow-hidden text-brand font-bold">
+    {avatar(person) ? <img src={avatar(person)} alt="" className="w-full h-full object-cover" /> : displayName(person)[0]?.toUpperCase()}
+  </span>;
+}
+
+function ChatPanel({ user, conversation, listing, onBack }) {
+  const client = useQueryClient();
+  const { addToast } = useApp();
+  const { conversationId, otherUser } = conversation;
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [readError, setReadError] = useState(false);
+  const [readRetry, setReadRetry] = useState(0);
+  const [typing, setTyping] = useState(false);
+  const [visible, setVisible] = useState(!document.hidden);
+  const typingTimer = useRef();
+  const incomingTypingTimer = useRef();
+  const scrollArea = useRef();
+  const lastMessageId = useRef();
+  const mounted = useRef(true);
+  const key = ['messages', user.id, conversationId];
+  const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: key,
+    queryFn: ({ pageParam, signal }) => api.get('/messages/' + conversationId, { params: { page: pageParam, limit: 50 }, signal }).then(r => r.data.data),
+    initialPageParam: 1,
+    getNextPageParam: page => page.pagination.page < page.pagination.pages ? page.pagination.page + 1 : undefined,
+    refetchInterval: 10000,
+  });
+  const messages = historyMessages(data);
+  const newestId = messages.at(-1)?.id;
+  const unreadIds = messages.filter(message => message.receiverId === user.id && !message.isRead).slice(-100).map(message => message.id);
+  const unreadKey = unreadIds.join(',');
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    const handleVisibility = () => setVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  useEffect(() => {
+    socketService.joinConversation(conversationId);
+    const handleTyping = payload => {
+      if (payload.conversationId !== conversationId || payload.userId !== otherUser.id) return;
+      clearTimeout(incomingTypingTimer.current);
+      setTyping(payload.isTyping);
+      if (payload.isTyping) incomingTypingTimer.current = setTimeout(() => setTyping(false), 3000);
+    };
+    socketService.onUserTyping(handleTyping);
+    return () => {
+      clearTimeout(typingTimer.current);
+      clearTimeout(incomingTypingTimer.current);
+      socketService.sendTyping(conversationId, false);
+      socketService.leaveConversation(conversationId);
+      socketService.offUserTyping(handleTyping);
+    };
+  }, [conversationId, otherUser.id]);
+  useEffect(() => {
+    if (!visible || !unreadKey) return;
+    let cancelled = false;
+    const ids = unreadKey.split(',');
+    api.put('/messages/' + conversationId + '/read', { messageIds: ids }).then(() => {
+      if (cancelled) return;
+      setReadError(false);
+      client.setQueryData(key, current => current && ({
+        ...current,
+        pages: current.pages.map(page => ({ ...page, messages: page.messages.map(message =>
+          ids.includes(message.id) && message.receiverId === user.id ? { ...message, isRead: true } : message) })),
+      }));
+      client.invalidateQueries({ queryKey: ['conversations', user.id] });
+    }).catch(() => { if (!cancelled) setReadError(true); });
+    return () => { cancelled = true; };
+  }, [conversationId, user.id, unreadKey, visible, readRetry, client]);
+  useEffect(() => {
+    if (!newestId || newestId === lastMessageId.current) return;
+    const area = scrollArea.current;
+    if (area) area.scrollTop = area.scrollHeight;
+    lastMessageId.current = newestId;
+  }, [newestId]);
+
+  const send = async event => {
+    event.preventDefault();
+    if (!text.trim() || sending) return;
+    setSending(true);
+    setSendError('');
+    clearTimeout(typingTimer.current);
+    socketService.sendTyping(conversationId, false);
+    try {
+      const response = await api.post('/messages', {
+        receiverId: otherUser.id, messageText: text.trim(), ...(listing?.id ? { listingId: listing.id } : {}),
+      });
+      const saved = response.data.data.message;
+      client.setQueryData(key, current => {
+        const page = current?.pages?.[0] || { messages: [], pagination: { page: 1, pages: 1, total: 0, limit: 50 } };
+        const exists = page.messages.some(message => message.id === saved.id);
+        return {
+          pages: [{ ...page, messages: exists ? page.messages : [...page.messages, saved] }, ...(current?.pages?.slice(1) || [])],
+          pageParams: current?.pageParams || [1],
+        };
+      });
+      client.invalidateQueries({ queryKey: ['conversations', user.id] });
+      client.invalidateQueries({ queryKey: key });
+      if (mounted.current) {
+        setText('');
+        if (response.data.data.fraudWarning) addToast(response.data.data.fraudWarning, 'info');
+      }
+    } catch (error) {
+      if (mounted.current) setSendError(error.response?.data?.error?.message || 'Message could not be sent. Your draft is saved here; please try again.');
+    } finally { if (mounted.current) setSending(false); }
+  };
+  const type = value => {
+    setText(value);
+    clearTimeout(typingTimer.current);
+    socketService.sendTyping(conversationId, Boolean(value.trim()));
+    typingTimer.current = setTimeout(() => socketService.sendTyping(conversationId, false), 1500);
+  };
+  const loadOlder = async () => {
+    const area = scrollArea.current;
+    const height = area?.scrollHeight || 0;
+    await fetchNextPage();
+    requestAnimationFrame(() => { if (area) area.scrollTop += area.scrollHeight - height; });
+  };
+
+  return <>
+    <div className="p-4 border-b border-pearl-200 flex items-center gap-3 shrink-0">
+      <button type="button" aria-label="Back to conversations" onClick={onBack} className="md:hidden nc-icon-button"><ArrowLeft size={20} /></button>
+      <PersonAvatar person={otherUser} />
+      <div className="min-w-0 flex-1"><h2 className="font-semibold truncate">{displayName(otherUser)}</h2>
+        {listing?.make && <Link className="text-sm text-muted hover:text-brand" to={'/car/' + listing.id}>{[listing.year, listing.make, listing.model].filter(Boolean).join(' ')}</Link>}
+      </div>
+    </div>
+    <div ref={scrollArea} aria-label="Message history" className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      {hasNextPage && <div className="text-center"><button type="button" className="nc-button nc-button-secondary" disabled={isFetchingNextPage} onClick={loadOlder}>{isFetchingNextPage ? 'Loading…' : 'Load earlier messages'}</button></div>}
+      {isError && <div role="alert" className="nc-panel"><p>Couldn’t load messages. Sending is still available.</p><button className="nc-button nc-button-secondary mt-3" onClick={() => refetch()}>Try again</button></div>}
+      {isPending && <p role="status" className="text-muted">Loading messages…</p>}
+      {!isPending && !isError && !messages.length && <div className="text-center py-10"><MessageCircle className="mx-auto text-brand mb-4" size={40} /><h3 className="font-semibold">Start a conversation with {displayName(otherUser)}</h3><p className="text-sm text-muted mt-2">Ask about the car, its condition or a viewing.</p></div>}
+      {messages.map(message => {
+        const own = message.senderId === user.id;
+        return <div key={message.id} className={'flex ' + (own ? 'justify-end' : 'justify-start')}>
+          <div className={'max-w-[85%] md:max-w-[72%] px-4 py-3 rounded-2xl ' + (own ? 'bg-brand text-white rounded-br-sm' : 'bg-greentint text-ink rounded-bl-sm')}>
+            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.messageText}</p>
+            <div className={'text-xs mt-2 flex items-center justify-end gap-2 ' + (own ? 'text-white/80' : 'text-muted')}>
+              <time dateTime={message.createdAt} title={new Date(message.createdAt).toLocaleString()}>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+              {own && <span aria-label={message.isRead ? 'Read' : 'Sent'} title={message.isRead ? 'Read' : 'Sent'}>{message.isRead ? <CheckCheck size={15} /> : <Check size={15} />}</span>}
+            </div>
+          </div>
+        </div>;
+      })}
+      {typing && <p role="status" className="text-sm text-muted">{displayName(otherUser)} is typing…</p>}
+    </div>
+    {readError && <p role="alert" className="px-4 text-sm text-muted">Couldn’t update read status. <button className="text-brand underline" onClick={() => setReadRetry(value => value + 1)}>Retry</button></p>}
+    {!isPending && !isError && !messages.length && <div className="px-4 pb-3 flex gap-2 flex-wrap">{QUICK_REPLIES.map(reply => <button key={reply} type="button" className="text-xs px-3 py-2 border border-pearl-200 rounded-full hover:bg-greentint" onClick={() => type(reply)}>{reply}</button>)}</div>}
+    <form onSubmit={send} className="p-4 border-t border-pearl-200 shrink-0">
+      {sendError && <p role="alert" className="text-red-700 text-sm mb-3">{sendError}</p>}
+      <div className="flex items-end gap-2">
+        <textarea aria-label="Message" placeholder="Type a message…" value={text} disabled={sending} maxLength={5000} rows={2}
+          onChange={event => type(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(event); } }}
+          className="flex-1 min-w-0 resize-none px-4 py-3 bg-pearl-50 border border-pearl-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-naija-500 text-sm" />
+        <button aria-label={sending ? 'Sending message' : 'Send message'} type="submit" disabled={!text.trim() || sending} className="nc-button h-12 px-4 disabled:opacity-50">{sending ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}</button>
+      </div>
+      <p className="text-xs text-muted mt-2">Enter to send · Shift + Enter for a new line</p>
+    </form>
+  </>;
+}
 
 export default function MessagesPage() {
   const { user, isAuthenticated } = useAuthStore();
-  const { addToast } = useApp();
-  const [searchParams] = useSearchParams();
-  const messagesEndRef = useRef(null);
-
-  const sellerIdParam = searchParams.get('sellerId');
-  const hasValidSellerId = sellerIdParam && !['undefined', 'null'].includes(sellerIdParam);
-  const listingIdParam = searchParams.get('listingId');
-  const conversationIdParam = searchParams.get('conversationId');
-
-  // selectedConversation = real DB conversation object
-  // pendingConversation  = not yet in DB (first message hasn't been sent yet)
-  const [selectedConversation, setSelectedConversation] = useState(null);
-  const [pendingConversation, setPendingConversation] = useState(null);
-  const [messageText, setMessageText] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-
-  // The "active" conversation is whichever is open
-  const activeConversation = selectedConversation || pendingConversation;
-
-  // --- Fetch conversations list ---
-  const { data: conversationsData, isLoading: conversationsLoading, isError: conversationsError, refetch: refetchConversations } = useQuery({
-    queryKey: ['conversations'],
-    queryFn: () => api.get('/messages/conversations').then(r => r.data),
-    enabled: isAuthenticated,
-    refetchInterval: 30000, // poll every 30s as a fallback
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState('');
+  const target = conversationTarget(params, user?.id);
+  const { data, isPending, isError, refetch } = useQuery({
+    queryKey: ['conversations', user?.id],
+    queryFn: ({ signal }) => api.get('/messages/conversations', { signal }).then(r => r.data),
+    enabled: isAuthenticated && !!user?.id,
+    refetchInterval: 10000,
   });
-
-  // --- Fetch messages for active (non-pending) conversation ---
-  const { data: messagesData, isLoading: messagesLoading, isError: messagesError, refetch: refetchMessages } = useQuery({
-    queryKey: ['messages', activeConversation?.conversationId],
-    queryFn: () =>
-      api.get(`/messages/${activeConversation.conversationId}`).then(r => r.data),
-    enabled: !!activeConversation && !activeConversation.isPending,
+  const conversations = data?.data?.conversations || [];
+  const stored = conversations.find(item => item.conversationId === target?.conversationId);
+  const person = useQuery({
+    queryKey: ['message-recipient', user?.id, target?.otherId],
+    queryFn: () => usersAPI.getById(target.otherId).then(r => r.data.data.user),
+    enabled: !!target && !stored,
   });
-
-  const getDisplayName = useCallback((otherUser) =>
-    otherUser?.profile?.businessName ||
-    `${otherUser?.profile?.firstName || ''} ${otherUser?.profile?.lastName || ''}`.trim() ||
-    otherUser?.email ||
-    'Unknown', []);
-
-  const handleIncomingMessage = useCallback(({ message }) => {
-    refetchConversations();
-
-    if (message?.conversationId === activeConversation?.conversationId) {
-      refetchMessages();
-      if (message.receiverId === user?.id) {
-        api.put(`/messages/${message.conversationId}/read`)
-          .then(() => refetchConversations())
-          .catch(() => {});
-      }
-      return;
-    }
-
-    if (message?.receiverId === user?.id) {
-      const senderName = getDisplayName(message.sender);
-      addToast(`New message from ${senderName}`, 'info');
-    }
-  }, [activeConversation?.conversationId, addToast, getDisplayName, refetchConversations, refetchMessages, user?.id]);
-
-  // --- Socket: receive messages globally while signed in ---
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    socketService.onNewMessage(handleIncomingMessage);
-
-    return () => {
-      socketService.offNewMessage(handleIncomingMessage);
-    };
-  }, [handleIncomingMessage, isAuthenticated]);
-
-  // --- Handle sellerId/listingId URL params: pre-open conversation ---
-  useEffect(() => {
-    if (!sellerIdParam || !user?.id || !isAuthenticated) return;
-    if (!hasValidSellerId) {
-      addToast('Seller information is missing for this conversation', 'error');
-      return;
-    }
-
-    const conversations = conversationsData?.data?.conversations ?? [];
-    const conversationId = [user.id, sellerIdParam].sort().join('_');
-
-    // If conversation already exists in DB, select it
-    const existing = conversations.find(c => c.conversationId === conversationId);
-    if (existing) {
-      setSelectedConversation(existing);
-      setPendingConversation(null);
-      return;
-    }
-
-    // Don't re-fetch if we already have the pending conv set
-    if (pendingConversation?.conversationId === conversationId) return;
-
-    // Fetch seller info then build pending conversation
-    usersAPI.getById(sellerIdParam)
-      .then(res => {
-        const seller = res.data?.data?.user;
-        if (!seller) return;
-        setPendingConversation({
-          conversationId,
-          otherUser: {
-            id: seller.id,
-            email: seller.email,
-            profile: seller.profile,
-            userType: seller.userType,
-          },
-          listing: listingIdParam ? { id: listingIdParam } : null,
-          lastMessage: null,
-          unreadCount: 0,
-          isPending: true,
-        });
-      })
-      .catch(() => {});
-  }, [sellerIdParam, hasValidSellerId, listingIdParam, user?.id, isAuthenticated, conversationsData, addToast]);
-
-  // --- Handle direct conversation links from notifications ---
-  useEffect(() => {
-    if (!conversationIdParam || !isAuthenticated) return;
-
-    const conversations = conversationsData?.data?.conversations ?? [];
-    const existing = conversations.find(c => c.conversationId === conversationIdParam);
-
-    if (existing) {
-      setSelectedConversation(existing);
-      setPendingConversation(null);
-    }
-  }, [conversationIdParam, conversationsData, isAuthenticated]);
-
-  // --- Socket: join/leave room + live message events ---
-  useEffect(() => {
-    if (!activeConversation || activeConversation.isPending) return;
-
-    socketService.joinConversation(activeConversation.conversationId);
-
-    const handleUserTyping = ({ userId, isTyping }) => {
-      if (userId !== user?.id) setOtherUserTyping(isTyping);
-    };
-
-    socketService.onUserTyping(handleUserTyping);
-
-    return () => {
-      socketService.leaveConversation(activeConversation.conversationId);
-      socketService.offUserTyping(handleUserTyping);
-    };
-  }, [activeConversation?.conversationId, activeConversation?.isPending, user?.id]);
-
-  // --- Mark as read when conversation is opened ---
-  useEffect(() => {
-    if (activeConversation && !activeConversation.isPending) {
-      api.put(`/messages/${activeConversation.conversationId}/read`)
-        .then(() => refetchConversations())
-        .catch(() => {});
-    }
-  }, [activeConversation?.conversationId, activeConversation?.isPending, refetchConversations]);
-
-  // --- Auto-scroll to newest message ---
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesData]);
-
-  // --- Send message ---
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!messageText.trim() || !activeConversation || isSending) return;
-
-    const receiverId = activeConversation.otherUser?.id;
-    const listingId = activeConversation.isPending
-      ? (listingIdParam || undefined)
-      : (activeConversation.listing?.id || undefined);
-
-    setIsSending(true);
-    try {
-      await api.post('/messages', {
-        receiverId,
-        messageText: messageText.trim(),
-        ...(listingId && { listingId }),
-      });
-
-      setMessageText('');
-
-      if (activeConversation.isPending) {
-        // First message sent — conversation now persisted in DB
-        const convId = activeConversation.conversationId;
-        const result = await refetchConversations();
-        const convs = result.data?.data?.conversations ?? [];
-        const newConv = convs.find(c => c.conversationId === convId);
-        if (newConv) {
-          setSelectedConversation(newConv);
-          setPendingConversation(null);
-        } else {
-          // Fallback: mark as no longer pending so messages can be fetched
-          setPendingConversation(prev => ({ ...prev, isPending: false }));
-          refetchMessages();
-        }
-      } else {
-        refetchMessages();
-        refetchConversations();
-      }
-    } catch (error) {
-      addToast(error.response?.data?.error?.message || 'Message could not be sent', 'error');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleTyping = () => {
-    if (activeConversation && !activeConversation.isPending) {
-      socketService.sendTyping(activeConversation.conversationId, true);
-      setTimeout(() => socketService.sendTyping(activeConversation.conversationId, false), 2000);
-    }
-  };
-
-  const handleSelectConversation = (conv) => {
-    setSelectedConversation(conv);
-    setPendingConversation(null);
-    setMessageText('');
-  };
-
-  const handleBack = () => {
-    setSelectedConversation(null);
-    // Keep pending conversation so it still appears in sidebar
-  };
-
-  // --- Helpers ---
-  const getAvatar = (otherUser) =>
-    otherUser?.profile?.businessLogoUrl || otherUser?.profile?.avatarUrl;
-
-  // --- Not authenticated ---
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-pearl-100 pt-10 pb-20 flex items-center justify-center">
-        <div className="text-center">
-          <MessageCircle className="w-16 h-16 mx-auto mb-4 text-charcoal-400" />
-          <h2 className="text-2xl font-display font-bold text-charcoal-700 mb-2">
-            Sign in to view messages
-          </h2>
-          <p className="text-charcoal-500">You need to be logged in to access your messages</p>
-        </div>
-      </div>
-    );
-  }
-
-  const conversations = conversationsData?.data?.conversations ?? [];
-
-  const filteredConversations = conversations.filter(conv => {
-    const name = getDisplayName(conv.otherUser);
-    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  const listingId = params.get('listingId');
+  const listingQuery = useQuery({
+    queryKey: ['message-listing', listingId],
+    queryFn: ({ signal }) => api.get('/listings/' + listingId, { signal }).then(r => r.data.data.listing),
+    enabled: !!target && !!listingId,
   });
-
-  // Prepend pending conversation to sidebar list (deduplicated)
-  const displayedConversations = pendingConversation
-    ? [pendingConversation, ...filteredConversations.filter(
-        c => c.conversationId !== pendingConversation.conversationId
-      )]
-    : filteredConversations;
-
-  const messages = messagesData?.data?.messages ?? [];
-
-  return (
-    <div className="min-h-screen bg-pearl-100 pt-10 lg:pt-8">
-      <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-7rem)] flex overflow-hidden">
-
-        {/* ── Conversations Sidebar ── */}
-        <div className={`${activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-96
-                        flex-col bg-white border-r border-pearl-200 flex-shrink-0`}>
-
-          {/* Header */}
-          <div className="p-6 border-b border-pearl-200">
-            <h1 className="text-2xl font-display font-bold text-charcoal-700 mb-4">Messages</h1>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                aria-label="Search conversations"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-pearl-50 border border-pearl-200
-                           rounded-lg focus:outline-none focus:ring-2 focus:ring-naija-500 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* List */}
-          <div className="flex-1 overflow-y-auto">
-            {conversationsError ? <div className="p-6 text-center" role="alert"><p>Unable to load your conversations.</p><button className="nc-button nc-button-secondary mt-4" onClick={() => refetchConversations()}>Try again</button></div> : conversationsLoading ? <p className="p-6 text-muted" role="status">Loading conversations…</p> : displayedConversations.length === 0 ? (
-              <div className="p-8 text-center">
-                <MessageCircle className="w-12 h-12 mx-auto mb-3 text-charcoal-300" />
-                <p className="font-medium text-charcoal-700 mb-2">{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
-                <p className="text-sm text-charcoal-500 mb-5">
-                  Find a car and tap "Message Seller" to start chatting.
-                </p>
-                <Link
-                  to="/cars"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-naija-500 text-white
-                             text-sm rounded-xl hover:bg-naija-600 transition-colors"
-                >
-                  <Car className="w-4 h-4" />
-                  Browse Cars
-                </Link>
-              </div>
-            ) : (
-              displayedConversations.map(conv => {
-                const name = getDisplayName(conv.otherUser);
-                const avatar = getAvatar(conv.otherUser);
-                const isActive = activeConversation?.conversationId === conv.conversationId;
-
-                return (
-                  <button
-                    key={conv.conversationId}
-                    onClick={() => handleSelectConversation(conv)}
-                    className={`w-full p-4 border-b border-pearl-100 hover:bg-pearl-50
-                                transition-colors text-left ${
-                                  isActive
-                                    ? 'bg-naija-50 border-l-4 border-l-naija-500'
-                                    : ''
-                                }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      <div className="w-12 h-12 rounded-full bg-charcoal-200 flex items-center
-                                      justify-center flex-shrink-0 overflow-hidden">
-                        {avatar ? (
-                          <img src={avatar} alt={name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-lg font-bold text-charcoal-600">
-                            {name[0]?.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <p className="font-semibold text-charcoal-700 truncate text-sm">{name}</p>
-                          {conv.unreadCount > 0 && (
-                            <span className="bg-naija-500 text-white text-xs px-2 py-0.5
-                                             rounded-full ml-2 shrink-0">
-                              {conv.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                        {conv.listing?.make && (
-                          <p className="text-xs text-naija-600 truncate mb-0.5">
-                            {conv.listing.year} {conv.listing.make} {conv.listing.model}
-                          </p>
-                        )}
-                        <p className="text-xs text-charcoal-500 truncate">
-                          {conv.isPending
-                            ? <span className="italic text-charcoal-400">New conversation</span>
-                            : conv.lastMessage?.messageText}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+  const active = stored || (target && person.data ? { ...target, otherUser: person.data, unreadCount: 0 } : null);
+  const listing = listingId ? listingQuery.data : stored?.listing;
+  const filtered = conversations.filter(item => displayName(item.otherUser).toLowerCase().includes(search.toLowerCase()));
+  const displayed = active && !stored ? [active, ...filtered] : filtered;
+  const requested = params.has('sellerId') || params.has('conversationId');
+  const back = () => setParams({});
+  return <div className="max-w-[1440px] mx-auto md:px-6 md:py-6">
+    <div className="flex h-[calc(100dvh-5rem)] md:h-[calc(100dvh-8rem)] min-h-[480px] bg-white md:rounded-2xl md:border border-pearl-200 overflow-hidden">
+      <aside aria-label="Conversations" className={(requested ? 'hidden md:flex' : 'flex') + ' w-full md:w-80 lg:w-96 shrink-0 flex-col border-r border-pearl-200'}>
+        <div className="p-5 border-b border-pearl-200"><h1 className="text-2xl font-bold mb-4">Messages</h1><div className="relative"><Search size={18} className="absolute left-3 top-3 text-muted" /><input aria-label="Search conversations" placeholder="Search conversations…" value={search} onChange={event => setSearch(event.target.value)} className="w-full pl-10 pr-3 py-3 bg-pearl-50 border border-pearl-200 rounded-xl text-sm" /></div></div>
+        <div className="flex-1 overflow-y-auto">
+          {isError && <div role="alert" className="p-5"><p>Couldn’t load your conversations.</p><button className="nc-button nc-button-secondary mt-3" onClick={() => refetch()}>Try again</button></div>}
+          {isPending && <p role="status" className="p-5 text-muted">Loading conversations…</p>}
+          {!isPending && !isError && !displayed.length && <div className="text-center p-8"><MessageCircle className="mx-auto text-brand mb-3" size={32} /><h2 className="font-semibold">{search ? 'No matching conversations' : 'No conversations yet'}</h2><p className="text-sm text-muted my-3">Open a car and choose Message seller to get started.</p><Link className="nc-button nc-button-secondary" to="/cars">Browse cars</Link></div>}
+          {displayed.map(item => <button key={item.conversationId} aria-current={target?.conversationId === item.conversationId ? 'true' : undefined}
+            onClick={() => setParams({ conversationId: item.conversationId })} className={'w-full p-4 flex gap-3 text-left border-b border-pearl-100 hover:bg-pearl-50 ' + (target?.conversationId === item.conversationId ? 'bg-greentint' : '')}>
+            <PersonAvatar person={item.otherUser} /><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="font-semibold text-sm truncate">{displayName(item.otherUser)}</span>{item.unreadCount > 0 && <span aria-label={item.unreadCount + ' unread messages'} className="bg-brand text-white text-xs px-2 py-1 rounded-full">{item.unreadCount}</span>}</div>
+              {item.listing?.make && <p className="text-xs text-brand truncate mt-1">{item.listing.year} {item.listing.make} {item.listing.model}</p>}
+              <p className="text-sm text-muted truncate mt-1">{item.lastMessage?.messageText || 'New conversation'}</p>
+            </div></button>)}
         </div>
-
-        {/* ── Chat Area ── */}
-        <div className={`${activeConversation ? 'flex' : 'hidden md:flex'} flex-1 flex-col bg-white min-w-0`}>
-          {activeConversation ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 border-b border-pearl-200 flex items-center gap-3 flex-shrink-0">
-                <button
-                  onClick={handleBack}
-                  className="md:hidden p-2 hover:bg-pearl-100 rounded-lg"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-charcoal-200 flex items-center
-                                justify-center overflow-hidden flex-shrink-0">
-                  {getAvatar(activeConversation.otherUser) ? (
-                    <img
-                      src={getAvatar(activeConversation.otherUser)}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-sm font-bold text-charcoal-600">
-                      {getDisplayName(activeConversation.otherUser)[0]?.toUpperCase()}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-charcoal-700 truncate">
-                    {getDisplayName(activeConversation.otherUser)}
-                  </p>
-                  {activeConversation.listing?.make && (
-                    <p className="text-xs text-charcoal-500 truncate">
-                      Re: {activeConversation.listing.year} {activeConversation.listing.make}{' '}
-                      {activeConversation.listing.model}
-                    </p>
-                  )}
-                  {activeConversation.isPending && (
-                    <p className="text-xs text-naija-500">New conversation</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messagesError && <div role="alert" className="nc-panel"><p>Unable to load these messages.</p><button className="nc-button nc-button-secondary" onClick={() => refetchMessages()}>Try again</button></div>}
-                {messagesLoading && <p role="status" className="text-muted">Loading messages…</p>}
-                {/* Empty state for new/pending conversations */}
-                {messages.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-10"
-                  >
-                    <div className="w-16 h-16 bg-naija-50 rounded-full flex items-center
-                                    justify-center mx-auto mb-4">
-                      <MessageCircle className="w-8 h-8 text-naija-400" />
-                    </div>
-                    <p className="font-medium text-charcoal-700 mb-1">
-                      {activeConversation.isPending
-                        ? `Start a conversation with ${getDisplayName(activeConversation.otherUser)}`
-                        : 'No messages yet'}
-                    </p>
-                    <p className="text-sm text-charcoal-400">
-                      Your messages are private and secure.
-                    </p>
-                  </motion.div>
-                )}
-
-                <AnimatePresence>
-                  {messages.map(message => {
-                    const isOwn = message.senderId === user?.id;
-                    return (
-                      <motion.div
-                        key={message.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[72%] px-4 py-2.5 rounded-2xl ${
-                            isOwn
-                              ? 'bg-naija-500 text-white rounded-br-sm'
-                              : 'bg-pearl-100 text-charcoal-700 rounded-bl-sm'
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                            {message.messageText}
-                          </p>
-                          <p className={`text-xs mt-1 ${
-                            isOwn ? 'text-naija-100' : 'text-charcoal-400'
-                          }`}>
-                            {new Date(message.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-
-                {/* Typing indicator */}
-                <AnimatePresence>
-                  {otherUserTyping && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="flex justify-start"
-                    >
-                      <div className="bg-pearl-100 px-4 py-3 rounded-2xl rounded-bl-sm">
-                        <div className="flex gap-1 items-center">
-                          {[0, 150, 300].map(delay => (
-                            <span
-                              key={delay}
-                              className="w-2 h-2 bg-charcoal-400 rounded-full animate-bounce"
-                              style={{ animationDelay: `${delay}ms` }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Quick reply chips (only when conversation is empty) */}
-              {messages.length === 0 && (
-                <div className="px-4 pb-2 flex gap-2 flex-wrap flex-shrink-0">
-                  {QUICK_REPLIES.map(reply => (
-                    <button
-                      key={reply}
-                      type="button"
-                      onClick={() => setMessageText(reply)}
-                      className="text-xs px-3 py-1.5 border border-naija-200 text-naija-700
-                                 rounded-full hover:bg-naija-50 transition-colors bg-white"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Message Input */}
-              <form
-                onSubmit={handleSendMessage}
-                className="p-4 border-t border-pearl-200 flex-shrink-0"
-              >
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={e => {
-                      setMessageText(e.target.value);
-                      handleTyping();
-                    }}
-                    placeholder="Type a message..."
-                    className="flex-1 px-4 py-3 bg-pearl-50 border border-pearl-200 rounded-xl
-                               focus:outline-none focus:ring-2 focus:ring-naija-500 text-sm"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!messageText.trim() || isSending}
-                    className="px-5 py-3 bg-naija-500 text-white rounded-xl hover:bg-naija-600
-                               transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center justify-center"
-                  >
-                    {isSending
-                      ? <Loader2 className="w-5 h-5 animate-spin" />
-                      : <Send className="w-5 h-5" />}
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : (
-            /* Empty state — no conversation selected */
-            <div className="flex-1 flex items-center justify-center text-center p-6">
-              <div>
-                <MessageCircle className="w-16 h-16 mx-auto mb-4 text-charcoal-300" />
-                <p className="text-lg font-semibold text-charcoal-700 mb-2">Your Messages</p>
-                <p className="text-charcoal-500 mb-6 max-w-xs mx-auto">
-                  Select a conversation from the left, or message a seller directly from a listing.
-                </p>
-                <Link
-                  to="/cars"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-naija-500 text-white
-                             rounded-xl hover:bg-naija-600 transition-colors text-sm font-medium"
-                >
-                  <Car className="w-4 h-4" />
-                  Browse Cars
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      </aside>
+      <section aria-label="Conversation" className={(requested ? 'flex' : 'hidden md:flex') + ' flex-1 min-w-0 flex-col'}>
+        {active ? <ChatPanel key={user.id + '/' + active.conversationId} user={user} conversation={active} listing={listing} onBack={back} />
+          : <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-4">
+            <MessageCircle size={40} className="text-brand" />
+            <h2 className="font-semibold text-xl">{!requested ? 'Your conversations, all in one place' : !target || person.isError ? 'Conversation unavailable' : 'Opening conversation…'}</h2>
+            <p className="text-muted max-w-sm">{!requested ? 'Choose a conversation or message a seller from a car listing.' : !target ? 'Choose another member to start a conversation.' : person.isError ? 'Couldn’t load this member. Please try again.' : 'Loading member details.'}</p>
+            {person.isError && target && <button className="nc-button" onClick={() => person.refetch()}>Try again</button>}
+            {requested ? <button className="nc-button nc-button-secondary" onClick={back}>Back to conversations</button> : <Link className="nc-button nc-button-secondary" to="/cars">Browse cars</Link>}
+          </div>}
+      </section>
     </div>
-  );
+  </div>;
 }

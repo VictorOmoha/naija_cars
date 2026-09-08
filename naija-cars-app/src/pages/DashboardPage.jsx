@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
   // Fetch conversations to derive per-listing message counts
   const { data: conversationsData } = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', user?.id],
     queryFn: async () => {
       const response = await api.get('/messages/conversations');
       return response.data;

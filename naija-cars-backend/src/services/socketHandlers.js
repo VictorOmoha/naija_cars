@@ -27,7 +27,7 @@ function registerSocketHandlers(socket) {
   socket.on('typing', (payload) => {
     if (!payload || typeof payload !== 'object' || !isParticipant(payload.conversationId)) return;
     socket.to(payload.conversationId).emit('user-typing', {
-      userId: socket.userId, isTyping: payload.isTyping === true,
+      conversationId: payload.conversationId, userId: socket.userId, isTyping: payload.isTyping === true,
     });
   });
 }

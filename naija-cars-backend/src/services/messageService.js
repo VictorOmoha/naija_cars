@@ -15,6 +15,11 @@ class MessageService {
    * Send a message
    */
   async sendMessage({ senderId, receiverId, listingId, messageText }) {
+    if (typeof messageText !== 'string' || !messageText.trim() || messageText.trim().length > 5000) {
+      const error = new Error('Messages must contain between 1 and 5,000 characters');
+      error.status = 400;
+      throw error;
+    }
     if (senderId === receiverId) {
       const error = new Error('You cannot send a message to yourself');
       error.status = 400;
@@ -35,15 +40,16 @@ class MessageService {
       throw error;
     }
 
+    const conversationId = await this.getOrCreateConversation(senderId, receiverId);
     if (listingId) {
       const listing = await prisma.carListing.findFirst({
         where: {
-          id: listingId,
-          status: 'ACTIVE'
+          id: listingId
         },
         select: {
           id: true,
-          sellerId: true
+          sellerId: true,
+          status: true
         }
       });
 
@@ -58,9 +64,17 @@ class MessageService {
         error.status = 400;
         throw error;
       }
-    }
 
-    const conversationId = await this.getOrCreateConversation(senderId, receiverId);
+      // Keep existing conversations usable after a car is sold or taken offline.
+      if (listing.status && listing.status !== 'ACTIVE') {
+        const previous = await prisma.message.findFirst({ where: { conversationId, listingId }, select: { id: true } });
+        if (!previous) {
+          const error = new Error('Listing is no longer available for new enquiries');
+          error.status = 404;
+          throw error;
+        }
+      }
+    }
 
     const message = await prisma.message.create({
       data: {
@@ -68,7 +82,7 @@ class MessageService {
         senderId,
         receiverId,
         listingId,
-        messageText
+        messageText: messageText.trim()
       },
       include: {
         sender: {
@@ -202,7 +216,7 @@ class MessageService {
             }
           }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
         take: safeLimit
       }),
@@ -225,17 +239,24 @@ class MessageService {
   /**
    * Mark messages as read
    */
-  async markMessagesAsRead(conversationId, userId) {
-    await prisma.message.updateMany({
+  async markMessagesAsRead(conversationId, userId, messageIds) {
+    const participants = conversationId.split('_');
+    if (participants.length !== 2 || !participants.includes(userId)) {
+      const error = new Error('Unauthorized access to conversation');
+      error.status = 403;
+      throw error;
+    }
+    const result = await prisma.message.updateMany({
       where: {
         conversationId,
         receiverId: userId,
-        isRead: false
+        isRead: false,
+        ...(messageIds ? { id: { in: messageIds } } : {})
       },
       data: { isRead: true }
     });
 
-    return { message: 'Messages marked as read' };
+    return { count: result.count, participants };
   }
 
   /**

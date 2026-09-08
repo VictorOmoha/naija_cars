@@ -70,9 +70,9 @@ router.get('/:conversationId', authenticate, async (req, res, next) => {
 router.post('/',
   authenticate,
   [
-    body('receiverId').notEmpty().withMessage('Receiver ID is required'),
-    body('messageText').trim().notEmpty().withMessage('Message cannot be empty'),
-    body('listingId').optional()
+    body('receiverId').isString().bail().notEmpty().isLength({ max: 128 }).withMessage('Receiver ID is required'),
+    body('messageText').isString().bail().trim().isLength({ min: 1, max: 5000 }).withMessage('Messages must contain between 1 and 5,000 characters'),
+    body('listingId').optional().isString().bail().notEmpty().isLength({ max: 128 })
   ],
   async (req, res, next) => {
     try {
@@ -126,9 +126,19 @@ router.post('/',
  * @desc    Mark messages as read
  * @access  Private
  */
-router.put('/:conversationId/read', authenticate, async (req, res, next) => {
+router.put('/:conversationId/read', authenticate, [
+  body('messageIds').optional().isArray({ min: 1, max: 100 }),
+  body('messageIds.*').isString().bail().notEmpty().isLength({ max: 128 }),
+], async (req, res, next) => {
   try {
-    await messageService.markMessagesAsRead(req.params.conversationId, req.user.id);
+    if (!validationResult(req).isEmpty()) return res.status(400).json({ success: false, error: { message: 'Invalid message IDs' } });
+    const result = await messageService.markMessagesAsRead(req.params.conversationId, req.user.id, req.body?.messageIds);
+    const io = req.app.get('io');
+    if (io && result.count) {
+      io.to(result.participants).to(req.params.conversationId).emit('messages-read', {
+        conversationId: req.params.conversationId, readerId: req.user.id,
+      });
+    }
 
     res.json({
       success: true,

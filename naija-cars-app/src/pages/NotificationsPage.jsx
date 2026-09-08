@@ -5,19 +5,21 @@ import { MessageCircle, CheckCheck, ArrowRight, Bell } from 'lucide-react';
 import { PageHeader, PageState } from '../components/PageLayout';
 import api from '../services/api';
 import { useApp } from '../context/AppContext';
+import useAuthStore from '../stores/authStore';
 
 export default function NotificationsPage() {
+  const { user } = useAuthStore();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [marking, setMarking] = useState(false);
   const { addToast } = useApp();
   const client = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['conversations'], queryFn: () => api.get('/messages/conversations').then(r => r.data) });
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['conversations', user?.id], queryFn: () => api.get('/messages/conversations').then(r => r.data), enabled: !!user?.id });
   const conversations = data?.data?.conversations || [];
   const unread = conversations.filter(item => item.unreadCount > 0);
   const visible = unreadOnly ? unread : conversations.filter(item => item.lastMessage);
   const markAll = async () => {
     setMarking(true);
-    try { await Promise.all(unread.map(item => api.put(`/messages/${item.conversationId}/read`))); await client.invalidateQueries({ queryKey: ['conversations'] }); addToast('Messages marked as read', 'success'); }
+    try { await Promise.all(unread.map(item => api.put(`/messages/${item.conversationId}/read`))); await client.invalidateQueries({ queryKey: ['conversations', user?.id] }); addToast('Messages marked as read', 'success'); }
     catch { addToast('Could not update all messages. Please try again.', 'error'); }
     finally { setMarking(false); }
   };

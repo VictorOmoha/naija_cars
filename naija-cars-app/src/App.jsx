@@ -104,12 +104,12 @@ function App() {
         <div className="min-h-screen bg-paper">
           {/* Scroll to top on every navigation */}
           <ScrollToTop />
+          <MessageNotifications />
 
           {/* Navigation */}
           {!isAdminRoute && (
             <>
               <Navbar />
-              <MessageNotifications />
             </>
           )}
 

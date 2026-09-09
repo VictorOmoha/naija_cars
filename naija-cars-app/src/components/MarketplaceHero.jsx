@@ -8,7 +8,9 @@ export default function MarketplaceHero({ rental = false }) {
       </div>
       <div className="marketplace-hero-cars">
         <img className="marketplace-hero-car marketplace-hero-car-back" src="/assets/header-mercedes.webp" alt="Burgundy Mercedes-Benz G-Class" width="900" height="600" />
-        <img className="marketplace-hero-car marketplace-hero-car-front" src="/assets/header-range-rover.webp" alt="Silver Range Rover" width="900" height="600" fetchPriority="high" />
+        <div className="marketplace-hero-car marketplace-hero-car-front">
+          <img src="/assets/header-range-rover.webp" alt="Silver Range Rover" width="900" height="600" fetchPriority="high" />
+        </div>
       </div>
     </section>
   );

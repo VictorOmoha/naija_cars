@@ -35,12 +35,14 @@ test('parallel unauthorized requests refresh once and retry each request at most
   assert.equal(attempts, 4);
   assert.ok(results.every(result => result.status === 'rejected'));
 });
-test('incorrect login and current-password responses never trigger a refresh', async () => {
+test('login, recovery, and current-password errors never trigger a refresh', async () => {
   let refreshes = 0;
   axios.defaults.adapter = () => { refreshes++; throw new Error('unexpected refresh'); };
   api.defaults.adapter = unauthorized;
   await assert.rejects(api.post('/auth/login'));
   await assert.rejects(api.post('/auth/change-password'));
+  await assert.rejects(api.post('/auth/forgot-password'));
+  await assert.rejects(api.post('/auth/reset-password'));
   assert.equal(refreshes, 0);
   assert.equal(storage.get('accessToken'), 'old-token');
 });

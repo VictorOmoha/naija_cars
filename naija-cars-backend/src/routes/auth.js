@@ -314,6 +314,14 @@ router.post('/forgot-password',
       const result = await authService.requestPasswordReset(req.body.email);
       res.json({ success: true, message: result.message });
     } catch (error) {
+      // Keep this known delivery failure actionable in production without
+      // exposing SMTP details through the global server-error handler.
+      if (error.status === 503) {
+        return res.status(503).json({
+          success: false,
+          error: { message: 'We could not send the reset email right now. Please try again shortly.' }
+        });
+      }
       next(error);
     }
   }

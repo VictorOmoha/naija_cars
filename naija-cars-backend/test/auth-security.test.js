@@ -148,6 +148,53 @@ test('refresh accepts the HTTP-only cookie and returns only an access token', as
   assert.deepEqual(body.data, { accessToken: 'new-access-token' });
 });
 
+test('public recovery endpoints validate input and allow a reset without signing in', async () => {
+  let requestedEmail;
+  let resetInput;
+  authService.requestPasswordReset = async email => {
+    requestedEmail = email;
+    return { message: 'If an account with that email exists, a reset code has been sent.' };
+  };
+  authService.resetPassword = async (...input) => {
+    resetInput = input;
+    return { message: 'Password reset successful.' };
+  };
+  let response = await postJson('/api/auth/forgot-password', { email: 'not-an-email' });
+  assert.equal(response.status, 400);
+  assert.equal(requestedEmail, undefined);
+  response = await postJson('/api/auth/forgot-password', { email: 'User@Example.com' });
+  assert.equal(response.status, 200);
+  assert.equal(requestedEmail, 'user@example.com');
+
+  for (const input of [
+    { code: '12345', newPassword: 'Password123' },
+    { code: 'abcdef', newPassword: 'Password123' },
+    { code: '123456', newPassword: 'short' },
+    { code: '123456', newPassword: 'lowercaseonly' },
+  ]) {
+    response = await postJson('/api/auth/reset-password', { email: 'user@example.com', ...input });
+    assert.equal(response.status, 400);
+    assert.equal(resetInput, undefined);
+  }
+  response = await postJson('/api/auth/reset-password', {
+    email: 'User@Example.com', code: '123456', newPassword: 'Password123'
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(resetInput, ['user@example.com', '123456', 'Password123']);
+});
+
+test('production recovery delivery failures show safe retry guidance', async () => {
+  authService.requestPasswordReset = async () => {
+    throw Object.assign(new Error('Sensitive SMTP error'), { status: 503 });
+  };
+  const response = await postJson('/api/auth/forgot-password', { email: 'user@example.com' });
+  const body = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(body.success, false);
+  assert.equal(body.error.message, 'We could not send the reset email right now. Please try again shortly.');
+  assert.equal(JSON.stringify(body).includes('Sensitive SMTP'), false);
+});
+
 test('password reset attempts are rate limited', async () => {
   let response;
   for (let i = 0; i < 16; i++) {

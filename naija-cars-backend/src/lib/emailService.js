@@ -11,22 +11,12 @@ function getTransporter() {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true',
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 15000,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
-      }
-    });
-  } else if (process.env.SENDGRID_API_KEY) {
-    // SendGrid supports SMTP authentication with the literal username
-    // "apikey", allowing existing SendGrid deployments to send mail without
-    // introducing another SDK.
-    transporter = nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      secure: false,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY
       }
     });
   } else if (process.env.NODE_ENV === 'development') {
@@ -39,6 +29,37 @@ function getTransporter() {
 }
 
 async function sendEmail({ to, subject, html, text }) {
+  const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER;
+
+  // Prefer HTTPS when SendGrid is configured: Render's free web services
+  // block standard SMTP ports, including SendGrid's SMTP endpoint.
+  if (process.env.SENDGRID_API_KEY) {
+    if (!fromEmail || fromEmail === 'apikey') {
+      throw new Error('Email sender is not configured');
+    }
+    const content = [];
+    if (text) content.push({ type: 'text/plain', value: text });
+    if (html) content.push({ type: 'text/html', value: html });
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromEmail, name: 'Naija Cars' },
+        subject,
+        content
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (response.status !== 202) {
+      throw new Error(`Email provider rejected the request (${response.status})`);
+    }
+    return;
+  }
+
   const t = getTransporter();
 
   if (!t) {
@@ -55,7 +76,6 @@ async function sendEmail({ to, subject, html, text }) {
     return;
   }
 
-  const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER;
   if (!fromEmail || fromEmail === 'apikey') {
     throw new Error('Email sender is not configured');
   }

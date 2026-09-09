@@ -58,6 +58,7 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SENDGRID_API_KEY
+        # Uses HTTPS; recommended for this free plan, which blocks SMTP ports.
         sync: false
       - key: FROM_EMAIL
         sync: false

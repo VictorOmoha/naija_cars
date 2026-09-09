@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dialog from '../Dialog';
 import { Mail, Lock, Eye, EyeOff, User, Phone, Building2, Car, KeyRound, ArrowLeft } from 'lucide-react';
@@ -21,6 +21,25 @@ const AuthModal = () => {
   }, [isSignInOpen, authModalInitialMode]);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const resetRequest = useRef(0);
+  const resetFeedback = useRef(null);
+
+  useEffect(() => {
+    if (resetError) resetFeedback.current?.focus();
+  }, [resetError]);
+
+  useEffect(() => {
+    return () => { resetRequest.current += 1; };
+  }, [isSignInOpen]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
   const [step, setStep] = useState(1); // For multi-step registration
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -64,6 +83,8 @@ const AuthModal = () => {
   const [newPassword, setNewPassword] = useState('');
 
   const handleClose = () => {
+    resetRequest.current += 1;
+    setResetLoading(false);
     setIsSignInOpen(false);
     setMode('login');
     setStep(1);
@@ -79,6 +100,9 @@ const AuthModal = () => {
     setResetEmail('');
     setResetCode('');
     setNewPassword('');
+    setConfirmPassword('');
+    setResetError('');
+    setShowPassword(false);
     clearError();
   };
 
@@ -159,53 +183,86 @@ const AuthModal = () => {
   };
 
   const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    if (!resetEmail) {
-      addToast('Please enter your email', 'error');
+    e?.preventDefault();
+    if (resetLoading || resendCooldown > 0) return;
+    const email = resetEmail.trim();
+    if (!email) {
+      setResetError('Please enter your email address.');
       return;
     }
+    const request = ++resetRequest.current;
+    setResetError('');
     setResetLoading(true);
     try {
-      await authAPI.forgotPassword(resetEmail);
-      addToast('Reset code sent! Check your email.', 'success');
+      await authAPI.forgotPassword(email);
+      if (request !== resetRequest.current) return;
+      setResetEmail(email);
+      setResetCode('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPassword(false);
+      setResendCooldown(60);
       setMode('reset-password');
     } catch (err) {
-      addToast(err?.response?.data?.error?.message || 'Failed to send reset code', 'error');
+      if (request !== resetRequest.current) return;
+      setResetError(err?.response?.data?.error?.details?.[0]?.msg
+        || err?.response?.data?.error?.message || 'Could not send the reset code. Please try again.');
     } finally {
-      setResetLoading(false);
+      if (request === resetRequest.current) setResetLoading(false);
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    if (resetLoading) return;
+    setResetError('');
     if (resetCode.length !== 6) {
-      addToast('Please enter the 6-digit code', 'error');
+      setResetError('Please enter the 6-digit code from your email.');
       return;
     }
     if (newPassword.length < 8) {
-      addToast('Password must be at least 8 characters', 'error');
+      setResetError('Password must be at least 8 characters.');
       return;
     }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
-      addToast('Password must contain uppercase, lowercase, and number', 'error');
+      setResetError('Password must contain an uppercase letter, a lowercase letter, and a number.');
       return;
     }
+    if (newPassword !== confirmPassword) {
+      setResetError('Passwords do not match. Please enter the same password in both fields.');
+      return;
+    }
+    const request = ++resetRequest.current;
     setResetLoading(true);
     try {
       await authAPI.resetPassword({ email: resetEmail, code: resetCode, newPassword });
+      if (request !== resetRequest.current) return;
       addToast('Password reset successful! You can now sign in.', 'success');
+      setFormData(data => ({ ...data, email: resetEmail, password: '' }));
       setMode('login');
       setResetEmail('');
       setResetCode('');
       setNewPassword('');
+      setConfirmPassword('');
+      setShowPassword(false);
+      clearError();
     } catch (err) {
-      addToast(err?.response?.data?.error?.message || 'Failed to reset password', 'error');
+      if (request !== resetRequest.current) return;
+      setResetError(err?.response?.data?.error?.details?.[0]?.msg
+        || err?.response?.data?.error?.message || 'Could not reset your password. Please try again.');
     } finally {
-      setResetLoading(false);
+      if (request === resetRequest.current) setResetLoading(false);
     }
   };
 
   const switchToLogin = () => {
+    resetRequest.current += 1;
+    setResetLoading(false);
+    setResetError('');
+    setResetCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
     setMode('login');
     setStep(1);
     clearError();
@@ -299,7 +356,7 @@ const AuthModal = () => {
                   <div className="flex flex-col items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => { setMode('forgot-password'); setResetEmail(formData.email); clearError(); }}
+                      onClick={() => { setMode('forgot-password'); setResetEmail(formData.email); setResetError(''); setShowPassword(false); clearError(); }}
                       className="text-sm text-charcoal-500 hover:text-naija-600 transition-colors"
                     >
                       Forgot your password?
@@ -332,16 +389,21 @@ const AuthModal = () => {
                 </div>
 
                 <form onSubmit={handleForgotPassword} className="p-8 space-y-5">
+                  {resetError && (
+                    <p ref={resetFeedback} role="alert" tabIndex={-1} className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{resetError}</p>
+                  )}
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
+                    <label htmlFor="recovery-email" className="block text-xs text-charcoal-700 mb-2 font-medium">
                       Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
+                        id="recovery-email"
                         type="email"
                         value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
+                        onChange={(e) => { setResetEmail(e.target.value); setResetError(''); }}
+                        disabled={resetLoading}
                         autoComplete="username"
                         placeholder="your@email.com"
                         required
@@ -354,12 +416,12 @@ const AuthModal = () => {
 
                   <button
                     type="submit"
-                    disabled={resetLoading}
+                    disabled={resetLoading || resendCooldown > 0}
                     className="w-full py-3 bg-gradient-to-r from-naija-500 to-naija-600
                              text-white rounded-xl font-medium hover:shadow-button
                              transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {resetLoading ? 'Sending...' : 'Send Reset Code'}
+                    {resetLoading ? 'Sending...' : resendCooldown > 0 ? `Send again in ${resendCooldown}s` : 'Send Reset Code'}
                   </button>
 
                   <div className="text-center">
@@ -387,19 +449,29 @@ const AuthModal = () => {
                     Enter New Password
                   </h2>
                   <p className="text-charcoal-500">
-                    Enter the code sent to {resetEmail}
+                    If an account exists for <span className="font-medium break-all">{resetEmail}</span>, you will receive a reset code.
                   </p>
                 </div>
 
                 <form onSubmit={handleResetPassword} className="p-8 space-y-5">
+                  {resetError && (
+                    <p ref={resetFeedback} role="alert" tabIndex={-1} className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{resetError}</p>
+                  )}
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium text-center">
+                    <label htmlFor="recovery-code" className="block text-xs text-charcoal-700 mb-2 font-medium text-center">
                       Reset Code
                     </label>
                     <input
+                      id="recovery-code"
                       type="text"
                       value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => { setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setResetError(''); }}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      required
+                      disabled={resetLoading}
+                      aria-describedby="recovery-code-help"
                       placeholder="000000"
                       maxLength={6}
                       className="w-full px-4 py-4 text-center text-2xl tracking-widest font-semibold
@@ -407,19 +479,26 @@ const AuthModal = () => {
                                focus:outline-none focus:ring-2 focus:ring-naija-500
                                focus:border-transparent transition-all"
                     />
+                    <p id="recovery-code-help" className="mt-2 text-xs text-charcoal-500">
+                      Check your inbox and spam folder. Codes expire after 30 minutes. Use the most recent code.
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs text-charcoal-700 mb-2 font-medium">
+                    <label htmlFor="recovery-password" className="block text-xs text-charcoal-700 mb-2 font-medium">
                       New Password
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
                       <input
+                        id="recovery-password"
                         type={showPassword ? 'text' : 'password'}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => { setNewPassword(e.target.value); setResetError(''); }}
                         autoComplete="new-password"
+                        minLength={8}
+                        disabled={resetLoading}
+                        aria-describedby="recovery-password-help"
                         placeholder="Min. 8 characters"
                         required
                         className="w-full pl-12 pr-12 py-3 bg-pearl-50 border border-pearl-200
@@ -435,9 +514,29 @@ const AuthModal = () => {
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
-                    <p className="mt-1 text-xs text-charcoal-500">
-                      Must contain uppercase, lowercase, and number
+                    <p id="recovery-password-help" className="mt-1 text-xs text-charcoal-500">
+                      At least 8 characters, including uppercase, lowercase, and a number.
                     </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="recovery-confirm-password" className="block text-xs text-charcoal-700 mb-2 font-medium">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal-400" />
+                      <input
+                        id="recovery-confirm-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setResetError(''); }}
+                        autoComplete="new-password"
+                        placeholder="Re-enter your new password"
+                        required
+                        disabled={resetLoading}
+                        className="w-full pl-12 pr-4 py-3 bg-pearl-50 border border-pearl-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-naija-500 focus:border-transparent transition-all"
+                      />
+                    </div>
                   </div>
 
                   <button
@@ -450,13 +549,25 @@ const AuthModal = () => {
                     {resetLoading ? 'Resetting...' : 'Reset Password'}
                   </button>
 
-                  <div className="text-center">
+                  <div className="flex flex-col items-center gap-3 text-center">
                     <button
                       type="button"
-                      onClick={() => setMode('forgot-password')}
-                      className="text-naija-600 hover:text-naija-700 font-medium transition-colors"
+                      onClick={() => handleForgotPassword()}
+                      disabled={resetLoading || resendCooldown > 0}
+                      className="text-naija-600 hover:text-naija-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Didn't receive the code? Try again
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resetLoading}
+                      onClick={() => { setResetError(''); setResetCode(''); setNewPassword(''); setConfirmPassword(''); setMode('forgot-password'); }}
+                      className="text-sm text-charcoal-500 hover:text-naija-600 transition-colors disabled:opacity-50"
+                    >
+                      Use a different email
+                    </button>
+                    <button type="button" onClick={switchToLogin} className="flex items-center gap-1 text-sm text-naija-600 hover:text-naija-700 font-medium">
+                      <ArrowLeft className="w-4 h-4" /> Back to Sign In
                     </button>
                   </div>
                 </form>
